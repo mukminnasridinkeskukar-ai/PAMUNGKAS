@@ -152,9 +152,29 @@ function initLandingPage() {
 /**
  * Initialize Login Page components
  */
-function initLoginPage() {
+async function initLoginPage() {
     const loginForm = document.getElementById('loginForm');
     const passwordToggle = document.querySelector('.password-toggle');
+    
+    // Check if already authenticated - redirect to dashboard
+    // This is handled by redirectIfAuthenticated() in auth.js
+    // But we add an extra check here for immediate feedback
+    if (isAuthenticated()) {
+        debugLog('User already authenticated, redirecting...');
+        redirectToDashboard();
+        return;
+    }
+    
+    // Wait for auth initialization to complete
+    // (in case session is being restored)
+    await waitForAuthInit();
+    
+    // Double-check after initialization
+    if (isAuthenticated()) {
+        debugLog('User authenticated after init, redirecting...');
+        redirectToDashboard();
+        return;
+    }
     
     // Login form submission
     if (loginForm) {
@@ -182,7 +202,21 @@ function initLoginPage() {
 /**
  * Initialize Dashboard Page components
  */
-function initDashboardPage() {
+async function initDashboardPage() {
+    // Show loading state while checking auth
+    showDashboardLoading(true);
+    
+    // Require authentication (will redirect if not logged in)
+    const hasAccess = await requireAuth();
+    
+    if (!hasAccess) {
+        // Will redirect automatically, no need to continue
+        return;
+    }
+    
+    // Hide loading and show content
+    showDashboardLoading(false);
+    
     // Sidebar navigation
     initSidebarNavigation();
     
@@ -200,6 +234,11 @@ function initDashboardPage() {
     
     // Breadcrumb update based on active nav
     updateBreadcrumb();
+    
+    // Update user info display (if functions available)
+    if (typeof displayUserInfo === 'function') {
+        displayUserInfo();
+    }
 }
 
 // ==========================================
@@ -569,7 +608,16 @@ async function checkPageAuth() {
     const protectedPages = ['dashboard'];
     
     if (protectedPages.includes(AppState.currentPage)) {
-        await requireAuth();
+        // Note: requireAuth() is now called in initDashboardPage()
+        // This is kept for backward compatibility but the main logic is in initDashboardPage
+        if (!isAuthenticated()) {
+            debugLog('Protected page accessed without auth, waiting for init...');
+        }
+    }
+    
+    // For login page: redirect if already authenticated
+    if (AppState.currentPage === 'login') {
+        // This is handled in initLoginPage() with more robust checks
     }
 }
 
@@ -595,6 +643,30 @@ function updateBreadcrumb() {
 // ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
+
+/**
+ * Wait for authentication initialization to complete
+ * @param {number} maxWait - Maximum wait time in ms (default 5000)
+ */
+async function waitForAuthInit(maxWait = 5000) {
+    const startTime = Date.now();
+    
+    while (isAuthLoading && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+}
+
+/**
+ * Show/hide dashboard loading state
+ * @param {boolean} show - Show loading if true
+ */
+function showDashboardLoading(show) {
+    const loadingEl = document.getElementById('dashboardLoading');
+    const contentEl = document.getElementById('dashboardMainContent');
+    
+    if (loadingEl) loadingEl.style.display = show ? 'flex' : 'none';
+    if (contentEl) contentEl.style.display = show ? 'none' : 'block';
+}
 
 /**
  * Format tanggal ke format Indonesia

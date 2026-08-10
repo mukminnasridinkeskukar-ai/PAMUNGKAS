@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Master Data Administration - PAMUNGKAS SDM Kesehatan">
+    <title>Data Master - PAMUNGKAS</title>
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- App Styles -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+    
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../dashboard.html" class="sidebar-logo">
+                <span class="logo-icon">🏥</span>
+                <span class="logo-text">PAMUNGKAS</span>
+            </a>
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Sidebar Navigation - Dynamic -->
+        <nav class="sidebar-nav" id="sidebarNav">
+            <ul class="nav-list" id="sidebarMenuList">
+                <li class="nav-item"><p style="padding: 20px; color: #6b7280;">Memuat menu...</p></li>
+            </ul>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer">
+            <div class="user-info-mini" id="sidebarUserInfo">
+                <div class="user-avatar-small" id="sidebarUserAvatar">U</div>
+                <div class="user-details-mini">
+                    <span class="user-name-mini" id="sidebarUserName">Loading...</span>
+                    <span class="user-role-mini" id="sidebarUserRole">-</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN CONTENT AREA
+         ========================================== -->
+    <main class="main-content">
+        
+        <!-- Topbar Header -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <div class="breadcrumb">
+                    <a href="../dashboard.html">Home</a>
+                    <span class="separator">/</span>
+                    <span>Pengaturan</span>
+                    <span class="separator">/</span>
+                    <span class="current">Data Master</span>
+                </div>
+            </div>
+            
+            <div class="topbar-right">
+                <!-- Search -->
+                <div class="topbar-search">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="masterDataSearch" placeholder="Cari data master..." aria-label="Search">
+                </div>
+
+                <!-- Notifications -->
+                <button class="topbar-btn notification-btn" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span class="notification-badge">0</span>
+                </button>
+
+                <!-- User Menu -->
+                <div class="user-menu" id="userMenu">
+                    <button class="user-menu-btn" aria-label="User menu">
+                        <div class="user-avatar" id="topbarUserAvatar">A</div>
+                        <div class="user-menu-info">
+                            <span class="user-name" id="topbarUserName">User</span>
+                            <span class="user-role-badge" id="topbarUserRoleBadge">Role</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    
+                    <div class="user-dropdown">
+                        <div class="dropdown-user-info">
+                            <div class="dropdown-user-avatar" id="dropdownAvatar">A</div>
+                            <div class="dropdown-user-details">
+                                <span class="dropdown-user-name" id="dropdownUserName">-</span>
+                                <span class="dropdown-user-email" id="dropdownUserEmail">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="#" onclick="showProfileModal()">
+                            <i class="fas fa-user"></i> Profil Saya
+                        </a>
+                        <a href="../dashboard.html">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="#" class="logout-btn" id="logoutBtn" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Keluar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ==========================================
+             MASTER DATA CONTENT
+             ========================================== -->
+        <div class="dashboard-content" id="dashboardMainContent">
+            
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-database"></i> Data Master</h1>
+                    <p>Kelola data referensi sistem PAMUNGKAS (Unit Kerja, Profesi, Pendidikan, dll)</p>
+                </div>
+                
+                <!-- Permission Info Badge -->
+                <div class="permission-badge" id="permissionInfo" style="display: none;">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Mode: <strong id="accessMode">Read-Only</strong></span>
+                </div>
+            </div>
+
+            <!-- Permission Denied Message (shown if no access) -->
+            <div id="noPermissionMessage" style="display: none;" class="error-state">
+                <div class="error-icon"><i class="fas fa-lock"></i></div>
+                <h2>Akses Ditolak</h2>
+                <p>Anda tidak memiliki izin untuk mengakses halaman Data Master.</p>
+                <p>Diperlukan permission: <code>settings.view</code> atau <code>settings.master_data</code></p>
+                <br>
+                <a href="../dashboard.html" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+                </a>
+            </div>
+
+            <!-- Main Content (shown if has permission) -->
+            <div id="masterDataContent" style="display: none;">
+                
+                <!-- Tab Navigation for Master Data Types -->
+                <div class="master-tabs">
+                    <button class="master-tab active" data-table="units" onclick="switchTable('units')">
+                        <i class="fas fa-building"></i>
+                        <span>Unit Kerja</span>
+                    </button>
+                    <button class="master-tab" data-table="professions" onclick="switchTable('professions')">
+                        <i class="fas fa-user-md"></i>
+                        <span>Profesi</span>
+                    </button>
+                    <button class="master-tab" data-table="education_levels" onclick="switchTable('education_levels')">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Pendidikan</span>
+                    </button>
+                    <button class="master-tab" data-table="employment_statuses" onclick="switchTable('employment_statuses')">
+                        <i class="fas fa-briefcase"></i>
+                        <span>Status Kerja</span>
+                    </button>
+                    <button class="master-tab" data-table="competency_categories" onclick="switchTable('competency_categories')">
+                        <i class="fas fa-award"></i>
+                        <span>Kompetensi</span>
+                    </button>
+                    <button class="master-tab" data-table="training_types" onclick="switchTable('training_types')">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>Pelatihan</span>
+                    </button>
+                    <button class="master-tab" data-table="activity_methods" onclick="switchTable('activity_methods')">
+                        <i class="fas fa-tasks"></i>
+                        <span>Metode</span>
+                    </button>
+                    <button class="master-tab" data-table="certificate_types" onclick="switchTable('certificate_types')">
+                        <i class="fas fa-certificate"></i>
+                        <span>Sertifikat</span>
+                    </button>
+                    
+                    <!-- Toggle Show Inactive -->
+                    <label class="toggle-inactive" id="toggleInactiveContainer" style="display: none;">
+                        <input type="checkbox" id="showInactive" onchange="loadCurrentTable()">
+                        <span>Tampilkan Non-Aktif</span>
+                    </label>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="master-toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn btn-primary" id="addNewBtn" onclick="showAddForm()" style="display: none;">
+                            <i class="fas fa-plus"></i> Tambah Data
+                        </button>
+                        <button class="btn btn-outline" id="refreshBtn" onclick="loadCurrentTable()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <span class="record-count" id="recordCount">0 data</span>
+                    </div>
+                    
+                    <div class="toolbar-right">
+                        <select id="filterUnitType" onchange="loadCurrentTable()" style="display: none;">
+                            <option value="">Semua Tipe Unit</option>
+                        </select>
+                        <select id="filterCategory" onchange="loadCurrentTable()" style="display: none;">
+                            <option value="">Semua Kategori</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Table Container -->
+                <div class="table-container">
+                    <table class="data-table" id="dataTable">
+                        <thead id="tableHead">
+                            <tr>
+                                <th>No</th>
+                                <th>Kode</th>
+                                <th>Nama</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td colspan="5" class="loading-row">
+                                    <i class="fas fa-spinner fa-spin"></i> Memuat data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="pagination" style="display: none;">
+                    <button class="btn btn-sm btn-outline" onclick="prevPage()" id="prevBtn">
+                        <i class="fas fa-chevron-left"></i> Sebelumnya
+                    </button>
+                    <span class="page-info" id="pageInfo">Halaman 1 dari 1</span>
+                    <button class="btn btn-sm btn-outline" onclick="nextPage()" id="nextBtn">
+                        Selanjutnya <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==========================================
+         MODAL: FORM ADD/EDIT
+         ========================================== -->
+    <div class="modal-overlay" id="formModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modalTitle">Tambah Data</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <form id="dataForm" onsubmit="saveFormData(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    
+                    <!-- Dynamic form fields will be inserted here -->
+                    <div id="formFields"></div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL: CONFIRM DELETE/DEACTIVATE
+         ========================================== -->
+    <div class="modal-overlay" id="confirmModal" style="display: none;">
+        <div class="modal-container modal-sm">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Konfirmasi</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Apakah Anda yakin?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeConfirmModal()">Batal</button>
+                <button type="button" class="btn btn-danger" id="confirmBtn" onclick="executeConfirmAction()">
+                    <i class="fas fa-check"></i> Ya, Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         JAVASCRIPT: Load Order Matters!
+         ========================================== -->
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/supabase.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/permissions.js"></script>
+    <script src="../assets/js/app.js"></script>
+    
+    <!-- Master Data Page Script -->
+    <script>
+        /**
+         * MASTER DATA ADMINISTRATION PAGE
+         * Handles CRUD operations for all master data tables
+         */
+
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
+        
+        const MasterDataState = {
+            currentTable: 'units',
+            currentPage: 1,
+            pageSize: 20,
+            totalRecords: 0,
+            showInactive: false,
+            canEdit: false,  // Based on permission settings.master_data
+            dataCache: {},   // Cache per table
+            editRecord: null // Record being edited
+        };
+
+        // Table configurations
+        const TABLE_CONFIG = {
+            units: {
+                displayName: 'Unit Kerja',
+                icon: 'fa-building',
+                columns: ['code', 'name', 'unit_type', 'district', 'is_active'],
+                columnHeaders: ['Kode', 'Nama Unit', 'Tipe', 'Kecamatan', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true, placeholder: 'Contoh: PUS-001' },
+                    { name: 'name', label: 'Nama Unit', type: 'text', required: true, placeholder: 'Nama lengkap unit' },
+                    { name: 'unit_type', label: 'Tipe Unit', type: 'select', required: true, options: [] },
+                    { name: 'parent_id', label: 'Induk (Parent)', type: 'select', required: false, options: [{value: '', text: '- Tidak Ada (Root) -'}] },
+                    { name: 'address', label: 'Alamat', type: 'textarea', required: false },
+                    { name: 'village', label: 'Desa/Kelurahan', type: 'text', required: false },
+                    { name: 'district', label: 'Kecamatan', type: 'text', required: false },
+                    { name: 'regency', label: 'Kab/Kota', type: 'text', required: false },
+                    { name: 'province', label: 'Provinsi', type: 'text', required: false },
+                    { name: 'phone', label: 'Telepon', type: 'text', required: false },
+                    { name: 'email', label: 'Email', type: 'email', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            professions: {
+                displayName: 'Profesi',
+                icon: 'fa-user-md',
+                columns: ['code', 'name', 'short_name', 'category', 'is_active'],
+                columnHeaders: ['Kode', 'Nama Profesi', 'Singkatan', 'Kategori', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true, placeholder: 'DR, PR, BD, dll' },
+                    { name: 'name', label: 'Nama Lengkap', type: 'text', required: true },
+                    { name: 'short_name', label: 'Nama Singkat', type: 'text', required: false },
+                    { name: 'category', label: 'Kategori', type: 'text', required: false },
+                    { name: 'group_type', label: 'Grup', type: 'select', required: false, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'Nakes', text: 'Nakes'},
+                        {value: 'Non-Nakes', text: 'Non-Nakes'},
+                        {value: 'Support', text: 'Support'}
+                    ]},
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            education_levels: {
+                displayName: 'Tingkat Pendidikan',
+                icon: 'fa-graduation-cap',
+                columns: ['code', 'name', 'level', 'education_type', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Level', 'Jenis', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true, placeholder: 'SD, SMP, SMA, D3, S1, dll' },
+                    { name: 'name', label: 'Nama Lengkap', type: 'text', required: true },
+                    { name: 'name_formal', label: 'Nama Formal', type: 'text', required: false },
+                    { name: 'level', label: 'Level (Angka)', type: 'number', required: true },
+                    { name: 'education_type', label: 'Jenis', type: 'select', required: false, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'Formal', text: 'Pendidikan Formal'},
+                        {value: 'Non-Formal', text: 'Non-Formal'},
+                        {value: 'Informal', text: 'Informal'}
+                    ]},
+                    { name: 'duration_years', label: 'Durasi (Tahun)', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            employment_statuses: {
+                displayName: 'Status Kepegawaian',
+                icon: 'fa-briefcase',
+                columns: ['code', 'name', 'status_type', 'category', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Tipe', 'Kategori', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true },
+                    { name: 'name', label: 'Nama Status', type: 'text', required: true },
+                    { name: 'status_type', label: 'Tipe Status', type: 'select', required: true, options: [] },
+                    { name: 'category', label: 'Kategori', type: 'select', required: false, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'ASN', text: 'ASN'},
+                        {value: 'Non-ASN', text: 'Non-ASN'},
+                        {value: 'Swasta', text: 'Swasta'},
+                        {value: 'Lainnya', text: 'Lainnya'}
+                    ]},
+                    { name: 'has_benefits', label: 'Ada Tunjangan?', type: 'checkbox', required: false },
+                    { name: 'color_hex', label: 'Warna (Hex)', type: 'color', required: false },
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            competency_categories: {
+                displayName: 'Kategori Kompetensi',
+                icon: 'fa-award',
+                columns: ['code', 'name', 'competency_type', 'domain', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Tipe Kompetensi', 'Domain', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true },
+                    { name: 'name', label: 'Nama Kategori', type: 'text', required: true },
+                    { name: 'competency_type', label: 'Tipe', type: 'select', required: false, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'Umum', text: 'Umum'},
+                        {value: 'Spesialis', text: 'Spesialis'},
+                        {value: 'Klinis', text: 'Klinis'},
+                        {value: 'Manajerial', text: 'Manajerial'},
+                        {value: 'Teknis', text: 'Teknis'}
+                    ]},
+                    { name: 'domain', label: 'Domain', type: 'select', required: false, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'Pengetahuan', text: 'Pengetahuan (Knowledge)'},
+                        {value: 'Keterampilan', text: 'Keterampilan (Skills)'},
+                        {value: 'Sikap', text: 'Sikap & Perilaku (Attitude)'}
+                    ]},
+                    { name: 'parent_id', label: 'Induk Kategori', type: 'select', required: false, options: [{value: '', text: '- Tidak Ada -'}] },
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            training_types: {
+                displayName: 'Jenis Pelatihan',
+                icon: 'fa-chalkboard-teacher',
+                columns: ['code', 'name', 'category', 'default_duration_hours', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Kategori', 'Durasi (Jam)', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true },
+                    { name: 'name', label: 'Nama Pelatihan', type: 'text', required: true },
+                    { name: 'category', label: 'Kategori', type: 'text', required: true },
+                    { name: 'sub_category', label: 'Sub-Kategori', type: 'text', required: false },
+                    { name: 'default_duration_hours', label: 'Durasi Default (Jam)', type: 'number', required: false },
+                    { name: 'default_duration_days', label: 'Durasi Default (Hari)', type: 'number', required: false },
+                    { name: 'produces_certificate', label: 'Hasilkan Sertifikat?', type: 'checkbox', required: false },
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            activity_methods: {
+                displayName: 'Metode Pelaksanaan',
+                icon: 'fa-tasks',
+                columns: ['code', 'name', 'method_type', 'requires_venue', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Tipe Metode', 'Butuh Tempat?', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true },
+                    { name: 'name', label: 'Nama Metode', type: 'text', required: true },
+                    { name: 'method_type', label: 'Tipe Metode', type: 'select', required: true, options: [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'Offline', text: 'Offline/Tatap Muka'},
+                        {value: 'Online', text: 'Online/Daring'},
+                        {value: 'Blended', text: 'Blended (Campuran)'},
+                        {value: 'Hybrid', text: 'Hybrid'}
+                    ]},
+                    { name: 'requires_venue', label: 'Butuh Tempat/Fasilitas?', type: 'checkbox', required: false, default: true },
+                    { name: 'requires_instructor', label: 'Butuh Instruktur?', type: 'checkbox', required: false, default: true },
+                    { name: 'supports_group', label: 'Mendukung Kelompok?', type: 'checkbox', required: false, default: true },
+                    { name: 'platform', label: 'Platform (jika online)', type: 'text', required: false },
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            },
+            certificate_types: {
+                displayName: 'Jenis Sertifikat',
+                icon: 'fa-certificate',
+                columns: ['code', 'name', 'category', 'validity_period_months', 'is_active'],
+                columnHeaders: ['Kode', 'Nama', 'Kategori', 'Berlaku (Bulan)', 'Status'],
+                formFields: [
+                    { name: 'code', label: 'Kode', type: 'text', required: true },
+                    { name: 'name', label: 'Nama Sertifikat', type: 'text', required: true },
+                    { name: 'category', label: 'Kategori', type: 'text', required: true },
+                    { name: 'issuing_body', label: 'Lembaga Penerbit', type: 'text', required: false },
+                    { name: 'validity_period_months', label: 'Masa Berlaku (Bulan)', type: 'number', required: false, help: 'Kosongkan jika permanen' },
+                    { name: 'is_permanent', label: 'Permanen (Selamanya)?', type: 'checkbox', required: false },
+                    { name: 'sort_order', label: 'Urutan', type: 'number', required: false },
+                    { name: 'description', label: 'Deskripsi', type: 'textarea', required: false }
+                ]
+            }
+        };
+
+        // Confirm action state
+        let confirmAction = null;
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📊 [MASTER DATA] Page initializing...');
+            
+            showDashboardLoading(true);
+            
+            try {
+                // Step 1: Require Authentication
+                const hasAccess = await requireAuth();
+                if (!hasAccess) return;
+                
+                // Step 2: Load Permissions
+                await ensurePermissionsLoaded();
+                
+                // Step 3: Check Permission for Master Data
+                const canView = await hasPermission('settings.view') || 
+                               await hasPermission('settings.master_data');
+                const canManage = await hasPermission('settings.master_data') || 
+                                  await hasPermission('settings.manage');
+                
+                if (!canView) {
+                    showNoPermissionMessage();
+                    return;
+                }
+                
+                // Set state based on permissions
+                MasterDataState.canEdit = canManage;
+                
+                // Show UI based on permissions
+                showMasterDataUI(canManage);
+                
+                // Update sidebar with permissions
+                if (typeof updateSidebarWithPermissions === 'function') {
+                    await updateSidebarWithPermissions();
+                }
+                
+                // Display user info
+                if (typeof window.PamungkasPermissions?.displayUserInfo === 'function') {
+                    await window.PamungkasPermissions.displayUserInfo();
+                }
+                
+                // Load initial table (units)
+                await loadCurrentTable();
+                
+                showDashboardLoading(false);
+                console.log('✅ [MASTER DATA] Page loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ [MASTER DATA] Error:', error);
+                showErrorState(error.message || 'Gagal memuat halaman');
+            }
+        });
+
+        // ==========================================
+        // UI FUNCTIONS
+        // ==========================================
+
+        function showNoPermissionMessage() {
+            document.getElementById('noPermissionMessage').style.display = 'block';
+            document.getElementById('masterDataContent').style.display = 'none';
+            showDashboardLoading(false);
+        }
+
+        function showMasterDataUI(canEdit) {
+            document.getElementById('noPermissionMessage').style.display = 'none';
+            document.getElementById('masterDataContent').style.display = 'block';
+            
+            // Show/hide add button based on permission
+            document.getElementById('addNewBtn').style.display = canEdit ? '' : 'none';
+            
+            // Show toggle inactive only for editors
+            document.getElementById('toggleInactiveContainer').style.display = canEdit ? '' : 'none';
+            
+            // Update permission badge
+            document.getElementById('permissionInfo').style.display = '';
+            document.getElementById('accessMode').textContent = canEdit ? 'Full Access' : 'Read-Only';
+            document.getElementById('accessMode').className = canEdit ? 'text-success' : 'text-warning';
+        }
+
+        function switchTable(tableName) {
+            MasterDataState.currentTable = tableName;
+            MasterDataState.currentPage = 1;
+            
+            // Update active tab
+            document.querySelectorAll('.master-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.table === tableName);
+            });
+            
+            // Show/hide filters
+            document.getElementById('filterUnitType').style.display = tableName === 'units' ? '' : 'none';
+            document.getElementById('filterCategory').style.display = ['professions', 'training_types', 'certificate_types'].includes(tableName) ? '' : 'none';
+            
+            loadCurrentTable();
+        }
+
+        // ==========================================
+        // DATA LOADING FUNCTIONS
+        // ==========================================
+
+        async function loadCurrentTable() {
+            const table = MasterDataState.currentTable;
+            const config = TABLE_CONFIG[table];
+            const tbody = document.getElementById('tableBody');
+            const thead = document.getElementById('tableHead');
+            
+            // Show loading
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${config.columnHeaders.length + 1}" class="loading-row">
+                        <i class="fas fa-spinner fa-spin"></i> Memuat data ${config.displayName}...
+                    </td>
+                </tr>
+            `;
+            
+            try {
+                const client = getSupabase();
+                if (!client) throw new Error('Supabase client tidak tersedia');
+                
+                let query = client.from(table).select('*', { count: 'exact' });
+                
+                // Apply inactive filter
+                if (!MasterDataState.showInactive) {
+                    query = query.eq('is_active', true);
+                }
+                
+                // Apply specific filters
+                if (table === 'units') {
+                    const unitType = document.getElementById('filterUnitType').value;
+                    if (unitType) query = query.eq('unit_type', unitType);
+                }
+                
+                // Pagination
+                const from = (MasterDataState.currentPage - 1) * MasterDataState.pageSize;
+                const to = from + MasterDataState.pageSize - 1;
+                
+                query = query.range(from, to).order('created_at', { ascending: false });
+                
+                const { data, count, error } = await query;
+                
+                if (error) throw error;
+                
+                MasterDataState.totalRecords = count || 0;
+                MasterDataState.dataCache[table] = data;
+                
+                // Render table
+                renderTable(data, config);
+                
+                // Update record count
+                document.getElementById('recordCount').textContent = `${count || 0} data`;
+                
+                // Render pagination
+                renderPagination();
+                
+            } catch (error) {
+                console.error(`Error loading ${table}:`, error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${config.columnHeaders.length + 1}" class="error-row">
+                            <i class="fas fa-exclamation-triangle"></i> Gagal memuat data: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderTable(data, config) {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            
+            // Render header
+            let headerHtml = '<tr><th>No</th>';
+            config.columnHeaders.forEach(h => {
+                headerHtml += `<th>${h}</th>`;
+            });
+            headerHtml += '<th>Aksi</th></tr>';
+            thead.innerHTML = headerHtml;
+            
+            // Render body
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${config.columnHeaders.length + 2}" class="empty-row">
+                            <i class="fas fa-inbox"></i> Belum ada data
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let bodyHtml = '';
+            data.forEach((row, index) => {
+                const rowNum = ((MasterDataState.currentPage - 1) * MasterDataState.pageSize) + index + 1;
+                const statusClass = row.is_active ? 'status-active' : 'status-inactive';
+                const statusText = row.is_active ? 'Aktif' : 'Non-Aktif';
+                
+                bodyHtml += `<tr class="${row.is_active ? '' : 'row-inactive'}">`;
+                bodyHtml += `<td>${rowNum}</td>`;
+                
+                config.columns.forEach(col => {
+                    let value = row[col];
+                    
+                    // Format special values
+                    if (col === 'unit_type') value = formatUnitType(value);
+                    if (col === 'is_active') value = `<span class="${statusClass}">${statusText}</span>`;
+                    if (col === 'validity_period_months' && !value && row.is_permanent) value = '<em>Permanen</em>';
+                    if (!value && value !== 0) value = '-';
+                    
+                    bodyHtml += `<td>${value}</td>`;
+                });
+                
+                // Action buttons
+                bodyHtml += `<td class="action-buttons">`;
+                if (MasterDataState.canEdit) {
+                    bodyHtml += `
+                        <button class="btn-icon btn-edit" onclick="editRecord('${row.id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${row.is_active ? `
+                            <button class="btn-icon btn-deactivate" onclick="deactivateRecord('${row.id}')" title="Nonaktifkan">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        ` : `
+                            <button class="btn-icon btn-reactivate" onclick="reactivateRecord('${row.id}')" titleAktivkan">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                        `}
+                    `;
+                } else {
+                    bodyHtml += `<span class="read-only"><i class="fas fa-eye"></i> View Only</span>`;
+                }
+                bodyHtml += `</td></tr>`;
+            });
+            
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(MasterDataState.totalRecords / MasterDataState.pageSize);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+            
+            pagination.style.display = '';
+            document.getElementById('pageInfo').textContent = `Halaman ${MasterDataState.currentPage} dari ${totalPages}`;
+            document.getElementById('prevBtn').disabled = MasterDataState.currentPage === 1;
+            document.getElementById('nextBtn').disabled = MasterDataState.currentPage === totalPages;
+        }
+
+        function prevPage() {
+            if (MasterDataState.currentPage > 1) {
+                MasterDataState.currentPage--;
+                loadCurrentTable();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(MasterDataState.totalRecords / MasterDataState.pageSize);
+            if (MasterDataState.currentPage < totalPages) {
+                MasterDataState.currentPage++;
+                loadCurrentTable();
+            }
+        }
+
+        // ==========================================
+        // CRUD OPERATIONS
+        // ==========================================
+
+        function showAddForm() {
+            MasterDataState.editRecord = null;
+            document.getElementById('modalTitle').textContent = `Tambah ${TABLE_CONFIG[MasterDataState.currentTable].displayName}`;
+            document.getElementById('editId').value = '';
+            document.getElementById('dataForm').reset();
+            
+            renderFormFields();
+            document.getElementById('formModal').style.display = 'flex';
+        }
+
+        async function editRecord(id) {
+            const table = MasterDataState.currentTable;
+            const record = MasterDataState.dataCache[table]?.find(r => r.id === id);
+            
+            if (!record) {
+                alert('Data tidak ditemukan');
+                return;
+            }
+            
+            MasterDataState.editRecord = record;
+            document.getElementById('modalTitle').textContent = `Edit ${TABLE_CONFIG[table].displayName}`;
+            document.getElementById('editId').value = id;
+            
+            renderFormFields(record);
+            document.getElementById('formModal').style.display = 'flex';
+        }
+
+        function renderFormFields(editData = null) {
+            const container = document.getElementById('formFields');
+            const config = TABLE_CONFIG[MasterDataState.currentTable];
+            
+            let html = '';
+            
+            // Load dynamic options for select fields
+            await loadSelectOptions(config.formFields);
+            
+            config.formFields.forEach(field => {
+                const value = editData ? (editData[field.name] || '') : (field.default || '');
+                
+                html += `<div class="form-group">`;
+                html += `<label for="field_${field.name}">${field.label}${field.required ? ' <span class="required">*</span>' : ''}</label>`;
+                
+                switch (field.type) {
+                    case 'text':
+                    case 'email':
+                        html += `<input type="${field.type}" id="field_${field.name}" name="${field.name}" value="${value}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}>`;
+                        break;
+                    case 'number':
+                        html += `<input type="number" id="field_${field.name}" name="${field.name}" value="${value}" ${field.required ? 'required' : ''}>`;
+                        break;
+                    case 'textarea':
+                        html += `<textarea id="field_${field.name}" name="${field.name}" rows="3" placeholder="${field.placeholder || ''}">${value}</textarea>`;
+                        break;
+                    case 'select':
+                        html += `<select id="field_${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>`;
+                        (field.options || []).forEach(opt => {
+                            const selected = opt.value === value ? 'selected' : '';
+                            html += `<option value="${opt.value}" ${selected}>${opt.text}</option>`;
+                        });
+                        html += `</select>`;
+                        break;
+                    case 'checkbox':
+                        const checked = value ? 'checked' : '';
+                        html += `<label class="checkbox-label"><input type="checkbox" id="field_${field.name}" name="${field.name}" ${checked}> ${field.label}</label>`;
+                        break;
+                    case 'color':
+                        html += `<input type="color" id="field_${field.name}" name="${field.name}" value="${value || '#000000'}">`;
+                        break;
+                }
+                
+                if (field.help) {
+                    html += `<small class="help-text">${field.help}</small>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        async function loadSelectOptions(formFields) {
+            const client = getSupabase();
+            if (!client) return;
+            
+            for (const field of formFields) {
+                if (field.name === 'unit_type' && field.options.length <= 1) {
+                    // Load unit types from enum
+                    field.options = [
+                        {value: '', text: '- Pilih Tipe -'},
+                        {value: 'DINKES', text: 'Dinas Kesehatan'},
+                        {value: 'BIDANG', text: 'Bidang/Tim Kerja'},
+                        {value: 'UPTD', text: 'UPTD'},
+                        {value: 'PUSKESMAS', text: 'Puskesmas'},
+                        {value: 'RS_KELAS_A', text: 'RS Kelas A'},
+                        {value: 'RS_KELAS_B', text: 'RS Kelas B'},
+                        {value: 'RS_KELAS_C', text: 'RS Kelas C'},
+                        {value: 'RS_KELAS_D', text: 'RS Kelas D'},
+                        {value: 'RS_PRATAMA', text: 'RS Pratama'},
+                        {value: 'KLINIK_PRATAMA', text: 'Klinik Pratama'},
+                        {value: 'KLINIK_UTAMA', text: 'Klinik Utama'},
+                        {value: 'APOTEK', text: 'Apotek'},
+                        {value: 'LABKES', text: 'Laboratorium Kesehatan'},
+                        {value: 'PRAKTEK_MANDIRI', text: 'Praktek Mandiri'},
+                        {value: 'FASYANKES_LAIN', text: 'Fasyankes Lainnya'},
+                        {value: 'Kantor_Pusat', text: 'Kantor Pusat'}
+                    ];
+                }
+                
+                if (field.name === 'parent_id' && MasterDataState.currentTable === 'units') {
+                    // Load units for parent selection
+                    const { data: units } = await client.from('units').select('id, name, code').eq('is_active', true);
+                    field.options = [
+                        {value: '', text: '- Tidak Ada (Root) -'},
+                        ...(units || []).map(u => ({value: u.id, text: `${u.code} - ${u.name}`}))
+                    ];
+                }
+                
+                if (field.name === 'parent_id' && MasterDataState.currentTable === 'competency_categories') {
+                    // Load categories for parent
+                    const { data: cats } = await client.from('competency_categories').select('id, name').eq('is_active', true);
+                    field.options = [
+                        {value: '', text: '- Tidak Ada -'},
+                        ...(cats || []).map(c => ({value: c.id, text: c.name}))
+                    ];
+                }
+                
+                if (field.name === 'status_type' && field.options.length <= 1) {
+                    // Load employment status types
+                    field.options = [
+                        {value: '', text: '- Pilih -'},
+                        {value: 'PNS', text: 'PNS'},
+                        {value: 'PPPK', text: 'PPPK'},
+                        {value: 'HONORER', text: 'Honorer'},
+                        {value: 'KONTRAK', text: 'Kontrak'},
+                        {value: 'TETAP_SWASTA', text: 'Tetap Swasta'},
+                        {value: 'TIDAK_TETAP_SWASTA', text: 'Tidak Tetap Swasta'},
+                        {value: 'MAGANG', text: 'Magang'},
+                        {value: 'SUKARELAWAN', text: 'Sukarelawan'},
+                        {value: 'LAINNYA', text: 'Lainnya'}
+                    ];
+                }
+            }
+        }
+
+        async function saveFormData(event) {
+            event.preventDefault();
+            
+            const table = MasterDataState.currentTable;
+            const editId = document.getElementById('editId').value;
+            const config = TABLE_CONFIG[table];
+            const client = getSupabase();
+            
+            if (!client) {
+                alert('Koneksi database tidak tersedia');
+                return;
+            }
+            
+            // Collect form data
+            const formData = {};
+            config.formFields.forEach(field => {
+                const element = document.getElementById(`field_${field.name}`);
+                if (element) {
+                    if (field.type === 'checkbox') {
+                        formData[field.name] = element.checked;
+                    } else {
+                        formData[field.name] = element.value || null;
+                    }
+                }
+            });
+            
+            try {
+                let result;
+                
+                if (editId) {
+                    // Update existing record
+                    result = await client.from(table).update(formData).eq('id', editId).select().single();
+                } else {
+                    // Insert new record
+                    result = await client.insert(table).insert(formData).select().single();
+                }
+                
+                if (result.error) throw result.error;
+                
+                closeModal();
+                await loadCurrentTable();
+                
+                showToast(editId ? 'Data berhasil diperbarui!' : 'Data berhasil ditambahkan!', 'success');
+                
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert(`Gagal menyimpan data: ${error.message}`);
+            }
+        }
+
+        function deactivateRecord(id) {
+            confirmAction = { type: 'deactivate', id };
+            document.getElementById('confirmTitle').textContent = 'Konfirmasi Nonaktifkan';
+            document.getElementById('confirmMessage').innerHTML = `
+                Apakah Anda yakin ingin <strong>menonaktifkan</strong> data ini?<br><br>
+                <small>Data yang dinonaktifkan tidak akan tampil di dropdown/pilihan, tetapi masih tersimpan di database.</small>
+            `;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        function reactivateRecord(id) {
+            confirmAction = { type: 'reactivate', id };
+            document.getElementById('confirmTitle').textContent = 'Konfirmasi Reaktivasi';
+            document.getElementById('confirmMessage').innerHTML = `
+                Apakah Anda yakin ingin <strong>mengaktifkan kembali</strong> data ini?
+            `;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+
+        async function executeConfirmAction() {
+            if (!confirmAction) return;
+            
+            const table = MasterDataState.currentTable;
+            const client = getSupabase();
+            
+            if (!client) return;
+            
+            try {
+                let result;
+                
+                if (confirmAction.type === 'deactivate') {
+                    result = await client.from(table)
+                        .update({ is_active: false })
+                        .eq('id', confirmAction.id);
+                } else if (confirmAction.type === 'reactivate') {
+                    result = await client.from(table)
+                        .update({ is_active: true })
+                        .eq('id', confirmAction.id);
+                }
+                
+                if (result.error) throw result.error;
+                
+                closeConfirmModal();
+                await loadCurrentTable();
+                
+                showToast(confirmAction.type === 'deactivate' ? 'Data berhasil dinonaktifkan!' : 'Data berhasil diaktifkan kembali!', 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Gagal: ${error.message}`);
+            }
+        }
+
+        // ==========================================
+        // MODAL FUNCTIONS
+        // ==========================================
+
+        function closeModal() {
+            document.getElementById('formModal').style.display = 'none';
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            confirmAction = null;
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const formModal = document.getElementById('formModal');
+            const confirmModal = document.getElementById('confirmModal');
+            
+            if (event.target === formModal) closeModal();
+            if (event.target === confirmModal) closeConfirmModal();
+        }
+
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+
+        function formatUnitType(type) {
+            const typeMap = {
+                'DINKES': 'Dinas Kesehatan',
+                'BIDANG': 'Bidang/Tim Kerja',
+                'UPTD': 'UPTD',
+                'PUSKESMAS': 'Puskesmas',
+                'RS_KELAS_A': 'RS Kelas A',
+                'RS_KELAS_B': 'RS Kelas B',
+                'RS_KELAS_C': 'RS Kelas C',
+                'RS_KELAS_D': 'RS Kelas D',
+                'RS_PRATAMA': 'RS Pratama',
+                'KLINIK_PRATAMA': 'Klinik Pratama',
+                'KLINIK_UTAMA': 'Klinik Utama',
+                'APOTEK': 'Apotek',
+                'LABKES': 'Lab. Kesehatan',
+                'PRAKTEK_MANDIRI': 'Praktek Mandiri'
+            };
+            return typeMap[type] || type || '-';
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px;
+                padding: 15px 25px; background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000; animation: slideIn 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showDashboardLoading(show) {
+            const loadingEl = document.getElementById('dashboardLoading');
+            const contentEl = document.getElementById('dashboardMainContent');
+            if (loadingEl) loadingEl.style.display = show ? 'flex' : 'none';
+            if (contentEl) contentEl.style.display = show ? 'none' : 'block';
+        }
+
+        function showErrorState(message) {
+            showDashboardLoading(false);
+            const contentEl = document.getElementById('dashboardMainContent');
+            if (contentEl) {
+                contentEl.innerHTML = `
+                    <div class="error-state">
+                        <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h2>Error Memuat Halaman</h2>
+                        <p>${message}</p>
+                        <button onclick="location.reload()" class="btn btn-primary">Muat Ulang</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Logout handler
+        async function handleLogout() {
+            if (confirm('Apakah Anda yakin ingin keluar?')) {
+                await logout();
+            }
+        }
+
+        function showProfileModal() {
+            alert('Fitur profil akan tersedia di tahap berikutnya.');
+        }
+
+        // Add animation keyframe
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+            .master-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: var(--shadow-sm); }
+            .master-tab { padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; display: flex; align-items: center; gap: 8px; color: #6b7280; }
+            .master-tab:hover { border-color: #3b82f6; color: #3b82f6; }
+            .master-tab.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+            .master-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+            .toolbar-left, .toolbar-right { display: flex; gap: 10px; align-items: center; }
+            .record-count { color: #6b7280; font-size: 14px; }
+            .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: var(--shadow-sm); }
+            .data-table { width: 100%; border-collapse: collapse; }
+            .data-table th, .data-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+            .data-table th { background: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; }
+            .data-table tr:hover { background: #f9fafb; }
+            .row-inactive { opacity: 0.6; }
+            .action-buttons { display: flex; gap: 6px; white-space: nowrap; }
+            .btn-icon { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; background: white; color: #6b7280; }
+            .btn-icon:hover { border-color: #3b82f6; color: #3b82f6; }
+            .btn-edit:hover { border-color: #10b981; color: #10b981; }
+            .btn-deactivate:hover { border-color: #f59e0b; color: #f59e0b; }
+            .btn-reactivate:hover { border-color: #10b981; color: #10b981; }
+            .status-active { background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+            .status-inactive background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+            .read-only { color: #9ca3af; font-size: 12px; font-style: italic; }
+            .empty-row, .loading-row, .error-row { text-align: center; padding: 40px !important; color: #6b7280; }
+            .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+            .modal-container { background: white; border-radius: 16px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+            .modal-header { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+            .modal-header h3 { margin: 0; font-size: 18px; }
+            .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; }
+            .modal-body { padding: 24px; }
+            .modal-footer { padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
+            .form-group { margin-bottom: 16px; }
+            .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: #374151; font-size: 14px; }
+            .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+            .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+            .required { color: #ef4444; }
+            .help-text { color: #6b7280; font-size: 12px; margin-top: 4px; }
+            .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+            .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+            .page-header h1 { display: flex; align-items: center; gap: 12px; margin: 0 0 8px 0; font-size: 24px; color: #1f2937; }
+            .page-header p { margin: 0; color: #6b7280; }
+            .permission-badge { background: #eff6ff; padding: 10px 16px; border-radius: 8px; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 8px; color: #1e40af; font-size: 14px; }
+            .text-success { color: #059669; font-weight: 600; }
+            .text-warning { color: #d97706; font-weight: 600; }
+            .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding: 16px; }
+            .page-info { color: #6b7280; }
+            .toggle-inactive { display: flex; align-items: center; gap: 8px; margin-left: auto; color: #6b7280; font-size: 14px; cursor: pointer; }
+        `;
+        document.head.appendChild(style);
+
+        console.log('✅ [MASTER DATA] Module loaded');
+    </script>
+</body>
+</html>

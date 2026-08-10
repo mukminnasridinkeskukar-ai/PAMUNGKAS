@@ -5,11 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Dashboard PAMUNGKAS - SDM Kesehatan">
     <title>Dashboard - PAMUNGKAS</title>
+    
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- App Styles -->
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/responsive.css">
 </head>
 <body class="dashboard-page">
-    <!-- Sidebar -->
+    
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="dashboard.html" class="sidebar-logo">
@@ -25,116 +33,37 @@
             </button>
         </div>
 
-        <nav class="sidebar-nav">
-            <ul class="nav-list">
+        <!-- Sidebar Navigation - Dynamic berdasarkan Permission -->
+        <nav class="sidebar-nav" id="sidebarNav">
+            <!-- Menu akan di-generate otomatis oleh permissions.js -->
+            <!-- Berdasarkan role & permission user yang login -->
+            <ul class="nav-list" id="sidebarMenuList">
                 <li class="nav-item">
-                    <a href="dashboard.html" class="nav-link active">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <rect x="3" y="14" width="7" height="7"/>
-                        </svg>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#" class="nav-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                        <span>Data SDM</span>
-                        <svg class="nav-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </a>
-                    <ul class="nav-sublist">
-                        <li><a href="#">Daftar Tenaga Kesehatan</a></li>
-                        <li><a href="#">Profil Pegawai</a></li>
-                        <li><a href="#">Struktur Organisasi</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#" class="nav-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                        </svg>
-                        <span>Pelatihan & Diklat</span>
-                        <svg class="nav-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </a>
-                    <ul class="nav-sublist">
-                        <li><a href="#">Jadwal Pelatihan</a></li>
-                        <li><a href="#">Program Diklat</a></li>
-                        <li><a href="#">Sertifikat Pelatihan</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#" class="nav-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="8" r="7"/>
-                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
-                        </svg>
-                        <span>Sertifikasi</span>
-                        <svg class="nav-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </a>
-                    <ul class="nav-sublist">
-                        <li><a href="#">Daftar Sertifikasi</a></li>
-                        <li><a href="#">Tracking Lisensi</a></li>
-                        <li><a href="#">Reminder Expired</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item nav-item-has-children">
-                    <a href="#" class="nav-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="20" x2="18" y2="10"/>
-                            <line x1="12" y1="20" x2="12" y2="4"/>
-                            <line x1="6" y1="20" x2="6" y2="14"/>
-                        </svg>
-                        <span>Laporan</span>
-                        <svg class="nav-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </a>
-                    <ul class="nav-sublist">
-                        <li><a href="#">Laporan SDM</a></li>
-                        <li><a href="#">Laporan Kompetensi</a></li>
-                        <li><a href="#">Laporan Pelatihan</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                        <span>Pengaturan</span>
-                    </a>
+                    <p style="padding: 20px; color: #6b7280; text-align: center;">
+                        Memuat menu...
+                    </p>
                 </li>
             </ul>
         </nav>
 
+        <!-- Sidebar Footer: User Info Mini -->
         <div class="sidebar-footer">
-            <div class="user-info-mini">
-                <div class="user-avatar-small">A</div>
+            <div class="user-info-mini" id="sidebarUserInfo">
+                <div class="user-avatar-small" id="sidebarUserAvatar">U</div>
                 <div class="user-details-mini">
-                    <span class="user-name-mini">Administrator</span>
-                    <span class="user-role-mini">Super Admin</span>
+                    <span class="user-name-mini" id="sidebarUserName">Loading...</span>
+                    <span class="user-role-mini" id="sidebarUserRole">-</span>
                 </div>
             </div>
         </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- ==========================================
+         MAIN CONTENT AREA
+         ========================================== -->
     <main class="main-content">
-        <!-- Topbar -->
+        
+        <!-- Topbar Header -->
         <header class="topbar">
             <div class="topbar-left">
                 <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
@@ -150,8 +79,9 @@
                     <span class="current">Dashboard</span>
                 </div>
             </div>
+            
             <div class="topbar-right">
-                <!-- Search -->
+                <!-- Search (Placeholder) -->
                 <div class="topbar-search">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
@@ -160,41 +90,60 @@
                     <input type="search" placeholder="Cari..." aria-label="Search">
                 </div>
 
-                <!-- Notifications -->
+                <!-- Notifications (Placeholder) -->
                 <button class="topbar-btn notification-btn" aria-label="Notifications">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
-                    <span class="notification-badge">3</span>
+                    <span class="notification-badge">0</span>
                 </button>
 
-                <!-- User Menu -->
+                <!-- User Menu Dropdown -->
                 <div class="user-menu" id="userMenu">
                     <button class="user-menu-btn" aria-label="User menu">
-                        <div class="user-avatar">A</div>
-                        <span class="user-name">Administrator</span>
+                        <div class="user-avatar" id="topbarUserAvatar">A</div>
+                        <div class="user-menu-info">
+                            <span class="user-name" id="topbarUserName">User</span>
+                            <span class="user-role-badge" id="topbarUserRoleBadge">Role</span>
+                        </div>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="6 9 12 15 18 9"/>
                         </svg>
                     </button>
+                    
                     <div class="user-dropdown">
-                        <a href="#" class="dropdown-item">
+                        <!-- User Info in Dropdown -->
+                        <div class="dropdown-user-info">
+                            <div class="dropdown-user-avatar" id="dropdownAvatar">A</div>
+                            <div class="dropdown-user-details">
+                                <span class="dropdown-user-name" id="dropdownUserName">-</span>
+                                <span class="dropdown-user-email" id="dropdownUserEmail">-</span>
+                                <span class="dropdown-user-role" id="dropdownUserRole">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="#" class="dropdown-item" onclick="showProfileModal()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                 <circle cx="12" cy="7" r="4"/>
                             </svg>
                             Profil Saya
                         </a>
-                        <a href="#" class="dropdown-item">
+                        
+                        <a href="#" class="dropdown-item" id="settingsLink">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="3"/>
                                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                             </svg>
                             Pengaturan
                         </a>
+                        
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item logout-btn" id="logoutBtn">
+                        
+                        <a href="#" class="dropdown-item logout-btn" id="logoutBtn" onclick="handleLogout()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                                 <polyline points="16 17 21 12 16 7"/>
@@ -207,114 +156,154 @@
             </div>
         </header>
 
-        <!-- Dashboard Content -->
+        <!-- ==========================================
+             DASHBOARD CONTENT
+             ========================================== -->
         <div class="dashboard-content">
-            <!-- Welcome Card -->
-            <div class="welcome-section">
-                <div class="welcome-card">
-                    <div class="welcome-text">
-                        <h1>Selamat Datang di <span class="brand-highlight">PAMUNGKAS</span></h1>
-                        <p>Platform Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</p>
-                        <p class="welcome-subtext">Modul bisnis akan tersedia pada tahap berikutnya. Saat ini Anda melihat tampilan placeholder dashboard.</p>
-                    </div>
-                    <div class="welcome-illustration">
-                        <div class="welcome-icon-large">🏥</div>
-                    </div>
+            
+            <!-- Loading State (shown while checking auth) -->
+            <div id="dashboardLoading" class="dashboard-loading" style="display: none;">
+                <div class="loading-card">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                        <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+                    </svg>
+                    <p>Memuat dashboard...</p>
                 </div>
             </div>
-
-            <!-- Stats Cards Placeholder -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-blue">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">--</span>
-                        <span class="stat-label">Total SDM Kesehatan</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-green">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                        </svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">--</span>
-                        <span class="stat-label">Program Pelatihan</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-purple">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="8" r="7"/>
-                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
-                        </svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">--</span>
-                        <span class="stat-label">Sertifikasi Aktif</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon stat-icon-orange">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                            <polyline points="22 4 12 14.01 9 11.01"/>
-                        </svg>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value">--</span>
-                        <span class="stat-label">Kompetensi Terverifikasi</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Content Grid Placeholder -->
-            <div class="content-grid">
-                <div class="content-card card-wide">
-                    <div class="card-header">
-                        <h3>Aktivitas Terbaru</h3>
-                        <a href="#" class="card-action">Lihat Semua</a>
-                    </div>
-                    <div class="card-body">
-                        <div class="placeholder-content">
-                            <div class="placeholder-icon">📋</div>
-                            <p>Data aktivitas akan ditampilkan setelah modul bisnis diimplementasikan.</p>
-                            <span class="placeholder-hint">Tersedia di PROMPT 02</span>
+            
+            <!-- Main Dashboard Content (hidden until auth confirmed) -->
+            <div id="dashboardMainContent" style="display: none;">
+                
+                <!-- Welcome Card with User Info -->
+                <div class="welcome-section">
+                    <div class="welcome-card">
+                        <div class="welcome-text">
+                            <h1>Selamat Datang, <span id="welcomeUserName">User</span>! 👋</h1>
+                            <p class="welcome-subtitle">Anda login sebagai <strong id="welcomeUserRole">-</strong></p>
+                            <p class="welcome-description">
+                                Platform Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan
+                            </p>
+                            
+                            <!-- User Quick Info -->
+                            <div class="user-quick-info" id="userQuickInfo">
+                                <div class="quick-info-item">
+                                    <span class="quick-info-label">Email</span>
+                                    <span class="quick-info-value" id="quickInfoEmail">-</span>
+                                </div>
+                                <div class="quick-info-item">
+                                    <span class="quick-info-label">Unit Kerja</span>
+                                    <span class="quick-info-value" id="quickInfoUnit">-</span>
+                                </div>
+                                <div class="quick-info-item">
+                                    <span class="quick-info-label">Jabatan</span>
+                                    <span class="quick-info-value" id="quickInfoPosition">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="welcome-illustration">
+                            <div class="role-badge-large" id="welcomeRoleBadge">
+                                <span class="role-icon">⭐</span>
+                                <span class="role-name">ROLE</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3>Jadwal Mendatang</h3>
-                        <a href="#" class="card-action">Lihat Semua</a>
+
+                <!-- Stats Cards Placeholder -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-blue">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">--</span>
+                            <span class="stat-label">Total SDM Kesehatan</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="placeholder-content">
-                            <div class="placeholder-icon">📅</div>
-                            <p>Jadwal pelatihan akan ditampilkan di sini.</p>
-                            <span class="placeholder-hint">Tersedia di PROMPT 02</span>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-green">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">--</span>
+                            <span class="stat-label">Program Pelatihan</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-purple">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="8" r="7"/>
+                                <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">--</span>
+                            <span class="stat-label">Sertifikasi Aktif</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-orange">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value">--</span>
+                            <span class="stat-label">Kompetensi Terverifikasi</span>
                         </div>
                     </div>
                 </div>
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3>Reminder Sertifikasi</h3>
-                        <a href="#" class="card-action">Lihat Semua</a>
+
+                <!-- Content Grid Placeholder -->
+                <div class="content-grid">
+                    <div class="content-card card-wide">
+                        <div class="card-header">
+                            <h3>Aktivitas Terbaru</h3>
+                            <a href="#" class="card-action">Lihat Semua</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="placeholder-content">
+                                <div class="placeholder-icon">📋</div>
+                                <p>Data aktivitas akan ditampilkan setelah modul bisnis diimplementasikan.</p>
+                                <span class="placeholder-hint">Tersedia di tahap berikutnya</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="placeholder-content">
-                            <div class="placeholder-icon">⏰</div>
-                            <p>Reminder sertifikasi yang akan expired.</p>
-                            <span class="placeholder-hint">Tersedia di PROMPT 02</span>
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>Jadwal Mendatang</h3>
+                            <a href="#" class="card-action">Lihat Semua</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="placeholder-content">
+                                <div class="placeholder-icon">📅</div>
+                                <p>Jadwal pelatihan akan ditampilkan di sini.</p>
+                                <span class="placeholder-hint">Tersedia di tahap berikutnya</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>Reminder Sertifikasi</h3>
+                            <a href="#" class="card-action">Lihat Semua</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="placeholder-content">
+                                <div class="placeholder-icon">⏰</div>
+                                <p>Reminder sertifikasi yang akan expired.</p>
+                                <span class="placeholder-hint">Tersedia di tahap berikutnya</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -322,12 +311,506 @@
         </div>
     </main>
 
-    <!-- Overlay for mobile sidebar -->
+    <!-- Sidebar Overlay (Mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+    <!-- ==========================================
+         JAVASCRIPT: Load Order Matters!
+         ========================================== -->
     <script src="assets/js/config.js"></script>
     <script src="assets/js/supabase.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/permissions.js"></script>
     <script src="assets/js/app.js"></script>
+    
+    <!-- Dashboard Page Script -->
+    <script>
+        /**
+         * DASHBOARD PAGE INITIALIZATION
+         * This script handles:
+         * 1. Route protection (redirect if not authenticated)
+         * 2. Display user info after successful authentication
+         * 3. Show/hide UI elements based on user role
+         */
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📊 [PAMUNGKAS] Dashboard page initializing...');
+            
+            // Show loading state
+            showDashboardLoading(true);
+            
+            try {
+                // ==========================================
+                // STEP 1: REQUIRE AUTHENTICATION
+                // This will redirect to login if not authenticated
+                // ==========================================
+                
+                const hasAccess = await requireAuth();
+                
+                if (!hasAccess) {
+                    console.log('🔒 [PAMUNGKAS] Access denied or redirecting...');
+                    return; // Will redirect automatically
+                }
+                
+                console.log('✅ [PAMUNGKAS] Access granted, loading dashboard...');
+                
+                // ==========================================
+                // STEP 2: LOAD PERMISSIONS (NEW!)
+                // Load user roles & permissions for dynamic UI
+                // ==========================================
+                
+                if (typeof ensurePermissionsLoaded === 'function') {
+                    await ensurePermissionsLoaded();
+                    console.log('🔐 [PAMUNGKAS] Permissions loaded');
+                    
+                    // Update sidebar with permission-based menu
+                    if (typeof updateSidebarWithPermissions === 'function') {
+                        await updateSidebarWithPermissions();
+                        console.log('📋 [PAMUNGKAS] Sidebar updated with permissions');
+                    }
+                }
+                
+                // ==========================================
+                // STEP 3: DISPLAY USER INFORMATION
+                // Use permission module's displayUserInfo if available
+                // ==========================================
+                
+                if (typeof window.PamungkasPermissions?.displayUserInfo === 'function') {
+                    await window.PamungkasPermissions.displayUserInfo();
+                } else {
+                    // Fallback to local function
+                    displayUserInfo();
+                }
+                
+                // Show main content
+                showDashboardLoading(false);
+                
+                console.log('✅ [PAMUNGKAS] Dashboard loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ [PAMUNGKAS] Dashboard error:', error);
+                showErrorState(error.message || 'Gagal memuat dashboard');
+            }
+        });
+        
+        /**
+         * Display current user information across the dashboard
+         * Updates all elements that show user data
+         */
+        function displayUserInfo() {
+            const userInfo = getCurrentUserInfo();
+            
+            if (!userInfo) {
+                console.warn('[DASHBOARD] No user info available');
+                return;
+            }
+            
+            const displayName = userInfo.full_name || userInfo.email || 'User';
+            const email = userInfo.email || '-';
+            const primaryRole = userInfo.primaryRole;
+            const roleName = primaryRole?.display_name || primaryRole?.name || '-';
+            const unitId = userInfo.unit_id || '-';
+            const position = userInfo.position || '-';
+            
+            // Get initials for avatar
+            const initials = getInitials(displayName);
+            
+            // ==========================================
+            // UPDATE: Sidebar User Info
+            // ==========================================
+            
+            updateElementText('sidebarUserName', displayName);
+            updateElementText('sidebarUserRole', roleName);
+            updateElementText('sidebarUserAvatar', initials);
+            
+            // ==========================================
+            // UPDATE: Topbar User Menu
+            // ==========================================
+            
+            updateElementText('topbarUserName', displayName);
+            updateElementText('topbarUserAvatar', initials);
+            updateElementText('topbarUserRoleBadge', roleName);
+            
+            // ==========================================
+            // UPDATE: Dropdown User Info
+            // ==========================================
+            
+            updateElementText('dropdownUserName', displayName);
+            updateElementText('dropdownUserEmail', email);
+            updateElementText('dropdownUserRole', roleName);
+            updateElementText('dropdownAvatar', initials);
+            
+            // ==========================================
+            // UPDATE: Welcome Card
+            // ==========================================
+            
+            updateElementText('welcomeUserName', displayName.split(' ')[0]); // First name only
+            updateElementText('welcomeUserRole', roleName);
+            
+            // Role badge
+            const roleBadge = document.getElementById('welcomeRoleBadge');
+            if (roleBadge && primaryRole) {
+                const roleIcon = getRoleIcon(primaryRole.name);
+                roleBadge.innerHTML = `
+                    <span class="role-icon">${roleIcon}</span>
+                    <span class="role-name">${roleName.toUpperCase()}</span>
+                `;
+                
+                // Add color class based on role
+                roleBadge.className = 'role-badge-large role-' + (primaryRole.name || '').toLowerCase();
+            }
+            
+            // ==========================================
+            // UPDATE: Quick Info Section
+            // ==========================================
+            
+            updateElementText('quickInfoEmail', email);
+            updateElementText('quickInfoUnit', unitId === '-' ? 'Belum ditetapkan' : unitId);
+            updateElementText('quickInfoPosition', position === '-' ? 'Belum ditetapkan' : position);
+            
+            // Log user info for debugging
+            console.log('%c👤 [USER INFO]', 'color: #2563eb; font-weight: bold;', {
+                name: displayName,
+                email: email,
+                role: roleName,
+                unit: unitId,
+                position: position
+            });
+        }
+        
+        /**
+         * Setup navigation visibility based on user role
+         * Different roles see different menu items
+         */
+        function setupNavigationByRole() {
+            const state = getAuthState();
+            const primaryRole = state.primaryRole?.name;
+            
+            if (!primaryRole) return;
+            
+            // Define which nav items are visible per role
+            const navPermissions = {
+                'SUPER_ADMIN': ['sdm', 'pelatihan'],
+                'ADMIN': ['sdm', 'pelatihan'],
+                'VERIFIKATOR': ['sdm'],
+                'PENGELOLA_SDMK': ['sdm', 'pelatihan'],
+                'OPERATOR': [], // Limited access
+                'PIMPINAN': [] // Read-only, no management menus
+            };
+            
+            const allowedNavs = navPermissions[primaryRole] || [];
+            
+            // Show SDM menu if allowed
+            if (allowedNavs.includes('sdm')) {
+                showElement('nav-sdm-container');
+            }
+            
+            // Show Pelatihan menu if allowed
+            if (allowedNavs.includes('pelatihan')) {
+                showElement('nav-pelatihan-container');
+            }
+            
+            console.log(`📍 [NAV] Navigation configured for role: ${primaryRole}`, allowedNavs);
+        }
+        
+        /**
+         * Handle logout button click
+         */
+        async function handleLogout() {
+            if (!confirm('Apakah Anda yakin ingin keluar?')) {
+                return;
+            }
+            
+            await logout();
+            // Logout function will redirect automatically
+        }
+        
+        /**
+         * Show profile modal (placeholder)
+         */
+        function showProfileModal() {
+            alert('Fitur profil akan tersedia di tahap berikutnya.');
+        }
+        
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        
+        /**
+         * Get initials from a name
+         * @param {string} name 
+         * @returns {string}
+         */
+        function getInitials(name) {
+            if (!name) return 'U';
+            
+            const parts = name.trim().split(' ');
+            
+            if (parts.length === 1) {
+                return parts[0].substring(0, 2).toUpperCase();
+            }
+            
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        
+        /**
+         * Get icon for role
+         * @param {string} roleName 
+         * @returns {string}
+         */
+        function getRoleIcon(roleName) {
+            const icons = {
+                'SUPER_ADMIN': '👑',
+                'ADMIN': '⚡',
+                'VERIFIKATOR': '✅',
+                'PENGELOLA_SDMK': '👥',
+                'OPERATOR': '📝',
+                'PIMPINAN': '🏛️'
+            };
+            
+            return icons[roleName] || '👤';
+        }
+        
+        /**
+         * Update element text content safely
+         */
+        function updateElementText(elementId, text) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.textContent = text;
+            }
+        }
+        
+        /**
+         * Show element by ID
+         */
+        function showElement(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.style.display = '';
+            }
+        }
+        
+        /**
+         * Show/hide dashboard loading state
+         */
+        function showDashboardLoading(show) {
+            const loadingEl = document.getElementById('dashboardLoading');
+            const contentEl = document.getElementById('dashboardMainContent');
+            
+            if (loadingEl) loadingEl.style.display = show ? 'flex' : 'none';
+            if (contentEl) contentEl.style.display = show ? 'none' : 'block';
+        }
+        
+        /**
+         * Show error state
+         */
+        function showErrorState(message) {
+            showDashboardLoading(false);
+            
+            const contentEl = document.getElementById('dashboardMainContent');
+            if (contentEl) {
+                contentEl.innerHTML = `
+                    <div class="error-state">
+                        <div class="error-icon">❌</div>
+                        <h2>Error Memuat Dashboard</h2>
+                        <p>${message}</p>
+                        <button onclick="location.reload()" class="btn btn-primary">
+                            Muat Ulang
+                        </button>
+                        <br><br>
+                        <a href="login.html" class="btn btn-outline">
+                            Kembali ke Login
+                        </a>
+                    </div>
+                `;
+            }
+        }
+    </script>
+    
+    <!-- Additional Styles for Dashboard Enhancements -->
+    <style>
+        /* User menu info container */
+        .user-menu-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: var(--spacing-2);
+        }
+        
+        .user-role-badge {
+            font-size: 0.7rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+        
+        /* Dropdown user info section */
+        .dropdown-user-info {
+            display: flex;
+            gap: var(--spacing-3);
+            padding: var(--spacing-4);
+            background: #f9fafb;
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-2);
+        }
+        
+        .dropdown-user-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.25rem;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .dropdown-user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .dropdown-user-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.9rem;
+        }
+        
+        .dropdown-user-email {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+        
+        .dropdown-user-role {
+            font-size: 0.75rem;
+            color: #2563eb;
+            font-weight: 500;
+            background: #eff6ff;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            display: inline-block;
+            width: fit-content;
+        }
+        
+        /* Welcome card enhancements */
+        .welcome-subtitle {
+            font-size: 0.95rem !important;
+            color: #6b7280 !important;
+            margin-top: var(--spacing-2) !important;
+        }
+        
+        .welcome-description {
+            margin-top: var(--spacing-4) !important;
+        }
+        
+        /* User quick info section */
+        .user-quick-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-4);
+            margin-top: var(--spacing-6);
+            padding-top: var(--spacing-6);
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .quick-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-1);
+        }
+        
+        .quick-info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+        }
+        
+        .quick-info-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        
+        /* Role badge large */
+        .role-badge-large {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            width: 140px;
+            height: 140px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-2xl);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .role-badge-large .role-icon {
+            font-size: 3rem;
+        }
+        
+        .role-badge-large .role-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        
+        /* Role-specific colors */
+        .role-super_admin { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); }
+        .role-admin { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4); }
+        .role-verifikator { background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4); }
+        .role-pengelola_sdmk { background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.4); }
+        .role-operator { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); }
+        .role-pimpinan { background: rgba(20, 184, 166, 0.2); border-color: rgba(20, 184, 166, 0.4); }
+        
+        /* Dashboard loading state */
+        .dashboard-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+        }
+        
+        .loading-card {
+            text-align: center;
+            color: #6b7280;
+        }
+        
+        .loading-card svg {
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--spacing-4);
+            color: #3b82f6;
+        }
+        
+        /* Error state */
+        .error-state {
+            text-align: center;
+            padding: var(--spacing-16);
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .error-state h2 {
+            color: #ef4444;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .error-state p {
+            color: #6b7280;
+            margin-bottom: var(--spacing-6);
+        }
+    </style>
 </body>
 </html>
