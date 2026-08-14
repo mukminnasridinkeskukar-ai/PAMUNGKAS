@@ -58,7 +58,7 @@ const PAMUNGKAS_CONFIG = {
      * Versi Aplikasi
      * @type {string}
      */
-    APP_VERSION: '1.3.0-master-data',
+    APP_VERSION: '1.5.0-competency',
     
     /**
      * Environment (development | staging | production)
@@ -197,7 +197,21 @@ const PAMUNGKAS_CONFIG = {
         COMPETENCY_CATEGORIES: 'competency_categories',
         TRAINING_TYPES: 'training_types',
         ACTIVITY_METHODS: 'activity_methods',
-        CERTIFICATE_TYPES: 'certificate_types'
+        CERTIFICATE_TYPES: 'certificate_types',
+        
+        // SDMK Data Tables (PROMPT 04)
+        SDMK: 'sdmk',
+        V_SDMK_DETAIL: 'v_sdmk_detail',
+        
+        // Competency Data Tables (PROMPT 05)
+        COMPETENCIES: 'competencies',
+        SDMK_COMPETENCIES: 'sdmk_competencies',
+        COMPETENCY_GAPS: 'competency_gaps',
+        V_SDMK_COMPETENCIES_DETAIL: 'v_sdmk_competencies_detail',
+        V_COMPETENCY_GAPS_DETAIL: 'v_competency_gaps_detail',
+        V_GAP_SUMMARY_BY_UNIT: 'v_gap_summary_by_unit',
+        V_GAP_SUMMARY_BY_PROFESSION: 'v_gap_summary_by_profession',
+        V_TOP_GAP_COMPETENCIES: 'v_top_gap_competencies'
     },
     
     // ==========================================
