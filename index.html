@@ -1656,7 +1656,7 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-// === PAMUNGKAS NHOST v4.0 - FINAL PRODUCTION ===
+// === PAMUNGKAS NHOST v5.0 - WITH BULK IMPORT ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -4165,7 +4165,12 @@ function openAdminCrud(type){
   var readOnly=!writable;
   var c=document.getElementById('adminCrudContent');
   var infoBar=readOnly?'<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>'+levelLabel()+'</strong> \u2014 mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>':'';
-  c.innerHTML='<div class="page-header"><h2><i class="fas fa-cog" style="margin-right:8px;color:var(--primary);"></i>'+(titles[type]||type)+'</h2><p>Kelola data dari Google Sheet.</p></div>'+infoBar+'<div id="adminCrudTable"></div>';
+  // Add Import button for supported modules
+  const importBtn = (['pengumuman','sdmk','pendaftaran','sertifikat','materi','admin'].includes(type) && writable) 
+    ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\''+type+'\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
+    : '';
+    
+  c.innerHTML='<div class="page-header"><h2><i class="fas fa-cog" style="margin-right:8px;color:var(--primary);"></i>'+(titles[type]||type)+'</h2><p>Kelola data dari database Nhost.</p>'+importBtn+'</div>'+infoBar+'<div id="adminCrudTable"></div>';
 
   if(type==='admin'){loadAdminList();return;}
 
@@ -5533,6 +5538,634 @@ function _cekRegV(r,keys){
   for(var i=0;i<keys.length;i++){var v=r[keys[i]];if(v&&String(v).trim())return String(v).trim();}
   return '';
 }
+
+
+/* ========== BULK IMPORT SYSTEM ========== */
+var _importData = [];
+var _importModule = '';
+var _importFileName = '';
+
+// Module configurations for import
+const IMPORT_CONFIG = {
+  sdmk: {
+    table: 'sdmk',
+    requiredFields: ['nama', 'nik'],
+    fields: ['nama', 'nik', 'profesi', 'unit_kerja', 'nomor_sertifikat', 'judul_kegiatan', 
+              'tanggal_pelaksanaan', 'tahun', 'tempat_pelaksanaan', 'foto'],
+    fieldMapping: {
+      'Nama Lengkap dengan Gelar': 'nama',
+      'Nama': 'nama',
+      'NIK/NIP': 'nik',
+      'NIK': 'nik',
+      'Profesi': 'profesi',
+      'Jenis Profesi': 'profesi',
+      'Unit Kerja': 'unit_kerja',
+      'No. Sertifikat': 'nomor_sertifikat',
+      'Nomor Sertifikat': 'nomor_sertifikat',
+      'Judul Kegiatan': 'judul_kegiatan',
+      'Tgl Pelaksanaan': 'tanggal_pelaksanaan',
+      'Tanggal Pelaksanaan': 'tanggal_pelatsanaan',
+      'Tahun': 'tahun',
+      'Tempat': 'tempat_pelaksanaan',
+      'Tempat Pelaksanaan': 'tempat_pelaksanaan',
+      'Foto': 'foto'
+    },
+    mutation: 'InsertSDMK',
+    templateInfo: 'Kolom wajib: Nama Lengkap dengan Gelar, NIK/NIP. Opsional: Profesi, Unit Kerja, No. Sertifikat, dll.'
+  },
+  
+  pendaftaran: {
+    table: 'pendaftaran',
+    requiredFields: ['nama_lengkap_dengan_gelar', 'nik'],
+    fields: ['nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 
+              'jenis_profesi', 'pekerjaan', 'jenis_kelamin', 'email_plataran_sehat',
+              'nomor_whatsapp', 'alamat_rumah', 'judul_kegiatan', 'foto'],
+    fieldMapping: {
+      'Nama Lengkap dengan Gelar': 'nama_lengkap_dengan_gelar',
+      'NIK': 'nik',
+      'NIP': 'nip',
+      'Unit Kerja': 'unit_kerja',
+      'Jenis SDMK': 'jenis_sdmk',
+      'Jenis Profesi': 'jenis_profesi',
+      'Pekerjaan': 'pekerjaan',
+      'Jenis Kelamin': 'jenis_kelamin',
+      'Email': 'email_plataran_sehat',
+      'Nomor WhatsApp': 'nomor_whatsapp',
+      'Alamat Rumah': 'alamat_rumah',
+      'Judul Kegiatan': 'judul_kegiatan',
+      'Foto': 'foto'
+    },
+    mutation: 'InsertPendaftaran',
+    templateInfo: 'Kolom wajib: Nama Lengkap dengan Gelar, NIK. Opsional: NIP, Unit Kerja, Jenis Profesi, dll.'
+  },
+  
+  sertifikat: {
+    table: 'sertifikat',
+    requiredFields: ['nomor_sertifikat', 'nama_penerima'],
+    fields: ['nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit', 'link_sertifikat'],
+    fieldMapping: {
+      'Nomor Sertifikat': 'nomor_sertifikat',
+      'Nama Penerima': 'nama_penerima',
+      'Judul Pelatihan': 'judul_pelatihan',
+      'Tanggal Terbit': 'tanggal_terbit',
+      'Link/File': 'link_sertifikat'
+    },
+    mutation: 'InsertSertifikat',
+    templateInfo: 'Kolom wajib: Nomor Sertifikat, Nama Penerima, Judul Pelatihan. Opsional: Tanggal Terbit, Link.'
+  },
+  
+  pengumuman: {
+    table: 'pengumuman',
+    requiredFields: ['judul', 'isi_pengumuman'],
+    fields: ['judul', 'isi_pengumuman', 'tanggal', 'status'],
+    fieldMapping: {
+      'Judul': 'judul',
+      'Isi': 'isi_pengumuman',
+      'Isi Pengumuman': 'isi_pengumuman',
+      'Tanggal': 'tanggal',
+      'Status': 'status'
+    },
+    mutation: 'InsertPengumuman',
+    templateInfo: 'Kolom wajib: Judul, Isi Pengumuman. Opsional: Tanggal (default: hari ini), Status (default: published).'
+  },
+  
+  materi: {
+    table: 'materi',
+    requiredFields: ['judul_materi'],
+    fields: ['judul_materi', 'kategori', 'link_download', 'deskripsi'],
+    fieldMapping: {
+      'Judul Materi': 'judul_materi',
+      'Kategori': 'kategori',
+      'Link Download': 'link_download',
+      'Deskripsi': 'deskripsi'
+    },
+    mutation: 'InsertMateri',
+    templateInfo: 'Kolom wajib: Judul Materi. Opsional: Kategori, Link Download, Deskripsi.'
+  },
+  
+  indikator: {
+    table: 'indikator',
+    requiredFields: ['indikator'],
+    fields: ['indikator', 'nilai', 'target', 'satuan', 'periode'],
+    fieldMapping: {
+      'Indikator': 'indikator',
+      'Nama': 'indikator',
+      'Nilai': 'nilai',
+      'Value': 'nilai',
+      'Target': 'target',
+      'Satuan': 'satuan',
+      'Periode': 'periode'
+    },
+    mutation: '', // Custom handler needed
+    templateInfo: 'Kolom wajib: Indikator/Nama. Opsional: Nilai, Target, Satuan, Periode.'
+  },
+  
+  admin: {
+    table: 'multiusers',
+    requiredFields: ['username', 'password'],
+    fields: ['username', 'password', 'level', 'status'],
+    fieldMapping: {
+      'Username': 'username',
+      'Password': 'password',
+      'Level': 'level',
+      'Status': 'status'
+    },
+    mutation: 'InsertMultiuser',
+    templateInfo: 'Kolom wajib: Username, Password. Opsional: Level (default: observer), Status (default: active).'
+  }
+};
+
+// Open bulk import modal
+function openBulkImportModal() {
+  resetImportState();
+  document.getElementById('bulkImportModal').classList.add('active');
+}
+
+// Close bulk import modal
+function closeBulkImportModal() {
+  document.getElementById('bulkImportModal').classList.remove('active');
+  resetImportState();
+}
+
+// Open bulk import for specific module (from admin CRUD)
+function openBulkImportForModule(moduleType) {
+  resetImportState();
+  
+  // Set the module
+  _importModule = moduleType;
+  document.getElementById('importModule').value = moduleType;
+  
+  // Trigger module change to show template info
+  onImportModuleChange();
+  
+  // Open modal
+  document.getElementById('bulkImportModal').classList.add('active');
+}
+
+// Reset import state
+function resetImportState() {
+  _importData = [];
+  _importModule = '';
+  _importFileName = '';
+  document.getElementById('importModule').value = '';
+  document.getElementById('importFileInput').value = '';
+  document.getElementById('selectedFileName').textContent = '';
+  document.getElementById('importTemplateInfo').style.display = 'none';
+  document.getElementById('btnPreviewImport').disabled = true;
+  
+  // Show step 1, hide others
+  document.getElementById('importStep1').style.display = 'block';
+  document.getElementById('importStep2').style.display = 'none';
+  document.getElementById('importStep3').style.display = 'none';
+  document.getElementById('importProgressOverlay').style.display = 'none';
+}
+
+// Module change handler
+function onImportModuleChange() {
+  const module = document.getElementById('importModule').value;
+  _importModule = module;
+  
+  if (module && IMPORT_CONFIG[module]) {
+    document.getElementById('importTemplateInfo').style.display = 'flex';
+    document.getElementById('templateInfoText').textContent = IMPORT_CONFIG[module].templateInfo;
+  } else {
+    document.getElementById('importTemplateInfo').style.display = 'none';
+  }
+}
+
+// File select handler
+function handleImportFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validate file type
+  const validTypes = ['.xlsx', '.xls', '.csv'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  
+  if (!validTypes.includes(ext)) {
+    showToast('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv', 'error');
+    return;
+  }
+  
+  // Validate file size (max 10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Ukuran file terlalu besar. Maksimal 10MB.', 'error');
+    return;
+  }
+  
+  _importFileName = file.name;
+  document.getElementById('selectedFileName').textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+  document.getElementById('btnPreviewImport').disabled = !_importModule;
+  
+  // Parse the file
+  parseImportFile(file);
+}
+
+// Drag and drop handlers
+(function setupDragDrop() {
+  const dropZone = document.getElementById('importDropZone');
+  if (!dropZone) return;
+  
+  dropZone.addEventListener('click', () => document.getElementById('importFileInput').click());
+  
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      document.getElementById('importFileInput').files = e.dataTransfer.files;
+      handleImportFileSelect({ target: { files: [file] } });
+    }
+  });
+})();
+
+// Parse Excel/CSV file
+function parseImportFile(file) {
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Get first sheet
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      // Convert to JSON
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      
+      if (jsonData.length === 0) {
+        showToast('File kosong atau tidak ada data yang bisa dibaca.', 'error');
+        return;
+      }
+      
+      _importData = jsonData;
+      console.log('[Import] Parsed', jsonData.length, 'rows from', file.name);
+      showToast(`Berhasil membaca ${jsonData.length} baris data`, 'success');
+      
+    } catch (error) {
+      console.error('[Import] Parse error:', error);
+      showToast('Gagal membaca file: ' + error.message, 'error');
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+}
+
+// Preview import data
+function previewImportData() {
+  if (!_importModule || _importData.length === 0) {
+    showToast('Pilih modul dan file terlebih dahulu.', 'error');
+    return;
+  }
+  
+  const config = IMPORT_CONFIG[_importModule];
+  const skipHeader = document.getElementById('importSkipHeader').checked;
+  
+  // Get headers from first row
+  let dataToProcess = [..._importData];
+  let headers = [];
+  
+  if (skipHeader && dataToProcess.length > 0) {
+    headers = Object.keys(dataToProcess[0]);
+  }
+  
+  // Map columns using field mapping
+  let validCount = 0;
+  let invalidCount = 0;
+  const processedData = [];
+  
+  dataToProcess.forEach((row, idx) => {
+    const mappedRow = {};
+    let isValid = true;
+    let missingFields = [];
+    
+    // Map each field
+    for (const [excelField, dbField] of Object.entries(config.fieldMapping)) {
+      if (row.hasOwnProperty(excelField)) {
+        mappedRow[dbField] = row[excelField];
+      }
+    }
+    
+    // Check required fields
+    for (const reqField of config.requiredFields) {
+      if (!mappedRow[reqField] || String(mappedRow[reqField]).trim() === '') {
+        isValid = false;
+        missingFields.push(reqField);
+      }
+    }
+    
+    processedData.push({
+      index: idx,
+      original: row,
+      mapped: mappedRow,
+      isValid: isValid,
+      missingFields: missingFields
+    });
+    
+    if (isValid) validCount++;
+    else invalidCount++;
+  });
+  
+  // Render preview table
+  renderImportPreview(processedData, headers, config);
+  
+  // Update counts
+  document.getElementById('previewRowCount').textContent = processedData.length;
+  document.getElementById('previewValidCount').textContent = `✓ ${validCount} valid`;
+  document.getElementById('previewInvalidCount').textContent = invalidCount > 0 ? `✗ ${invalidCount} invalid` : '';
+  document.getElementById('importCountDisplay').textContent = validCount;
+  
+  // Switch to step 2
+  document.getElementById('importStep1').style.display = 'none';
+  document.getElementById('importStep2').style.display = 'block';
+}
+
+// Render preview table
+function renderImportPreview(data, headers, config) {
+  const thead = document.getElementById('importPreviewHead');
+  const tbody = document.getElementById('importPreviewBody');
+  
+  // Build header
+  let headerHtml = '<tr>';
+  headerHtml += '<th>#</th>';
+  
+  // Show key fields only (first 6)
+  const keyFields = config.fields.slice(0, 6);
+  for (const field of keyFields) {
+    headerHtml += `<th>${field}</th>`;
+  }
+  headerHtml += '<th>Status</th>';
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+  
+  // Build body (show first 50 rows)
+  let bodyHtml = '';
+  const displayData = data.slice(0, 50);
+  
+  displayData.forEach((row, idx) => {
+    bodyHtml += `<tr class="${row.isValid ? '' : 'row-invalid'}">`;
+    bodyHtml += `<td>${row.index + 1}</td>`;
+    
+    for (const field of keyFields) {
+      const value = row.mapped[field] || '-';
+      bodyHtml += `<td title="${escHTML(String(value))}">${escHTML(String(value).substring(0, 30))}</td>`;
+    }
+    
+    if (row.isValid) {
+      bodyHtml += '<td><span class="status-badge disetujui">✓ Valid</span></td>';
+    } else {
+      bodyHtml += `<td><span class="status-badge ditolak" title="Missing: ${row.missingFields.join(', ')}">✗ Invalid</span></td>`;
+    }
+    
+    bodyHtml += '</tr>';
+  });
+  
+  if (data.length > 50) {
+    bodyHtml += `<tr><td colspan="${keyFields.length + 2}" class="text-center text-muted">... dan ${data.length - 50} baris lainnya</td></tr>`;
+  }
+  
+  tbody.innerHTML = bodyHtml;
+}
+
+// Back to step 1
+function backToImportStep1() {
+  document.getElementById('importStep1').style.display = 'block';
+  document.getElementById('importStep2').style.display = 'none';
+}
+
+// Execute bulk import
+async function executeBulkImport() {
+  if (!_importModule || _importData.length === 0) {
+    showToast('Tidak ada data untuk diimport.', 'error');
+    return;
+  }
+  
+  const config = IMPORT_CONFIG[_importModule];
+  const skipDuplicates = document.getElementById('importSkipDuplicates').checked;
+  
+  // Show progress
+  document.getElementById('importProgressOverlay').style.display = 'flex';
+  
+  // Filter valid data only
+  const validData = _importData.map((row, idx) => {
+    const mapped = {};
+    for (const [excelField, dbField] of Object.entries(config.fieldMapping)) {
+      if (row.hasOwnProperty(excelField)) {
+        mapped[dbField] = row[excelField];
+      }
+    }
+    
+    // Validate required fields
+    const isValid = config.requiredFields.every(field => 
+      mapped[field] && String(mapped[field]).trim() !== ''
+    );
+    
+    return { index: idx, mapped, isValid };
+  }).filter(item => item.isValid);
+  
+  if (validData.length === 0) {
+    document.getElementById('importProgressOverlay').style.display = 'none';
+    showToast('Tidak ada data valid untuk diimport.', 'error');
+    return;
+  }
+  
+  const total = validData.length;
+  let success = 0;
+  let failed = 0;
+  const errors = [];
+  
+  // Process in batches of 10 to avoid overwhelming
+  const batchSize = 10;
+  
+  for (let i = 0; i < total; i += batchSize) {
+    const batch = validData.slice(i, i + batchSize);
+    
+    // Update progress
+    const progress = Math.min(Math.round((i / total) * 100), 100);
+    updateImportProgress(progress, i, total);
+    
+    // Process batch
+    for (const item of batch) {
+      try {
+        await callServer('tambah' + config.table.charAt(0).toUpperCase() + config.table.slice(1), item.mapped);
+        success++;
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+      } catch (error) {
+        failed++;
+        errors.push({
+          row: item.index + 1,
+          error: error.message || 'Unknown error',
+          data: item.mapped
+        });
+      }
+    }
+  }
+  
+  // Complete
+  updateImportProgress(100, total, total);
+  
+  // Show results
+  setTimeout(() => {
+    showImportResults(success, failed, errors, total);
+  }, 500);
+}
+
+// Update import progress
+function updateImportProgress(current, done, total) {
+  document.getElementById('importProgressBar').style.width = current + '%';
+  document.getElementById('importProgressText').textContent = `${done} / ${total}`;
+  
+  if (current < 100) {
+    document.getElementById('importStatusText').textContent = `Mengimpor data... (${current}%)`;
+  } else {
+    document.getElementById('importStatusText').textContent = 'Menyelesaikan...';
+  }
+}
+
+// Show import results
+function showImportResults(success, failed, errors, total) {
+  document.getElementById('importProgressOverlay').style.display = 'none';
+  document.getElementById('importStep2').style.display = 'none';
+  document.getElementById('importStep3').style.display = 'block';
+  
+  const summaryDiv = document.getElementById('importResultSummary');
+  const allSuccess = failed === 0;
+  
+  summaryDiv.className = 'result-summary ' + (allSuccess ? '' : 'warning');
+  summaryDiv.innerHTML = `
+    <i class="fas ${allSuccess ? 'fa-check-circle text-success' : 'fa-exclamation-triangle text-warning'}" 
+       style="font-size:48px;color:${allSuccess ? '#059669' : '#d97706'}"></i>
+    <h3>${allSuccess ? 'Import Berhasil!' : 'Import Selesai dengan Warning'}</h3>
+    <div style="display:flex;justify-content:center;gap:30px;margin-top:15px;">
+      <div><strong>Total:</strong> ${total}</div>
+      <div class="text-success"><strong>Berhasil:</strong> ${success}</div>
+      ${failed > 0 ? `<div class="text-danger"><strong>Gagal:</strong> ${failed}</div>` : ''}
+    </div>
+  `;
+  
+  // Show error log if any failures
+  if (errors.length > 0) {
+    document.getElementById('importErrorLog').style.display = 'block';
+    document.getElementById('importErrorDetails').textContent = 
+      errors.map((e, i) => `${i+1}. Baris ${e.row}: ${e.error}\n   Data: ${JSON.stringify(e.data).substring(0, 100)}`).join('\n\n');
+  } else {
+    document.getElementById('importErrorLog').style.display = 'none';
+  }
+  
+  // Log to console
+  console.log('[Import] Complete:', { success, failed, total });
+}
+
+// Download import template
+function downloadImportTemplate() {
+  if (!_importModule || !IMPORT_CONFIG[_importModule]) return;
+  
+  const config = IMPORT_CONFIG[_importModule];
+  
+  // Create sample data
+  const sampleData = [{}];
+  
+  // Add sample values for each field
+  const samples = {
+    nama: 'Contoh Nama Lengkap',
+    nik: '1234567890123456',
+    profesi: 'Perawat',
+    unit_kerja: 'RSUD Contoh',
+    nomor_sertifikat: 'CERT/2024/001',
+    judul_kegiatan: 'Pelatihan Contoh',
+    tanggal_pelaksanaan: '2024-01-15',
+    tahun: '2024',
+    tempat_pelaksanaan: 'Jakarta',
+    foto: '',
+    nama_lengkap_dengan_gelar: 'dr. Contoh Nama, Sp.PD',
+    nip: '198001012020031001',
+    jenis_sdmk: 'Nakes RS',
+    jenis_kelamin: 'Laki-laki',
+    pekerjaan: 'PNS',
+    email_plataran_sehat: 'email@contoh.com',
+    nomor_whatsapp: '08123456789',
+    alamat_rumah: 'Jl. Contoh No. 1',
+    nama_penerima: 'Contoh Penerima',
+    judul_pelatihan: 'Pelatihan LAN',
+    tanggal_terbit: '2024-01-20',
+    link_sertifikat: '',
+    judul: 'Contoh Judul Pengumuman',
+    isi_pengumuman: 'Ini adalah isi pengumuman contoh...',
+    tanggal: new Date().toISOString().split('T')[0],
+    status: 'published',
+    judul_materi: 'Contoh Materi',
+    kategori: 'Modul 1',
+    link_download: '',
+    deskripsi: 'Deskripsi materi contoh',
+    indikator: 'Contoh Indikator',
+    nilai: '100',
+    target: '200',
+    satuan: 'Orang',
+    username: 'admin_user',
+    password: 'password123',
+    level: 'observer',
+    status: 'active'
+  };
+  
+  // Build header row with original Excel column names
+  const headerRow = {};
+  for (const [excelField, dbField] of Object.entries(config.fieldMapping)) {
+    headerRow[excelField] = samples[dbField] || '';
+  }
+  
+  // Create workbook
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet([headerRow]);
+  
+  // Set column widths
+  ws['!cols'] = Object.keys(config.fieldMapping).map(() => ({ wch: 20 }));
+  
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  
+  // Download
+  const fileName = `Template_Import_${config.table}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  
+  showToast(`Template ${config.table} berhasil didownload`, 'success');
+}
+
+// Helper: Format file size
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Load current module data after import (refresh)
+function loadCurrentModuleData() {
+  switch(currentPage) {
+    case 'dashboard': loadDashboard(); break;
+    case 'pengumuman': loadPengumuman(); break;
+    case 'profil-sdmk': loadSDMK(); break;
+    case 'pendaftaran': loadPendaftaran(); break;
+    case 'cek-sertifikat': loadCekSertifikat(); break;
+    case 'panel-admin': 
+      if(isAdminUser()) renderAdminDashboard();
+      break;
+  }
+}
+
+console.log('[Bulk Import] System initialized');
+
 </script>
 <!-- Stat Card Popup -->
 <div class="stat-popup-overlay" id="statPopupOverlay" onclick="if(event.target===this)closeStatPopup()">
@@ -5544,5 +6177,267 @@ function _cekRegV(r,keys){
     <div class="stat-popup-body" id="statPopupBody"></div>
   </div>
 </div>
+
+<!-- ==================== BULK IMPORT MODAL ==================== -->
+<div class="modal" id="bulkImportModal">
+  <div class="modal-overlay" onclick="closeBulkImportModal()"></div>
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h3><i class="fas fa-file-excel"></i> Import Data Massal</h3>
+      <button class="modal-close" onclick="closeBulkImportModal()">&times;</button>
+    </div>
+    
+    <!-- Step 1: Select Module & Upload -->
+    <div id="importStep1" class="import-step">
+      <h4>Langkah 1: Pilih Modul & Upload File</h4>
+      
+      <div class="form-group">
+        <label>Pilih Modul:</label>
+        <select id="importModule" onchange="onImportModuleChange()">
+          <option value="">-- Pilih Modul --</option>
+          <option value="sdmk">SDMK (Tenaga Kesehatan Terlatih)</option>
+          <option value="pendaftaran">Pendaftaran Pelatihan</option>
+          <option value="sertifikat">Sertifikat Pelatihan</option>
+          <option value="pengumuman">Pengumuman</option>
+          <option value="materi">Materi Pelatihan</option>
+          <option value="indikator">Indikator Kinerja Program</option>
+          <option value="admin">Admin/User</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Upload File Excel (.xlsx/.xls) atau CSV:</label>
+        <div class="file-upload-zone" id="importDropZone">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Klik atau drag file ke sini</p>
+          <p class="text-muted">Format: .xlsx, .xls, .csv (Maks 10MB)</p>
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" onchange="handleImportFileSelect(event)" hidden>
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('importFileInput').click()">
+          <i class="fas fa-folder-open"></i> Pilih File
+        </button>
+        <span id="selectedFileName" class="ml-2 text-muted"></span>
+      </div>
+      
+      <div id="importTemplateInfo" class="info-box" style="display:none;">
+        <i class="fas fa-info-circle"></i>
+        <span id="templateInfoText"></span>
+        <a href="#" onclick="downloadImportTemplate();return false;" class="btn btn-sm btn-secondary ml-2">
+          <i class="fas fa-download"></i> Download Template
+        </a>
+      </div>
+      
+      <button class="btn btn-primary btn-block mt-3" id="btnPreviewImport" onclick="previewImportData()" disabled>
+        <i class="fas fa-eye"></i> Preview Data
+      </button>
+    </div>
+    
+    <!-- Step 2: Preview & Confirm -->
+    <div id="importStep2" class="import-step" style="display:none;">
+      <h4>Langkah 2: Preview Data & Konfirmasi</h4>
+      
+      <div class="preview-info">
+        <span id="previewRowCount"></span> baris data ditemukan
+        <span id="previewValidCount" class="text-success"></span>
+        <span id="previewInvalidCount" class="text-danger"></span>
+      </div>
+      
+      <div class="table-responsive" style="max-height:400px;overflow:auto;">
+        <table class="data-table" id="importPreviewTable">
+          <thead id="importPreviewHead"></thead>
+          <tbody id="importPreviewBody"></tbody>
+        </table>
+      </div>
+      
+      <div class="import-options mt-3">
+        <label class="checkbox-inline">
+          <input type="checkbox" id="importSkipHeader" checked> Baris pertama adalah header
+        </label>
+        <label class="checkbox-inline ml-3">
+          <input type="checkbox" id="importSkipDuplicates"> Lewati data duplikat
+        </label>
+      </div>
+      
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-secondary" onclick="backToImportStep1()">
+          <i class="fas fa-arrow-left"></i> Kembali
+        </button>
+        <button class="btn btn-success" id="btnExecuteImport" onclick="executeBulkImport()">
+          <i class="fas fa-database"></i> Import Sekarang (<span id="importCountDisplay">0</span> data)
+        </button>
+      </div>
+    </div>
+    
+    <!-- Step 3: Import Result -->
+    <div id="importStep3" class="import-step" style="display:none;">
+      <h4>Langkah 3: Hasil Import</h4>
+      
+      <div id="importResultSummary" class="result-summary"></div>
+      
+      <div id="importErrorLog" class="error-log" style="display:none;">
+        <h5><i class="fas fa-exclamation-triangle"></i> Error Log:</h5>
+        <pre id="importErrorDetails"></pre>
+      </div>
+      
+      <button class="btn btn-primary btn-block mt-3" onclick="closeBulkImportModal();loadCurrentModuleData();">
+        <i class="fas fa-check"></i> Selesai
+      </button>
+    </div>
+    
+    <!-- Progress Overlay -->
+    <div id="importProgressOverlay" class="progress-overlay" style="display:none;">
+      <div class="progress-content">
+        <i class="fas fa-spinner fa-spin fa-3x"></i>
+        <h4>Memproses Import...</h4>
+        <p id="importStatusText">Mempersiapkan data...</p>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="importProgressBar" style="width:0%"></div>
+        </div>
+        <p id="importProgressText">0 / 0</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Import Button (floating) -->
+<button class="fab-btn" id="fabBulkImport" onclick="openBulkImportModal()" title="Import Data Massal">
+  <i class="fas fa-file-import"></i>
+</button>
+
+<style>
+/* ========== BULK IMPORT STYLES ========== */
+.import-step { padding: 20px 0; }
+.import-step h4 { 
+  color: var(--primary); 
+  margin-bottom: 15px; 
+  padding-bottom: 10px; 
+  border-bottom: 2px solid var(--primary-light);
+}
+
+.file-upload-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--bg-body);
+}
+.file-upload-zone:hover, .file-upload-zone.dragover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.file-upload-zone i { font-size: 48px; color: var(--primary); margin-bottom: 15px; }
+
+.info-box {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 12px 15px;
+  margin-top: 15px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.preview-info {
+  background: #f5f5f5;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.text-success { color: #059669 !important; }
+.text-danger { color: #dc2626 !important; }
+.text-muted { color: #6b7280; }
+
+.result-summary {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+.result-summary.success { background: #fef2f2; border-color: #fca5a5; }
+.result-summary i { font-size: 48px; margin-bottom: 10px; }
+
+.error-log {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.error-log pre {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.progress-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: 12px;
+}
+.progress-content { text-align: center; }
+.progress-bar-container {
+  width: 300px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 15px auto;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.3s ease;
+}
+
+.fab-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  z-index: 999;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.fab-btn:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.modal-lg { width: 90%; max-width: 900px; }
+.ml-2 { margin-left: 10px; }
+.ml-3 { margin-left: 15px; }
+.mt-3 { margin-top: 15px; }
+.mb-3 { margin-bottom: 15px; }
+.d-flex { display: flex; }
+.gap-2 { gap: 10px; }
+.checkbox-inline { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.table-responsive { overflow-x: auto; }
+</style>
+
 </body>
 </html>
