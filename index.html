@@ -6,27 +6,7 @@
   <title>PAMUNGKAS — Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- SheetJS for Excel import/export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-
-// ========== DEBUG REPORT ==========
-console.log("=== EXECUTION COMPLETE ===");
-console.log("Execution log:", window.__executionLog);
-if (typeof pageConfig === 'undefined') {
-  console.error("!!! pageConfig NOT DEFINED !!!");
-  console.error("Last successful checkpoint:", window.__executionLog[window.__executionLog.length-1] || "NONE");
-  document.body.innerHTML = 
-    '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;color:#fff;z-index:99999;padding:20px;font-family:monospace;">'
-    + '<h1>⚠️ DEBUG REPORT</h1>'
-    + '<p><strong>Error:</strong> pageConfig is not defined</p>'
-    + '<p><strong>Last Checkpoint:</strong> ' + (window.__executionLog[window.__executionLog.length-1] || 'No checkpoints reached') + '</p>'
-    + '<h3>Execution Log:</h3><pre>' + JSON.stringify(window.__executionLog, null, 2) + '</pre>'
-    + '<button onclick="this.parentElement.remove()" style="margin-top:20px;padding:10px 20px;cursor:pointer;">Close</button></div>'
-    + document.body.innerHTML;
-} else {
-  console.log("✓ pageConfig defined successfully");
-}
-
-</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -1676,19 +1656,7 @@ if (typeof pageConfig === 'undefined') {
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-
-// ========== COMPREHENSIVE DEBUGGING ==========
-console.log("=== SCRIPT STARTING ===");
-console.log("Line ~1658: Script tag opened");
-
-// Track execution flow
-window.__executionLog = [];
-function debugLog(msg) {
-  window.__executionLog.push(msg);
-  console.log("[DEBUG]", msg);
-}
-
-debugLog("Debug system initialized");
+// === PAMUNGKAS NHOST v2.0 - FIXED pageConfig issue ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -1696,6 +1664,21 @@ var adminUsername = '';
 var currentPage = 'dashboard';
 var _dataCache = {}; // cache data per sheet
 var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [], _allMateri = [], _allAdmin = [];
+
+
+/* ========== PAGE CONFIGURATION (MOVED TO TOP FOR SAFETY) ========== */
+var pageConfig = {
+  'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
+  'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
+  'profil-sdmk':{title:'Profil SDMK Terlatih',subtitle:'Database tenaga kesehatan terlatih'},
+  'pendaftaran':{title:'Pendaftaran',subtitle:'Pendaftaran pelatihan'},
+  'cek-sertifikat':{title:'Cek Sertifikat',subtitle:'Verifikasi sertifikat pelatihan'},
+  'cek-materi':{title:'Cek Materi',subtitle:'Materi pelatihan'},
+  'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
+  'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
+};
+console.log("✓ pageConfig defined at TOP level");
+
 
 /* ========== SISTEM LEVEL ADMIN ==========
  * super_admin : Akses penuh — CRUD semua data + kelola akun admin
@@ -1738,7 +1721,6 @@ function levelIcon(){
  * GANTI nilai di bawah ini sesuai dengan project Nhost Anda
  * Dapatkan dari: Nhost Dashboard > Hasura > Settings > API Endpoint
  * ============================================================ */
-debugLog("Checkpoint: NHOST_CONFIG defined");
 var NHOST_CONFIG = {
   // Hasura GraphQL Endpoint (WAJIB DIUBAH)
   graphqlUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/graphql',
@@ -1755,7 +1737,6 @@ var NHOST_CONFIG = {
 };
 
 /* ========== GRAPHQL QUERY DEFINITIONS ========== */
-debugLog("Checkpoint: GRAPHQL_QUERIES defined");
 const GRAPHQL_QUERIES = {
   // === QUERIES ===
   getDashboardData: `
@@ -1882,7 +1863,6 @@ const GRAPHQL_QUERIES = {
 
 /* ========== GRAPHQL HELPER FUNCTIONS ========== */
 
-debugLog("Checkpoint: graphqlRequest function defined");
 async function graphqlRequest(operationName, query, variables = {}) {
   const url = NHOST_CONFIG.graphqlUrl;
   const headers = { 'Content-Type': 'application/json' };
@@ -1921,7 +1901,6 @@ async function graphqlRequest(operationName, query, variables = {}) {
  * Legacy callServer function - now uses GraphQL internally
  * Maintains backward compatibility with existing code structure
  */
-debugLog("Checkpoint: callServer function defined");
 function callServer(action, data) {
   return new Promise(async function(resolve, reject) {
     try {
@@ -2199,7 +2178,6 @@ function callServer(action, data) {
 }
 
 /* ========== AUTHENTICATION HELPERS (NHOST) ========== */
-debugLog("Checkpoint: nhostLogin function defined");
 async function nhostLogin(email, password) {
   try {
     const response = await fetch(`${NHOST_CONFIG.authUrl}/password/signIn`, {
@@ -2238,21 +2216,11 @@ function isAuthenticated() {
  * callServer() sekarang menggunakan GraphQL ke Nhost/Hasura
  * Fungsi ini tetap kompatibel dengan kode existing
  * ============================================================
+ * Note: pageConfig sudah dipindahkan ke atas script untuk menghindari error
+ * */
 
-debugLog("Checkpoint: pageConfig defining...");
-var pageConfig = {
-  'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
-  'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
-  'profil-sdmk':{title:'Profil SDMK Terlatih',subtitle:'Database tenaga kesehatan terlatih'},
-  'pendaftaran':{title:'Pendaftaran',subtitle:'Pendaftaran pelatihan'},
-  'cek-sertifikat':{title:'Cek Sertifikat',subtitle:'Verifikasi sertifikat pelatihan'},
-  'cek-materi':{title:'Cek Materi',subtitle:'Materi pelatihan'},
-  'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
-  debugLog("Checkpoint: pageConfig FULLY defined ✓");
-'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
-};
+/* pageConfig already defined above - keeping this comment for reference */
 
-debugLog("Checkpoint: Landing page section starting");
 /* ========== LANDING PAGE PREMIUM ========== */
 (function(){
   try{
@@ -2293,13 +2261,22 @@ debugLog("Checkpoint: Landing page section starting");
 })();
 
 /* ========== NAVIGASI ========== */
-debugLog("Checkpoint: navigateTo function defined ✓");
 function navigateTo(page){
   currentPage=page;
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');if(i.getAttribute('data-page')===page)i.classList.add('active');});
   document.querySelectorAll('.page-section').forEach(function(s){s.classList.remove('active');});
   var t=document.getElementById('page-'+page);if(t)t.classList.add('active');
-  var c=pageConfig[page]||{title:page,subtitle:''};
+  // Safety: if pageConfig not defined for some reason, define it here
+if(typeof pageConfig==='undefined'){
+  var pageConfig={
+    'dashboard':{title:'Dashboard',subtitle:''},'pengumuman':{title:'Pengumuman',subtitle:''},
+    'profil-sdmk':{title:'Profil SDMK',subtitle:''},'pendaftaran':{title:'Pendaftaran',subtitle:''},
+    'cek-sertifikat':{title:'Cek Sertifikat',subtitle:''},'cek-materi':{title:'Cek Materi',subtitle:''},
+    'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:''},'panel-admin':{title:'Panel Admin',subtitle:''}
+  };
+  console.warn("pageConfig was undefined - used fallback");
+}
+var c=pageConfig[page]||{title:page,subtitle:''};
   document.getElementById('topbarTitle').textContent=c.title;
   document.getElementById('topbarSubtitle').textContent=c.subtitle;
   closeMobileSidebar();
