@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAMUNGKAS - Nhost Connection Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4f8; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #1e293b; margin-bottom: 20px; text-align: center; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card h2 { color: #0d6efd; margin-bottom: 16px; font-size: 18px; }
+    label { display: block; color: #475569; font-weight: 500; margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; margin-bottom: 16px; font-family: monospace; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { width: 100%; padding: 14px; background: #0d6efd; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    button:hover { background: #0a58ca; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(13,110,253,0.3); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+    .result { margin-top: 16px; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; display: none; }
+    .result.success { display: block; background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+    .result.error { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
+    .result.info { display: block; background: #e0e7ff; color: #3730a3; border: 1px solid #6366f1; }
+    .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+    .status-dot.success { background: #10b981; }
+    .status-dot.error { background: #ef4444; }
+    .status-dot.pending { background: #f59e0b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .checklist { list-style: none; }
+    .checklist li { padding: 8px 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; }
+    .checklist li:last-child { border-bottom: none; }
+    .icon { font-size: 20px; margin-right: 12px; }
+    .copy-btn { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); padding: 6px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .copy-btn:hover { background: #e2e8f0; }
+    .input-wrap { position: relative; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 PAMUNGKAS - Nhost Connection Tester</h1>
+    
+    <!-- Step 1: Configuration -->
+    <div class="card">
+      <h2>⚙️ Step 1: Masukkan Konfigurasi Nhost</h2>
+      <p style="color:#64748b;margin-bottom:16px;font-size:14px;">Isi dengan data dari Nhost Dashboard kamu</p>
+      
+      <label>GraphQL URL (Hasura Endpoint)</label>
+      <div class="input-wrap">
+        <input type="text" id="graphqlUrl" placeholder="https://your-project.nhost.run/v1/graphql" value="">
+      </div>
+      
+      <label>Admin Secret</label>
+      <div class="input-wrap">
+        <input type="password" id="adminSecret" placeholder="your-admin-secret-from-nhost-dashboard" value="">
+      </div>
+      
+      <button onclick="startTesting()">🚀 Mulai Test Koneksi</button>
+    </div>
+
+    <!-- Step 2: Results -->
+    <div class="card" id="resultsCard" style="display:none;">
+      <h2>📊 Hasil Test</h2>
+      <ul class="checklist" id="checklist"></ul>
+      <div id="resultDetail" class="result"></div>
+    </div>
+
+    <!-- Step 3: Generated Config -->
+    <div class="card" id="configCard" style="display:none;">
+      <h2>✅ Konfigurasi Siap Pakai</h2>
+      <p style="color:#64748b;margin-bottom:12px;font-size:14px;">Copy kode berikut ke file <code>pamungkas_nhost.html</code></p>
+      <textarea id="generatedConfig" readonly></textarea>
+      <button onclick="copyConfig()" style="margin-top:8px;background:#10b981;">📋 Copy Konfigurasi</button>
+    </div>
+  </div>
+
+<script>
+async function startTesting() {
+  const graphqlUrl = document.getElementById('graphqlUrl').value.trim();
+  const adminSecret = document.getElementById('adminSecret').value.trim();
+  
+  if (!graphqlUrl || !adminSecret) {
+    alert('❌ Mohon isi GraphQL URL dan Admin Secret!');
+    return;
+  }
+
+  // Show results card
+  document.getElementById('resultsCard').style.display = 'block';
+  const checklist = document.getElementById('checklist');
+  const resultDetail = document.getElementById('resultDetail');
+  checklist.innerHTML = '';
+  
+  let allPassed = true;
+
+  // Test 1: URL Format
+  addCheckItem(checklist, 'pending', 'Memeriksa format URL...');
+  await sleep(500);
+  if (graphqlUrl.includes('.nhost.run/v1/graphql')) {
+    updateCheckItem(checklist, 0, 'success', '✅ Format URL benar');
+  } else {
+    updateCheckItem(checklist, 0, 'error', '❌ Format URL salah. Harus: https://xxx.nhost.run/v1/graphql');
+    allPassed = false;
+  }
+
+  // Test 2: Network Connectivity
+  addCheckItem(checklist, 'pending', 'Menguji koneksi jaringan...');
+  await sleep(500);
+  try {
+    const pingResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '{ __typename }' }),
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (pingResponse.ok) {
+      updateCheckItem(checklist, 1, 'success', '✅ Server Nhost terjangkau');
+    } else {
+      updateCheckItem(checklist, 1, 'error', `❌ Server error: HTTP ${pingResponse.status}`);
+      allPassed = false;
+    }
+  } catch (error) {
+    updateCheckItem(checklist, 1, 'error', `❌ Gagal terhubung: ${error.message}`);
+    allPassed = false;
+  }
+
+  // Test 3: Authentication
+  addCheckItem(checklist, 'pending', 'Menguji autentikasi...');
+  await sleep(500);
+  try {
+    const authResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hasura-admin-secret': adminSecret
+      },
+      body: JSON.stringify({ 
+        query: `{ indikator(limit: 1) { id } }` 
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    const authResult = await authResponse.json();
+
+    if (authResult.errors) {
+      if (authResult.errors[0]?.message?.includes('permission') || 
+          authResult.errors[0]?.message?.includes('unauthorized')) {
+        updateCheckItem(checklist, 2, 'error', '❌ Admin Secret salah atau tidak valid');
+        showResult(resultDetail, 'error', `Error: ${authResult.errors[0].message}\n\nSolusi:\n1. Buka Nhost Dashboard\n2. Hasura > Settings\n3. Copy Admin Secret yang benar`);
+      } else {
+        updateCheckItem(checklist, 2, 'error', `❌ Error: ${authResult.errors[0].message}`);
+      }
+      allPassed = false;
+    } else {
+      updateCheckItem(checklist, 2, 'success', '✅ Autentikasi berhasil (Admin Secret valid)');
+    }
+  } catch (error) {
+    updateCheckItem(checklist, 2, 'error', `❌ Auth test error: ${error.message}`);
+    allPassed = false;
+  }
+
+  // Test 4: Tables Exist
+  addCheckItem(checklist, 'pending', 'Memeriksa tabel database...');
+  await sleep(500);
+  try {
+    const tablesResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hasura-admin-secret': adminSecret
+      },
+      body: JSON.stringify({
+        query: `
+          query CheckTables {
+            multiusers_aggregate { aggregate { count } }
+            pengumuman_aggregate { aggregate { count } }
+            indikator_aggregate { aggregate { count } }
+            sdmk_aggregate { aggregate { count } }
+            pendaftaran_aggregate { aggregate { count } }
+            sertifikat_aggregate { aggregate { count } }
+            materi_aggregate { aggregate { count } }
+          }
+        `
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    const tablesResult = await tablesResponse.json();
+
+    if (tablesResult.errors) {
+      updateCheckItem(checklist, 3, 'error', `❌ Tabel error: ${tablesResult.errors[0].message}\n\nPastikan sudah menjalankan SQL schema!`);
+      showResult(resultDetail, 'error', JSON.stringify(tablesResult.errors, null, 2));
+      allPassed = false;
+    } else {
+      const data = tablesResult.data;
+      const tableNames = ['multiusers', 'pengumuman', 'indikator', 'sdmk', 'pendaftaran', 'sertifikat', 'materi'];
+      const counts = tableNames.map(t => `${t}: ${data[t + '_aggregate']?.aggregate?.count ?? 0}`);
+      updateCheckItem(checklist, 3, 'success', `✅ Semua 7 tabel ditemukan\n   ${counts.join(' | ')}`);
+    }
+  } catch (error) {
+    updateCheckItem(checklist, 3, 'error', `❌ Table check error: ${error.message}`);
+    allPassed = false;
+  }
+
+  // Test 5: Sample Data Query
+  addCheckItem(checklist, 'pending', 'Menguji query data dashboard...');
+  await sleep(500);
+  try {
+    const dashResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hasura-admin-secret': adminSecret
+      },
+      body: JSON.stringify({
+        query: GRAPHQL_QUERIES.getDashboardData
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    const dashResult = await dashResponse.json();
+
+    if (dashResult.errors) {
+      updateCheckItem(checklist, 4, 'error', `❌ Query error: ${dashResult.errors[0].message}`);
+      showResult(resultDetail, 'error', JSON.stringify(dashResult.errors, null, 2));
+      allPassed = false;
+    } else {
+      const summary = dashResult.data;
+      const stats = [
+        `Indikator: ${summary.indikator?.length || 0}`,
+        `SDMK: ${summary.sdmk_aggregate?.aggregate?.count || 0}`,
+        `Pendaftar: ${summary.pendaftaran_aggregate?.aggregate?.count || 0}`,
+        `Sertifikat: ${summary.sertifikat_aggregate?.aggregate?.count || 0}`
+      ];
+      updateCheckItem(checklist, 4, 'success', `✅ Query berhasil!\n   ${stats.join(' | ')}`);
+      showResult(resultDetail, 'success', `📊 Data berhasil diambil:\n\n${JSON.stringify(summary, null, 2)}`);
+    }
+  } catch (error) {
+    updateCheckItem(checklist, 4, 'error', `❌ Dashboard query error: ${error.message}`);
+    allPassed = false;
+  }
+
+  // Final Result
+  if (allPassed) {
+    showGeneratedConfig(graphqlUrl, adminSecret);
+  }
+}
+
+const GRAPHQL_QUERIES = {
+  getDashboardData: `
+    query GetDashboardData {
+      indikator(order_by: {id: asc}) { id indikator nilai target satuan }
+      sdmk_aggregate { aggregate { count } }
+      pendaftaran_aggregate { aggregate { count } }
+      sertifikat_aggregate { aggregate { count } }
+      pengumuman(where: {status: {_eq: "published"}}) { id judul }
+      sdmk(order_by: {created_at: desc_nulls_last}, limit: 5) { id nama nik profesi unit_kerja }
+      pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 5) { id nama_lengkap_dengan_gelar nik status }
+    }
+  `
+};
+
+function addCheckItem(container, status, text) {
+  const li = document.createElement('li');
+  li.innerHTML = `<span class="icon"><span class="status-dot ${status}"></span></span><span>${text}</span>`;
+  container.appendChild(li);
+}
+
+function updateCheckItem(container, index, status, text) {
+  container.children[index).innerHTML = `<span class="icon"><span class="status-dot ${status}"></span></span><span>${text}</span>`;
+}
+
+function showResult(element, type, message) {
+  element.className = `result ${type}`;
+  element.textContent = message;
+}
+
+function showGeneratedConfig(graphqlUrl, adminSecret) {
+  const configCard = document.getElementById('configCard');
+  configCard.style.display = 'block';
+  
+  const urlParts = graphqlUrl.replace('/v1/graphql', '');
+  const config = `var NHOST_CONFIG = {
+  // Hasura GraphQL Endpoint
+  graphqlUrl: '${graphqlUrl}',
+  
+  // Admin Secret
+  adminSecret: '${adminSecret}',
+  
+  // Nhost Auth endpoint
+  authUrl: '${urlParts}/v1/auth',
+  
+  // Storage URL
+  storageUrl: '${urlParts}/v1/storage'
+};`;
+
+  document.getElementById('generatedConfig').value = config;
+}
+
+function copyConfig() {
+  const config = document.getElementById('generatedConfig');
+  config.select();
+  document.execCommand('copy');
+  alert('✅ Konfigurasi dicopy! Sekarang paste ke file pamungkas_nhost.html');
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+</body>
+</html>

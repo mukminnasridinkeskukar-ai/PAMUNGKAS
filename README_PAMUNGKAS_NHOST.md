@@ -301,7 +301,7 @@ Cara track:
 1. Di Nhost Dashboard, klik **"Hasura"** → **"Settings"**
 2. Scroll ke bagian **"Admin Secret"**
 3. Copy **Admin Secret** value
-4. Simpan di tempat aman (diperlukan untuk konfigurasi frontend)
+4. Simpan di tempat aman (diperlukan untuk konfigurasi frontend) 6zFaZ5::7R5^Rwg!zPM%s,7XHicFuwvB
 
 ⚠️ **PENTING**: Admin secret ini seperti password super-admin. Jangan bagikan ke sembarang orang!
 
