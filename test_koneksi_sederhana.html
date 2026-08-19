@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Koneksi PAMUNGKAS → Nhost</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; background: #f0f4f8; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h1 { color: #0d6efd; text-align: center; }
+    pre { background: #212529; color: #10b981; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+    .error { color: #dc3545; }
+    button { width: 100%; padding: 14px; background: #0d6efd; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 16px; }
+    button:hover { background: #0a58ca; }
+    #result { margin-top: 20px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔌 Test Koneksi: PAMUNGKAS → Nhost</h1>
+    <p>Klik tombol di bawah untuk test koneksi ke database Nhost kamu:</p>
+    <button onclick="testConnection()">🚀 Test Sekarang</button>
+    
+    <div id="result"></div>
+  </div>
+
+<script>
+// Konfigurasi dari file HTML kamu
+const CONFIG = {
+  graphqlUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/graphql',
+  adminSecret: '6zFaZ5::7R5^Rwg!zPM%s,7XHicFuwvB'
+};
+
+async function testConnection() {
+  const resultDiv = document.getElementById('result');
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '<p>⏳ Sedang menghubungi server...</p>';
+  
+  try {
+    console.log('Testing connection to:', CONFIG.graphqlUrl);
+    
+    const response = await fetch(CONFIG.graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hasura-admin-secret': CONFIG.adminSecret
+      },
+      body: JSON.stringify({
+        query: `
+          query TestQuery {
+            indikator(limit: 5) { id indikator nilai target satuan }
+            sdmk_aggregate { aggregate { count } }
+            pendaftaran_aggregate { aggregate { count } }
+            sertifikat_aggregate { aggregate { count } }
+          }
+        `
+      })
+    });
+    
+    console.log('Response status:', response.status);
+    
+    const data = await response.json();
+    console.log('Response data:', data);
+    
+    if (data.errors) {
+      throw new Error(data.errors[0].message);
+    }
+    
+    const stats = [
+      `✅ Indikator: ${data.data.indikator.length} data`,
+      `✅ SDMK: ${data.data.sdmk_aggregate.aggregate.count} record`,
+      `✅ Pendaftaran: ${data.data.pendaftaran_aggregate.aggregate.count} record`,
+      `✅ Sertifikat: ${data.data.sertifikat_aggregate.aggregate.count} record`
+    ];
+    
+    resultDiv.innerHTML = `
+      <h3 style="color:#10b981">🎉 Koneksi Berhasil!</h3>
+      <p>${stats.join('<br>')}</p>
+      <pre>${JSON.stringify(data.data, null, 2)}</pre>
+      <p style="color:#6c757d;margin-top:12px;font-size:14px;">
+        Jika ini berhasil, berarti konfigurasi Nhost kamu benar!<br>
+        Coba refresh halaman utama (clear cache: Ctrl+Shift+R)
+      </p>
+    `;
+    
+  } catch (error) {
+    console.error('Error:', error);
+    resultDiv.innerHTML = `
+      <h3 class="error">❌ Gagal Terhubung</h3>
+      <p class="error"><strong>Error:</strong> ${error.message}</p>
+      <pre class="error">${error.stack}</pre>
+      <h4 style="margin-top:20px">Solusi:</h4>
+      <ol style="color:#dc3545;padding-left:20px;">
+        <li>Pastikan URL GraphQL benar</li>
+        <li>Cek Admin Secret di Nhost Dashboard</li>
+        <li> Pastikan tabel sudah dibuat (run SQL schema)</li>
+        <li>Coba buka Console > Hasura dan track tabel</li>
+      </ol>
+    `;
+  }
+}
+
+// Auto-test on load
+window.addEventListener('load', () => {
+  console.log('Page loaded. Click button to test.');
+});
+</script>
+</body>
+</html>
