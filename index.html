@@ -1010,7 +1010,7 @@
         </div>
         <div class="stats-grid" id="statsGrid"></div>
         <div class="card-box" style="overflow:visible">
-          <div class="card-box-header"><div><h3>Pendaftar Terbaru</h3><p id="tableSubtitle">Data terakhir dari Google Sheet</p></div></div>
+          <div class="card-box-header"><div><h3>Pendaftar Terbaru</h3><p id="tableSubtitle">Data terakhir dari database Nhost</p></div></div>
           <div class="dash-table-container">
             <table class="dash-table">
               <thead><tr>
@@ -2550,19 +2550,23 @@ function loadDashboard(){
   }).catch(function(e){
     hideLoading();
     console.error('[Dashboard] Load error:', e);
-    showToast('Gagal memuat data: '+(e.message||e),'error');
-    renderEmptyDashboard();
+    console.warn('[Dashboard] Using fallback data due to error');
+    showToast('Menggunakan data default. Error: '+(e.message||e),'warning');
+    // Use fallback data instead of empty dashboard
+    renderIKP([]); // Empty array triggers fallback to IKP_DATA
+    renderStatCards({});
+    renderDashboardTable([]);
   });
 }
 /* ========== INDIKATOR KINERJA PROGRAM ========== */
 /*
- * DATA CAPAIAN - Default/Fallback data
- * Data aktual diambil dari Google Sheet "Indikator"
- * Jika sheet Indikator kosong/tidak ada, data default ini yang ditampilkan
+ * DATA CAPAIAN - Fallback/Default data
+ * Data aktual diambil dari Nhost GraphQL (tabel: indikator)
+ * Jika Nhost kosong/error, data default ini yang ditampilkan (fallback)
  * ================================================ */
 var IKP_DATA = [
-  // Default data - akan diganti dengan data dari Google Sheet jika tersedia
-  // Sesuai struktur Sheet Indikator: ID | Nama | Nilai | Target | Satuan
+  // Fallback data - akan diganti dengan data dari Nhost jika tersedia
+  // Sesuai struktur tabel indikator: id | label/nama | value/nilai | target | unit/satuan
   {id:'1', label:'Jumlah SDMK Dinas Kesehatan', value:2284, target:3200, unit:' Orang', barClass:'ikp-bar-1', valueClass:'ikp-value-1', icon:'fa-hospital', source:'Default'},
   {id:'2', label:'Jumlah SDMK yang Dilatih', value:30, target:2240, unit:' Orang', barClass:'ikp-bar-2', valueClass:'ikp-value-2', icon:'fa-user-graduate', source:'Default'},
   {id:'3', label:'Jumlah SDMK Yang Dilatih sesuai Kompetensinya', value:30, target:350, unit:' Orang', barClass:'ikp-bar-3', valueClass:'ikp-value-3', icon:'fa-user-check', source:'Default'},
@@ -2570,19 +2574,72 @@ var IKP_DATA = [
   {id:'5', label:'Persentase SDMK yang dilatih sesuai Kompetensinya', value:1.91, target:100, unit:' Persen', barClass:'ikp-bar-2', valueClass:'ikp-value-2', icon:'fa-chart-pie', source:'Default'}
 ];
 
+/**
+ * Normalize IKP data from various sources (Nhost or fallback)
+ * Ensures consistent structure for rendering
+ */
+function normalizeIKPData(data = []) {
+  if (!Array.isArray(data)) {
+    console.warn('[IKP] normalizeIKPData: Input bukan array, mengembalikan array kosong');
+    return [];
+  }
+  
+  return data.map((item, index) => ({
+    id: item.id || item.ID || String(index + 1),
+    label: item.label || item.Label || item.nama || item.Nama || item.Indikator || item.indikator || 'Indikator',
+    value: item.value || item.Value || item.nilai || item.Nilai || item.capai || 0,
+    target: item.target || item.Target || item.target_capai || 100,
+    unit: item.unit || item.Unit || item.satuan || item.Satuan || '',
+    barClass: item.barClass || ['ikp-bar-1', 'ikp-bar-2', 'ikp-bar-3'][index % 3],
+    valueClass: item.valueClass || ['ikp-value-1', 'ikp-value-2', 'ikp-value-3'][index % 3],
+    icon: item.icon || item.Icon || ['fa-hospital', 'fa-user-graduate', 'fa-user-check', 'fa-percentage', 'fa-chart-pie'][index % 5],
+    source: item.source || 'Nhost',
+    desc: item.desc || item.deskripsi || item.Deskripsi || '-',
+    _index: index
+  }));
+}
+
 function renderIKP(indikatorData){
   var g=document.getElementById('ikpGrid');
-  if(!g)return;
+  if(!g){
+    console.warn('[IKP] Element #ikpGrid tidak ditemukan');
+    return;
+  }
+  
+  console.log('[IKP] Loading data from Nhost...');
+  console.log('[IKP] Raw input data:', indikatorData ? indikatorData.length : 0, 'items');
+  
+  // Determine final data source: Nhost data or fallback
+  var nhostData = (indikatorData && Array.isArray(indikatorData) && indikatorData.length > 0) 
+    ? indikatorData 
+    : [];
+  
+  console.log('[IKP] Nhost data count:', nhostData.length);
+  console.log('[IKP] DataSource fallback count:', IKP_DATA.length);
+  
+  // Use Nhost data if available, otherwise use fallback
+  var finalData = nhostData.length > 0 ? nhostData : IKP_DATA;
+  
+  console.log('[IKP] Final data count:', finalData.length);
+  console.log('[IKP] Final data source:', nhostData.length > 0 ? 'Nhost' : 'Fallback');
+  
+  // Normalize data for consistent rendering
+  var normalizedData = normalizeIKPData(finalData);
+  
+  if (normalizedData.length === 0) {
+    console.warn('[IKP] Tidak ada data untuk dirender (Nhost & fallback kosong)');
+    g.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i><p>Belum ada data indikator</p></div>';
+    return;
+  }
+  
+  console.log('[IKP] Rendering IKP...', normalizedData.length, 'items');
+  
   var html='';
-  // Gunakan data dari Google Sheet jika tersedia, fallback ke default
-  console.log('[IKP] Data dari sheet:', indikatorData ? indikatorData.length : 0, 'items');
-  var dataSource = (indikatorData && indikatorData.length > 0) ? indikatorData : IKP_DATA;
-  console.log('[IKP] DataSource:', dataSource.length, 'items');
-  dataSource.forEach(function(item){
-    // Handle multiple possible field names from Google Sheet
-    var rawVal = item.value || item.Value || item.nilai || item.Nilai || item.capai || 0;
-    var rawTgt = item.target || item.Target || item.target_capai || 100;
-    var ikpUnit = String(item.unit || item.Unit || '').toLowerCase();
+  normalizedData.forEach(function(item, idx){ // ✅ FIX: idx didefinisikan sebagai parameter kedua
+    // Data sudah dinormalisasi oleh normalizeIKPData(), gunakan langsung
+    var rawVal = item.value;
+    var rawTgt = item.target;
+    var ikpUnit = String(item.unit || '').toLowerCase();
     
     // Parse numbers - handle Indonesian comma format
     var numVal=parseFloat(String(rawVal).trim().replace(/\s/g,'').replace(',','.'))||0;
@@ -2598,10 +2655,11 @@ function renderIKP(indikatorData){
       // For counts, calculate percentage of target achieved
       var pct=numTgt>0?Math.min((numVal/numTgt)*100,100):0;
     }
-    html+='<div class="ikp-card" onclick="openIKPPopup(\''+item.label+'\', \''+item.value+'\', \''+item.target+'\', \''+item.unit+'\', \''+(item.source||'Default')+'\', \''+(item.desc||'-')+'\')" title="Klik untuk detail">';
-    html+='<div class="ikp-card-num">'+(item.id||item.ID||'IKP').replace(/\w/g,function(c,i){return i===0?c.toUpperCase():'';}).substring(0,3)+'</div>';
-    var ikpLabel=item.label||item.Label||item.nama||item.Nama||item.Indikator||item.indikator||'Indikator';
-    var ikpIcon=item.icon||item.Icon||['fa-hospital','fa-user-md','fa-graduation-cap'][idx%3];
+    html+='<div class="ikp-card" onclick="openIKPPopup(\''+escHTML(item.label)+'\', \''+escHTML(String(item.value))+'\', \''+escHTML(String(item.target))+'\', \''+escHTML(item.unit)+'\', \''+escHTML(item.source)+'\', \''+escHTML(item.desc)+'\')" title="Klik untuk detail">';
+    html+='<div class="ikp-card-num">'+String(item.id).replace(/\w/g,function(c,i){return i===0?c.toUpperCase():'';}).substring(0,3)+'</div>';
+    // Use pre-normalized fields - no need for fallback logic here
+    var ikpLabel = item.label;
+    var ikpIcon = item.icon || ['fa-hospital','fa-user-graduate','fa-user-check','fa-percentage','fa-chart-pie'][idx % 5];
     html+='<div class="ikp-card-label"><i class="fas '+ikpIcon+'"></i><span>'+ikpLabel+'</span></div>';
     html+='<div class="ikp-bar-wrap"><div class="ikp-bar '+(item.barClass||'ikp-bar-1')+'" style="width:0%" data-target="'+pct+'"></div></div>';
     html+='<div class="ikp-card-footer"><div class="ikp-value '+(item.valueClass||'ikp-value-1')+'">'+numVal+(item.unit||'')+'</div><div class="ikp-target">Target: '+(item.target||0)+(item.unit||'')+'</div></div>';
@@ -2715,18 +2773,18 @@ function openStatPopup(card){
     
     // Add data source information
     var sourceLabel = '';
-    var sourceSheet = '';
-    if(src==='sdmk'||src==='sdmk-exclude'){sourceLabel='Data SDMK (Tenaga Kesehatan)';sourceSheet='Sheet: SDMK';}
-    else if(src==='pendaftaran'||src==='pendaftaran-exclude'){sourceLabel='Data Pendaftaran Pelatihan';sourceSheet='Sheet: Pendaftaran';}
-    else if(src==='sertifikat'){sourceLabel='Data Sertifikat';sourceSheet='Sheet: Sertifikat';}
-    else if(src==='pengumuman'){sourceLabel='Data Pengumuman';sourceSheet='Sheet: Pengumuman';}
-    else{sourceLabel='Data Dashboard';sourceSheet='Google Sheet';}
+    var sourceTable = '';
+    if(src==='sdmk'||src==='sdmk-exclude'){sourceLabel='Data SDMK (Tenaga Kesehatan)';sourceTable='Tabel: sdmk';}
+    else if(src==='pendaftaran'||src==='pendaftaran-exclude'){sourceLabel='Data Pendaftaran Pelatihan';sourceTable='Tabel: pendaftaran';}
+    else if(src==='sertifikat'){sourceLabel='Data Sertifikat';sourceTable='Tabel: sertifikat';}
+    else if(src==='pengumuman'){sourceLabel='Data Pengumuman';sourceTable='Tabel: pengumuman';}
+    else{sourceLabel='Data Dashboard';sourceTable='Nhost PostgreSQL';}  // ✅ Updated from "Google Sheet"
     
     html+='<div style="margin-top:14px;padding:12px 14px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;display:flex;align-items:center;gap:10px;">';
     html+='<i class="fas fa-database" style="color:#0D6EFD;font-size:1rem;"></i>';
     html+='<div>';
     html+='<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">Sumber Data</div>';
-    html+='<div style="font-size:0.82rem;color:var(--text-primary);font-weight:600;">'+sourceLabel+' <span style="font-weight:400;color:var(--text-secondary);">('+sourceSheet+')</span></div>';
+    html+='<div style="font-size:0.82rem;color:var(--text-primary);font-weight:600;">'+sourceLabel+' <span style="font-weight:400;color:var(--text-secondary);">('+sourceTable+')</span></div>';
     html+='</div></div>';
     
     body.innerHTML=html;
@@ -2806,7 +2864,7 @@ function showAllInPopup(src){
   var srcLabel = src.indexOf('sdmk')!==-1 ? 'SDMK' : 'Pendaftaran';
   html += '<div style="margin-top:14px;padding:12px 14px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;">';
   html += '<i class="fas fa-database" style="color:#0D6EFD;margin-right:8px;"></i>';
-  html += '<span style="font-size:0.82rem;"><strong>Sumber:</strong> Google Sheet - Sheet: ' + srcLabel + '</span>';
+  html += '<span style="font-size:0.82rem;"><strong>Sumber:</strong> Nhost - Tabel: ' + srcLabel + '</span>';  // ✅ Updated from "Google Sheet - Sheet:"
   html += '</div>';
   
   body.innerHTML = html;
@@ -2855,7 +2913,7 @@ function openIKPPopup(label, value, target, unit, source, desc){
   // Data source info
   html += '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;padding:14px;margin-bottom:12px;">';
   html += '<div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-database" style="margin-right:4px;"></i>Sumber Data</div>';
-  html += '<div style="font-size:0.9rem;color:var(--text-primary);font-weight:600;">' + (source === 'Default' ? 'Data Default (Sheet Indikator kosong/tidak tersedia)' : 'Google Sheet - Sheet: Indikator') + '</div>';
+  html += '<div style="font-size:0.9rem;color:var(--text-primary);font-weight:600;">' + (source === 'Default' ? 'Data Fallback (Tabel indikator kosong/tidak tersedia di Nhost)' : 'Nhost - Tabel: indikator') + '</div>';  // ✅ Updated from Google Sheet references
   html += '</div>';
   
   if(desc && desc !== '-'){
@@ -3000,7 +3058,8 @@ function closeDashLightbox(){
   document.body.style.overflow='';
 }
 function renderEmptyDashboard(){
-  renderIKP();
+  // Call renderIKP with empty array - it will use IKP_DATA fallback automatically
+  renderIKP([]);  // ✅ FIX: Pass empty array to trigger fallback to IKP_DATA
 
   var g=document.getElementById('statsGrid');
   if(!g){console.error('[Dashboard] #statsGrid not found in renderEmptyDashboard');return;}
@@ -3009,7 +3068,7 @@ function renderEmptyDashboard(){
   g.innerHTML='';
   cards.forEach(function(c){var d=document.createElement('div');d.className='stat-card';d.style.cursor='default';d.innerHTML='<div class="stat-card-top"><div class="stat-card-icon"><i class="fas '+c.icon+'"></i></div></div><div class="stat-card-value">-</div><div class="stat-card-label">'+c.label+'</div><div class="stat-card-hint"><i class="fas fa-exclamation-triangle" style="color:var(--accent);"></i> Data tidak tersedia</div>';g.appendChild(d);});
   
-  console.log('[Dashboard] Empty dashboard rendered (fallback mode)');
+  console.log('[Dashboard] Dashboard rendered with fallback data (IKP: 5 items, Stats: placeholder)');  // ✅ Updated log message
 }
 
 
@@ -4047,7 +4106,7 @@ function submitSertifikat(e){e.preventDefault();var idx=parseInt(document.getEle
 
 /* ========== KONFIRMASI HAPUS ========== */
 function confirmDelete(sheet,idx){
-  document.getElementById('confirmText').textContent='Apakah Anda yakin ingin menghapus data ini dari sheet '+sheet+'?';
+  document.getElementById('confirmText').textContent='Apakah Anda yakin ingin menghapus data ini dari tabel '+sheet+'?';  // ✅ Updated from "sheet" to "tabel"
   document.getElementById('confirmDeleteBtn').onclick=function(){executeDelete(sheet,idx);};
   openModal('confirmModal');
 }
