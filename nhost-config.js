@@ -17,17 +17,18 @@
 // ==========================================
 
 const NHOST_CONFIG = {
-    // Ganti dengan URL Hasura Anda dari dashboard Nhost
-    hasuraUrl: 'https://YOUR_PROJECT.nhost.run/v1/graphql',
+    // URL Hasura dari dashboard Nhost Anda
+    hasuraUrl: 'https://fxqicegiwzfonrugxine.nhost.run/v1/graphql',
     
-    // Ganti dengan Admin Secret dari dashboard Nhost (untuk akses full)
-    adminSecret: 'YOUR_ADMIN_SECRET',
+    // Admin Secret yang baru saja Anda buat di Settings → Secrets
+    // ✅ Password sudah diisi
+    adminSecret: 'pamungkas_admin_2025',
     
-    // Ganti dengan URL Auth Nhost (opsional)
-    authUrl: 'https://YOUR_PROJECT.nhost.run/v1/auth',
+    // URL Auth Nhost
+    authUrl: 'https://fxqicegiwzfonrugxine.nhost.run/v1/auth',
     
-    // Ganti dengan Public URL untuk client-side (tanpa secret)
-    publicUrl: 'https://YOUR_PROJECT.nhost.run/v1/graphql',
+    // Public URL untuk client-side
+    publicUrl: 'https://fxqicegiwzfonrugxine.nhost.run/v1/graphql',
     
     // Settings
     timeout: 30000,
@@ -375,7 +376,7 @@ class NhostClient {
             'Content-Type': 'application/json'
         };
         
-        if (config.adminSecret && config.adminSecret !== 'YOUR_ADMIN_SECRET') {
+        if (config.adminSecret && config.adminSecret !== 'ISI_PASSWORD_ANDA_DISINI') {
             this.headers['x-hasura-admin-secret'] = config.adminSecret;
         }
     }
@@ -744,6 +745,6 @@ function callServer(action, data) {
 console.log('%c🚀 PAMUNGKAS + NHOST', 'color: #0D6EFD; font-size: 16px; font-weight: bold;');
 console.log('%c✅ Nhost Client initialized', 'color: #10B981;');
 
-if (NHOST_CONFIG.debug && NHOST_CONFIG.hasuraUrl.includes('YOUR_')) {
+if (NHOST_CONFIG.debug && NHOST_CONFIG.adminSecret === 'ISI_PASSWORD_ANDA_DISINI') {
     console.warn('%c⚠️ Please configure NHOST_CONFIG with your credentials!', 'color: #F59E0B; font-weight: bold;');
 }

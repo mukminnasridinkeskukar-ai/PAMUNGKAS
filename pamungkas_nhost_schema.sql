@@ -1,14 +1,48 @@
 -- =====================================================
 -- PAMUNGKAS - Database Schema untuk Nhost (PostgreSQL)
--- Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan
+-- VERSI: Idempotent (bisa dijalankan ulang tanpa error)
 -- =====================================================
 
 -- Enable UUID extension for Nhost compatibility
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
+-- HELPER: Drop existing objects if exist (for re-run safety)
+-- =====================================================
+
+-- Drop triggers first (if exist)
+DROP TRIGGER IF EXISTS update_admin_users_updated_at ON admin_users;
+DROP TRIGGER IF EXISTS update_pengumuman_updated_at ON pengumuman;
+DROP TRIGGER IF EXISTS update_pendaftaran_updated_at ON pendaftaran;
+DROP TRIGGER IF EXISTS update_sdmk_updated_at ON sdmk;
+DROP TRIGGER IF EXISTS update_sertifikat_updated_at ON sertifikat;
+DROP TRIGGER IF EXISTS update_materi_updated_at ON materi;
+DROP TRIGGER IF EXISTS generate_nomor_pendaftaran_trigger ON pendaftaran;
+
+-- Drop indexes (if exist) - using IF NOT EXISTS later
+DROP INDEX IF EXISTS idx_admin_users_username;
+DROP INDEX IF EXISTS idx_pengumuman_status;
+DROP INDEX IF EXISTS idx_pengumuman_tanggal;
+DROP INDEX IF EXISTS idx_pendaftaran_nik;
+DROP INDEX IF EXISTS idx_pendaftaran_nip;
+DROP INDEX IF EXISTS idx_pendaftaran_status;
+DROP INDEX IF EXISTS idx_pendaftaran_nama;
+DROP INDEX IF EXISTS idx_pendaftaran_unit_kerja;
+DROP INDEX IF EXISTS idx_pendaftaran_tanggal;
+DROP INDEX IF EXISTS idx_pendaftaran_nomor;
+DROP INDEX IF EXISTS idx_sdmk_nama;
+DROP INDEX IF EXISTS idx_sdmk_profesi;
+DROP INDEX IF EXISTS idx_sdmk_unit_kerja;
+DROP INDEX IF EXISTS idx_sdmk_tahun;
+DROP INDEX IF EXISTS idx_sdmk_status;
+DROP INDEX IF EXISTS idx_sertifikat_nomor;
+DROP INDEX IF EXISTS idx_sertifikat_penerima;
+DROP INDEX IF EXISTS idx_sertifikat_pelatihan;
+DROP INDEX IF EXISTS idx_materi_judul;
+DROP INDEX IF EXISTS idx_materi_kategori;
+
+-- =====================================================
 -- 1. TABLE: admin_users
--- Manajemen akun admin dengan level akses
 -- =====================================================
 CREATE TABLE IF NOT EXISTS admin_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -21,7 +55,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
 );
 
 -- Create index for username lookup
-CREATE INDEX idx_admin_users_username ON admin_users(username);
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 
 -- Insert default admin account (password: admin123 - should be changed)
 INSERT INTO admin_users (username, password, level) VALUES 
@@ -30,7 +64,6 @@ ON CONFLICT (username) DO NOTHING;
 
 -- =====================================================
 -- 2. TABLE: pengumuman
--- Data pengumuman/berita sistem
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pengumuman (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -43,22 +76,21 @@ CREATE TABLE IF NOT EXISTS pengumuman (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create index for status filter
-CREATE INDEX idx_pengumuman_status ON pengumuman(status);
-CREATE INDEX idx_pengumuman_tanggal ON pengumuman(tanggal DESC);
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_pengumuman_status ON pengumuman(status);
+CREATE INDEX IF NOT EXISTS idx_pengumuman_tanggal ON pengumuman(tanggal DESC);
 
 -- =====================================================
 -- 3. TABLE: pendaftaran
--- Data pendaftaran pelatihan SDM Kesehatan
 -- =====================================================
 CREATE TABLE IF NOT EXISTS pendaftaran (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
     -- Auto-generated registration info
-    nomor_pendaftaran VARCHAR(50) UNIQUE, -- Auto-generated: REG/YYYYMMDD/XXXXX
+    nomor_pendaftaran VARCHAR(50) UNIQUE,
     
     -- Data Personal
-    foto TEXT, -- URL Google Drive foto peserta
+    foto TEXT,
     nama_lengkap VARCHAR(255) NOT NULL,
     nik VARCHAR(20) NOT NULL,
     nip VARCHAR(30) NOT NULL,
@@ -74,53 +106,52 @@ CREATE TABLE IF NOT EXISTS pendaftaran (
     
     -- Kontak
     email_plataran VARCHAR(150) NOT NULL,
-    kontak VARCHAR(20) NOT NULL, -- No. WhatsApp/Telepon
+    kontak VARCHAR(20) NOT NULL,
     alamat TEXT NOT NULL,
     
     -- Dokumen & Kegiatan
-    surat_pernyataan TEXT, -- URL Google Drive surat pernyataan
+    surat_pernyataan TEXT,
     judul_kegiatan VARCHAR(255) NOT NULL,
-    tanggal DATE NOT NULL, -- Tanggal pendaftaran
+    tanggal DATE NOT NULL,
     
     -- Workflow Status
     status VARCHAR(30) DEFAULT 'Menunggu' CHECK (status IN ('Menunggu', 'Proses Verifikasi', 'Perbaikan', 'Disetujui', 'Ditolak')),
     catatan_status TEXT,
-    diubah_oleh VARCHAR(100), -- Username admin yang mengubah status
+    diubah_oleh VARCHAR(100),
     tanggal_ubah_status TIMESTAMPTZ,
-    tanggal_perbaikan TIMESTAMPTZ, -- Tanggal saat peserta memperbaiki data
+    tanggal_perbaikan TIMESTAMPTZ,
     
     -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for common queries
-CREATE INDEX idx_pendaftaran_nik ON pendaftaran(nik);
-CREATE INDEX idx_pendaftaran_nip ON pendaftaran(nip);
-CREATE INDEX idx_pendaftaran_status ON pendaftaran(status);
-CREATE INDEX idx_pendaftaran_nama ON pendaftaran(nama_lengkap);
-CREATE INDEX idx_pendaftaran_unit_kerja ON pendaftaran(unit_kerja);
-CREATE INDEX idx_pendaftaran_tanggal ON pendaftaran(tanggal DESC);
-CREATE INDEX idx_pendaftaran_nomor ON pendaftaran(nomor_pendaftaran);
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_nik ON pendaftaran(nik);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_nip ON pendaftaran(nip);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_status ON pendaftaran(status);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_nama ON pendaftaran(nama_lengkap);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_unit_kerja ON pendaftaran(unit_kerja);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_tanggal ON pendaftaran(tanggal DESC);
+CREATE INDEX IF NOT EXISTS idx_pendaftaran_nomor ON pendaftaran(nomor_pendaftaran);
 
 -- =====================================================
 -- 4. TABLE: sdmk
--- Data SDMK (Sumber Daya Manusia Kesehatan) Terlatih
 -- =====================================================
 CREATE TABLE IF NOT EXISTS sdmk (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
     -- Data SDMK
     nama_lengkap VARCHAR(255) NOT NULL,
-    nik_nip VARCHAR(50), -- NIK atau NIP
+    nik_nip VARCHAR(50),
     profesi VARCHAR(100) NOT NULL,
     unit_kerja VARCHAR(150),
     
     -- Data Sertifikat/Pelatihan
     no_sertifikat VARCHAR(100),
     judul_kegiatan VARCHAR(255),
-    tgl_pelaksanaan VARCHAR(100), -- Bisa format fleksibel
-    tahun VARCHAR(10), -- Contoh: 2024
+    tgl_pelaksanaan VARCHAR(100),
+    tahun VARCHAR(10),
     tempat VARCHAR(200),
     
     -- Status
@@ -132,15 +163,14 @@ CREATE TABLE IF NOT EXISTS sdmk (
 );
 
 -- Create indexes
-CREATE INDEX idx_sdmk_nama ON sdmk(nama_lengkap);
-CREATE INDEX idx_sdmk_profesi ON sdmk(profesi);
-CREATE INDEX idx_sdmk_unit_kerja ON sdmk(unit_kerja);
-CREATE INDEX idx_sdmk_tahun ON sdmk(tahun);
-CREATE INDEX idx_sdmk_status ON sdmk(status_pelatihan);
+CREATE INDEX IF NOT EXISTS idx_sdmk_nama ON sdmk(nama_lengkap);
+CREATE INDEX IF NOT EXISTS idx_sdmk_profesi ON sdmk(profesi);
+CREATE INDEX IF NOT EXISTS idx_sdmk_unit_kerja ON sdmk(unit_kerja);
+CREATE INDEX IF NOT EXISTS idx_sdmk_tahun ON sdmk(tahun);
+CREATE INDEX IF NOT EXISTS idx_sdmk_status ON sdmk(status_pelatihan);
 
 -- =====================================================
 -- 5. TABLE: sertifikat
--- Data sertifikat pelatihan yang diterbitkan
 -- =====================================================
 CREATE TABLE IF NOT EXISTS sertifikat (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -155,19 +185,18 @@ CREATE TABLE IF NOT EXISTS sertifikat (
 );
 
 -- Create indexes
-CREATE INDEX idx_sertifikat_nomor ON sertifikat(nomor_sertifikat);
-CREATE INDEX idx_sertifikat_penerima ON sertifikat(nama_penerima);
-CREATE INDEX idx_sertifikat_pelatihan ON sertifikat(pelatihan);
+CREATE INDEX IF NOT EXISTS idx_sertifikat_nomor ON sertifikat(nomor_sertifikat);
+CREATE INDEX IF NOT EXISTS idx_sertifikat_penerima ON sertifikat(nama_penerima);
+CREATE INDEX IF NOT EXISTS idx_sertifikat_pelatihan ON sertifikat(pelatihan);
 
 -- =====================================================
 -- 6. TABLE: materi
--- Materi pelatihan yang tersedia
 -- =====================================================
 CREATE TABLE IF NOT EXISTS materi (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     judul VARCHAR(255) NOT NULL,
-    kategori VARCHAR(100) NOT NULL, -- Contoh: Keperawatan, Farmasi
-    link_file TEXT, -- URL Google Drive atau link materi
+    kategori VARCHAR(100) NOT NULL,
+    link_file TEXT,
     
     -- Status & Timestamps
     is_active BOOLEAN DEFAULT true,
@@ -176,12 +205,11 @@ CREATE TABLE IF NOT EXISTS materi (
 );
 
 -- Create indexes
-CREATE INDEX idx_materi_judul ON materi(judul);
-CREATE INDEX idx_materi_kategori ON materi(kategori);
+CREATE INDEX IF NOT EXISTS idx_materi_judul ON materi(judul);
+CREATE INDEX IF NOT EXISTS idx_materi_kategori ON materi(kategori);
 
 -- =====================================================
 -- 7. FUNCTION: Update updated_at timestamp
--- Trigger function to auto-update updated_at column
 -- =====================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -211,7 +239,6 @@ DECLARE
 BEGIN
     date_prefix := TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
     
-    -- Get next sequence number for today
     SELECT COALESCE(MAX(CAST(SUBSTRING(nomor_pendaftaran FROM '[0-9]+$') AS INTEGER)), 0) + 1
     INTO sequence_num
     FROM pendaftaran
@@ -229,54 +256,6 @@ CREATE TRIGGER generate_nomor_pendaftaran_trigger
     EXECUTE FUNCTION generate_nomor_pendaftaran();
 
 -- =====================================================
--- Nhost Row Level Security (RLS) Configuration
--- Catatan: Sistem PAMUNGKAS menggunakan custom authentication 
--- via tabel admin_users (bukan Nhost Auth service)
--- Kontrol akses utama dilakukan di application level
--- =====================================================
-
--- Enable RLS on all tables (opsional - uncomment jika diperlukan)
--- ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE pengumuman ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE pendaftaran ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE sdmk ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE sertifikat ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE materi ENABLE ROW LEVEL SECURITY;
-
--- Jika ingin mengaktifkan RLS, gunakan policies berikut:
--- (Hilangkan komentar jika diperlukan)
-
--- Pengumuman Policies
--- CREATE POLICY "Public can view active announcements" ON pengumuman FOR SELECT USING (status = 'Aktif');
--- CREATE POLICY "Authenticated can manage announcements" ON pengumuman FOR ALL USING (true);
-
--- Pendaftaran Policies  
--- CREATE POLICY "Anyone can insert registration" ON pendaftaran FOR INSERT WITH CHECK (true);
--- CREATE POLICY "Admins can manage registrations" ON pendaftaran FOR ALL USING (true);
-
--- SDMK Policies
--- CREATE POLICY "Anyone can view SDMK data" ON sdmk FOR SELECT USING (true);
--- CREATE POLICY "Admins can manage SDMK" ON sdmk FOR ALL USING (true);
-
--- Sertifikat Policies
--- CREATE POLICY "Anyone can view certificates" ON sertifikat FOR SELECT USING (true);
--- CREATE POLICY "Admins can manage certificates" ON sertifikat FOR ALL USING (true);
-
--- Materi Policies
--- CREATE POLICY "Anyone can view active materials" ON materi FOR SELECT USING (is_active = true);
--- CREATE POLICY "Admins can manage materials" ON materi FOR ALL USING (true);
-
--- Admin Users Policy (hanya super_admin yang bisa kelola)
--- Catatan: Untuk Nhost/Hasura, gunakan current_setting() untuk JWT claims
--- CREATE POLICY "Super admins can manage admin users" ON admin_users FOR ALL USING (
---     EXISTS (
---         SELECT 1 FROM admin_users 
---         WHERE id = current_setting('request.header.x-hasura-user-id', true)::UUID 
---         AND level = 'super_admin'
---     )
--- );
-
--- =====================================================
 -- COMMENTS / Documentation
 -- =====================================================
 COMMENT ON TABLE admin_users IS 'Tabel penyimpanan akun administrator sistem PAMUNGKAS';
@@ -288,9 +267,13 @@ COMMENT ON TABLE materi IS 'Tabel materi pelatihan yang tersedia untuk diakses';
 
 COMMENT ON COLUMN pendaftaran.status IS 'Workflow status: Menunggu, Proses Verifikasi, Perbaikan, Disetujui, Ditolak';
 COMMENT ON COLUMN pendaftaran.nomor_pendaftaran IS 'Format otomatis: REG/YYYYMMDD/XXXXX';
-COMMENT ON COLUMN pendaftaran.foto IS 'URL Google Drive foto peserta (akses publik)';
-COMMENT ON COLUMN pendaftaran.surat_pernyataan IS 'URL Google Drive surat pernyataan yang ditandatangani';
 
 -- =====================================================
--- END OF SCHEMA
+-- SUCCESS MESSAGE
 -- =====================================================
+DO $$
+BEGIN
+    RAISE NOTICE '✅ PAMUNGKAS Schema berhasil di-install/di-update!';
+    RAISE NOTICE '📊 Tabel yang dibuat: admin_users, pengumuman, pendaftaran, sdmk, sertifikat, materi';
+    RAISE NOTICE '🔑 Default login: admin / admin123';
+END $$;
