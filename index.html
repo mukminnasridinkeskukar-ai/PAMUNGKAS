@@ -1376,11 +1376,12 @@
       <!-- ==================== CEK MATERI ==================== -->
       <section class="page-section" id="page-cek-materi">
         <div class="page-header"><h2>Cek Materi Pelatihan</h2><p>Akses materi pelatihan yang tersedia untuk pengembangan kompetensi SDM Kesehatan.</p></div>
-        <div class="cek-search-bar">
-          <div class="search-bar">
+        <div class="toolbar" id="materiToolbar">
+          <div class="search-bar" style="max-width:320px;margin-bottom:0;">
             <i class="fas fa-search"></i>
             <input type="text" id="searchMateriJudul" placeholder="Cari berdasarkan Judul Materi..." oninput="filterCekMateri()" />
           </div>
+          <button class="btn btn-primary" id="btnTambahMateri" style="display:none;" onclick="openMateriForm()"><i class="fas fa-plus"></i> Tambah Materi</button>
         </div>
         <div class="card-box">
           <div class="table-wrap">
@@ -1667,11 +1668,120 @@ var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [
 
 
 /* ========== NULL-SAFE DOM HELPERS ========== */
-function _safeDisplay(id,val){try{var el=document.getElementById(id);if(el)el.style.display=val;}catch(e){console.warn('[DOM] _safeDisplay error:',id,e);}}
-function _safeHTML(id,html){try{var el=document.getElementById(id);if(el)el.innerHTML=html;}catch(e){console.warn('[DOM] _safeHTML error:',id,e);}}
-function _safeText(id,text){try{var el=document.getElementById(id);if(el)el.textContent=text;}catch(e){console.warn('[DOM] _safeText error:',id,e);}}
-function _getEl(id){return document.getElementById(id);}
+/**
+ * Safe DOM helpers - prevent "Cannot read properties of null" errors
+ * All functions return boolean: true if successful, false if element not found
+ */
+function _safeDisplay(id, val) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { console.warn('[DOM] _safeDisplay: #' + id + ' tidak ditemukan'); return false; }
+    el.style.display = val;
+    return true;
+  } catch (e) {
+    console.error('[DOM] _safeDisplay error:', id, e);
+    return false;
+  }
+}
 
+function _safeHTML(id, html) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { console.warn('[DOM] _safeHTML: #' + id + ' tidak ditemukan'); return false; }
+    el.innerHTML = html;
+    return true;
+  } catch (e) {
+    console.error('[DOM] _safeHTML error:', id, e);
+    return false;
+  }
+}
+
+function _safeText(id, text) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { console.warn('[DOM] _safeText: #' + id + ' tidak ditemukan'); return false; }
+    el.textContent = text;
+    return true;
+  } catch (e) {
+    console.error('[DOM] _safeText error:', id, e);
+    return false;
+  }
+}
+
+/**
+ * Safe classList operations
+ */
+function _safeClassList(id, action, className) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { console.warn('[DOM] _safeClassList: #' + id + ' tidak ditemukan'); return false; }
+    switch(action) {
+      case 'add': el.classList.add(className); break;
+      case 'remove': el.classList.remove(className); break;
+      case 'toggle': el.classList.toggle(className); break;
+      case 'contains': return el.classList.contains(className);
+      default: console.warn('[DOM] _safeClassList: action tidak valid:', action); return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[DOM] _safeClassList error:', id, e);
+    return false;
+  }
+}
+
+/**
+ * Safe value get/set
+ */
+function _safeValue(id, newVal) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { 
+      if (newVal !== undefined) console.warn('[DOM] _safeValue: #' + id + ' tidak ditemukan (set)');
+      return newVal !== undefined ? false : '';
+    }
+    if (newVal !== undefined) {
+      el.value = newVal;
+      return true;
+    }
+    return el.value;
+  } catch (e) {
+    console.error('[DOM] _safeValue error:', id, e);
+    return newVal !== undefined ? false : '';
+  }
+}
+
+/**
+ * Safe style property set
+ */
+function _safeStyle(id, prop, val) {
+  try {
+    var el = document.getElementById(id);
+    if (!el) { console.warn('[DOM] _safeStyle: #' + id + ' tidak ditemukan'); return false; }
+    el.style[prop] = val;
+    return true;
+  } catch (e) {
+    console.error('[DOM] _safeStyle error:', id, e);
+    return false;
+  }
+}
+
+/**
+ * Get element safely - returns null with warning if not found
+ */
+function _getEl(id) {
+  var el = document.getElementById(id);
+  if (!el) console.warn('[DOM] _getEl: #' + id + ' tidak ditemukan');
+  return el;
+}
+
+/**
+ * Query selector safe
+function _qs(selector) {
+  var el = document.querySelector(selector);
+  if (!el) console.warn('[DOM] _qs: "' + selector + '" tidak ditemukan');
+  return el;
+}
+ */
 
 
 
@@ -2445,9 +2555,9 @@ if(typeof pageConfig==='undefined' || !pageConfig || typeof window.pageConfig===
   console.warn('[INFO] Using pageConfig fallback - this is normal on first load');
 }
 var c=pageConfig[page]||{title:page,subtitle:''};
-  document.getElementById('topbarTitle').textContent=c.title;
-  document.getElementById('topbarSubtitle').textContent=c.subtitle;
-  closeMobileSidebar();
+_safeText('topbarTitle', c.title);
+_safeText('topbarSubtitle', c.subtitle);
+closeMobileSidebar();
   // Muat data halaman
   switch(page){
     case 'dashboard':loadDashboard();break;
@@ -2459,23 +2569,81 @@ var c=pageConfig[page]||{title:page,subtitle:''};
     case 'cek-pendaftaran':initCekPendaftaran();break;
     case 'panel-admin':updateAdminView();break;
   }
-  // Reset admin crud section
-  document.getElementById('adminCrudSection').style.display='none';
-  if(page==='panel-admin'){document.getElementById('adminContent').style.display=isAdminUser()?'none':'block';document.getElementById('adminDashboard').style.display=isAdminUser()?'block':'none';if(isAdminUser())renderAdminDashboard();}
+  // Reset admin crud section - SAFE with null checks
+  _safeDisplay('adminCrudSection', 'none');
+  if(page === 'panel-admin'){
+    _safeDisplay('adminContent', isAdminUser() ? 'none' : 'block');
+    _safeDisplay('adminDashboard', isAdminUser() ? 'block' : 'none');
+    if(isAdminUser()) renderAdminDashboard();
+  }
 }
 
 /* ========== SIDEBAR ========== */
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('collapsed');}
-function toggleMobileSidebar(){document.getElementById('sidebar').classList.toggle('mobile-open');document.getElementById('sidebarOverlay').classList.toggle('active');}
-function closeMobileSidebar(){document.getElementById('sidebar').classList.remove('mobile-open');document.getElementById('sidebarOverlay').classList.remove('active');}
-document.getElementById('sidebarOverlay').addEventListener('click',closeMobileSidebar);
+function toggleSidebar(){
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.toggle('collapsed');
+  else console.warn('[DOM] toggleSidebar: #sidebar tidak ditemukan');
+}
+function toggleMobileSidebar(){
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (sidebar) sidebar.classList.toggle('mobile-open');
+  else console.warn('[DOM] toggleMobileSidebar: #sidebar tidak ditemukan');
+  if (overlay) overlay.classList.toggle('active');
+  else console.warn('[DOM] toggleMobileSidebar: #sidebarOverlay tidak ditemukan');
+}
+function closeMobileSidebar(){
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (sidebar) sidebar.classList.remove('mobile-open');
+  if (overlay) overlay.classList.remove('active');
+}
+// Safe event listener for sidebar overlay
+(function() {
+  var overlay = document.getElementById('sidebarOverlay');
+  if (overlay) overlay.addEventListener('click', closeMobileSidebar);
+  else console.warn('[DOM] Init: #sidebarOverlay tidak ditemukan untuk event listener');
+})();
 
 /* ========== UTILITAS UI ========== */
-function showLoading(t){var o=document.getElementById('loading-overlay');o.querySelector('.loading-text').textContent=t||'Memuat data...';o.classList.add('active');}
-function hideLoading(){document.getElementById('loading-overlay').classList.remove('active');}
-function showToast(msg,type){type=type||'info';var c=document.getElementById('toastContainer'),d=document.createElement('div');d.className='toast '+type;var ic=type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-circle':'fa-info-circle';d.innerHTML='<i class="fas '+ic+'"></i><span class="toast-text">'+msg+'</span>';c.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transform='translateX(40px)';d.style.transition='all .3s ease';setTimeout(function(){d.remove();},300);},4000);}
-function openModal(id){document.getElementById(id).classList.add('active');}
-function closeModal(id){document.getElementById(id).classList.remove('active');}
+function showLoading(t){
+  var o = document.getElementById('loading-overlay');
+  if (!o) { console.warn('[DOM] showLoading: #loading-overlay tidak ditemukan'); return; }
+  var textEl = o.querySelector('.loading-text');
+  if (textEl) textEl.textContent = t || 'Memuat data...';
+  o.classList.add('active');
+}
+function hideLoading(){
+  var o = document.getElementById('loading-overlay');
+  if (o) o.classList.remove('active');
+  else console.warn('[DOM] hideLoading: #loading-overlay tidak ditemukan');
+}
+function showToast(msg, type){
+  type = type || 'info';
+  var c = document.getElementById('toastContainer');
+  if (!c) { console.warn('[DOM] showToast: #toastContainer tidak ditemukan'); return; }
+  var d = document.createElement('div');
+  d.className = 'toast ' + type;
+  var ic = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+  d.innerHTML = '<i class="fas ' + ic + '"></i><span class="toast-text">' + msg + '</span>';
+  c.appendChild(d);
+  setTimeout(function(){ 
+    d.style.opacity = '0'; 
+    d.style.transform = 'translateX(40px)'; 
+    d.style.transition = 'all .3s ease'; 
+    setTimeout(function(){ if(d.parentNode) d.remove(); }, 300); 
+  }, 4000);
+}
+function openModal(id){
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  else console.warn('[DOM] openModal: #' + id + ' tidak ditemukan');
+}
+function closeModal(id){
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+  else console.warn('[DOM] closeModal: #' + id + ' tidak ditemukan');
+}
 function escHTML(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
 /* ========== STATUS WORKFLOW HELPERS (Global) ========== */
@@ -2512,7 +2680,21 @@ function getStatusColor(status){
   var colors = {'Menunggu':'#6366F1','Proses Verifikasi':'#2563EB','Perbaikan':'#D97706','Disetujui':'#059669','Ditolak':'#DC2626'};
   return colors[status] || '#94A3B8';
 }
-function showAdminButtons(){document.getElementById('btnTambahPengumuman').style.display=canWrite('pengumuman')?'inline-flex':'none';document.getElementById('btnTambahSDMK').style.display=canWrite('sdmk')?'inline-flex':'none';document.getElementById('btnTambahMateri').style.display=canWrite('materi')?'inline-flex':'none';}
+function showAdminButtons(){
+  // ✅ SAFE: Null checks for all admin buttons
+  var btnPengumuman = document.getElementById('btnTambahPengumuman');
+  var btnSDMK = document.getElementById('btnTambahSDMK');
+  var btnMateri = document.getElementById('btnTambahMateri');
+  
+  if (btnPengumuman) btnPengumuman.style.display = canWrite('pengumuman') ? 'inline-flex' : 'none';
+  else console.warn('[DOM] #btnTambahPengumuman tidak ditemukan');
+  
+  if (btnSDMK) btnSDMK.style.display = canWrite('sdmk') ? 'inline-flex' : 'none';
+  else console.warn('[DOM] #btnTambahSDMK tidak ditemukan');
+  
+  if (btnMateri) btnMateri.style.display = canWrite('materi') ? 'inline-flex' : 'none';
+  else console.warn('[DOM] #btnTambahMateri tidak ditemukan');
+}
 
 /* ========== DASHBOARD ========== */
 function loadDashboard(){
@@ -2789,12 +2971,16 @@ function openStatPopup(card){
     
     body.innerHTML=html;
   }
-  document.getElementById('statPopupOverlay').classList.add('active');
+  var statPopup = document.getElementById('statPopupOverlay');
+  if (statPopup) statPopup.classList.add('active');
+  else console.warn('[DOM] openStatPopup: #statPopupOverlay tidak ditemukan');
   document.body.style.overflow='hidden';
 }
 function closeStatPopup(){
-  document.getElementById('statPopupOverlay').classList.remove('active');
-  document.body.style.overflow='';
+  var overlay = document.getElementById('statPopupOverlay');
+  if (overlay) overlay.classList.remove('active');
+  else console.warn('[DOM] closeStatPopup: #statPopupOverlay tidak ditemukan');
+  document.body.style.overflow = '';
 }
 
 /* ========== SHOW ALL DATA IN POPUP (Fallback) ========== */
@@ -3052,10 +3238,14 @@ function renderDashboardTable(rows){
 }
 
 function closeDashLightbox(){
-  const lb=document.getElementById('dashLightbox');
-  lb.classList.remove('active');
-  document.getElementById('dashLightboxImg').src='';
-  document.body.style.overflow='';
+  var lb = document.getElementById('dashLightbox');
+  if (lb) lb.classList.remove('active');
+  else console.warn('[DOM] closeDashLightbox: #dashLightbox tidak ditemukan');
+  
+  var lbImg = document.getElementById('dashLightboxImg');
+  if (lbImg) lbImg.src = '';
+  
+  document.body.style.overflow = '';
 }
 function renderEmptyDashboard(){
   // Call renderIKP with empty array - it will use IKP_DATA fallback automatically
@@ -4156,11 +4346,22 @@ function handleLogin(e){
   });
 }
 function updateAdminUI(){
-  document.getElementById('topbarRight').innerHTML='<button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i><span>'+levelBadgeHTML()+' '+escHTML(adminUsername)+'</span></button>';
+  var topbarRight = document.getElementById('topbarRight');
+  if (topbarRight) {
+    topbarRight.innerHTML = '<button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i><span>' + levelBadgeHTML() + ' ' + escHTML(adminUsername) + '</span></button>';
+  } else {
+    console.warn('[DOM] updateAdminUI: #topbarRight tidak ditemukan');
+  }
 }
 function updateAdminView(){
-  if(isAdminUser()){document.getElementById('adminContent').style.display='none';document.getElementById('adminDashboard').style.display='block';document.getElementById('adminName').textContent=adminUsername+' ('+levelLabel()+')';}
-  else{document.getElementById('adminContent').style.display='block';document.getElementById('adminDashboard').style.display='none';}
+  if (isAdminUser()) {
+    _safeDisplay('adminContent', 'none');
+    _safeDisplay('adminDashboard', 'block');
+    _safeText('adminName', adminUsername + ' (' + levelLabel() + ')');
+  } else {
+    _safeDisplay('adminContent', 'block');
+    _safeDisplay('adminDashboard', 'none');
+  }
 }
 function handleLogout(){
   // Clear all session data
@@ -4210,8 +4411,8 @@ function renderAdminDashboard(){
 
 /* ========== ADMIN: NAVIGATION ========== */
 function closeAdminCrud(){
-  document.getElementById('adminCrudSection').style.display='none';
-  document.getElementById('adminDashboard').style.display='block';
+  _safeDisplay('adminCrudSection', 'none');
+  _safeDisplay('adminDashboard', 'block');
 }
 
 /* ========== ADMIN: KELOLA AKUN ADMIN ========== */
@@ -4283,12 +4484,13 @@ var _crud = {
 /* Open CRUD sub-page for a sheet type */
 function openAdminCrud(type){
   if(!canAccessAdminMenu(type)){showToast('Anda tidak memiliki akses ke menu ini.','error');return;}
-  document.getElementById('adminDashboard').style.display='none';
-  document.getElementById('adminCrudSection').style.display='block';
+  _safeDisplay('adminDashboard', 'none');
+  _safeDisplay('adminCrudSection', 'block');
   var titles={pengumuman:'Kelola Pengumuman',sdmk:'Kelola SDMK',pendaftaran:'Kelola Pendaftaran',sertifikat:'Kelola Sertifikat',materi:'Kelola Materi',admin:'Kelola Akun Admin'};
   var writable=canWrite(type);
   var readOnly=!writable;
   var c=document.getElementById('adminCrudContent');
+  if (!c) { console.warn('[DOM] openAdminCrud: #adminCrudContent tidak ditemukan'); return; }
   var infoBar=readOnly?'<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>'+levelLabel()+'</strong> \u2014 mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>':'';
   // Add Import button ONLY for admin users who are logged in
   const isAdminLoggedIn = isAdminUser() && canWrite(type);
@@ -5367,15 +5569,47 @@ function submitPerbaikan(){
 
 
 /* ========== MODAL OVERLAY CLICK & ESC ========== */
-document.querySelectorAll('.modal-overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('active');});});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-overlay.active').forEach(function(m){m.classList.remove('active');});closeDashLightbox();closeSDMKLightbox();closeCekRegLightbox();}});
-document.getElementById('dashLightbox').addEventListener('click',function(e){if(e.target===this)closeDashLightbox();});
-document.getElementById('sdmkLightbox').addEventListener('click',function(e){if(e.target===this)closeSDMKLightbox();});
+// Safe modal overlay event listeners
+(function() {
+  var overlays = document.querySelectorAll('.modal-overlay');
+  if (overlays.length > 0) {
+    overlays.forEach(function(o){ 
+      o.addEventListener('click', function(e){ 
+        if (e.target === o) o.classList.remove('active'); 
+      }); 
+    });
+  } else {
+    console.warn('[DOM] Init: Tidak ada .modal-overlay yang ditemukan');
+  }
+})();
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(function(m){ m.classList.remove('active'); });
+    closeDashLightbox();
+    closeSDMKLightbox();
+    if (typeof closeCekRegLightbox === 'function') closeCekRegLightbox();
+  }
+});
+
+// Safe lightbox event listeners
+(function() {
+  var dashLightbox = document.getElementById('dashLightbox');
+  if (dashLightbox) dashLightbox.addEventListener('click', function(e){ if (e.target === this) closeDashLightbox(); });
+  
+  var sdmkLightbox = document.getElementById('sdmkLightbox');
+  if (sdmkLightbox) sdmkLightbox.addEventListener('click', function(e){ if (e.target === this) closeSDMKLightbox(); });
+})();
+
 function closeSDMKLightbox(){
-  var lb=document.getElementById('sdmkLightbox');
-  lb.classList.remove('active');
-  document.getElementById('sdmkLightboxImg').src='';
-  document.body.style.overflow='';
+  var lb = document.getElementById('sdmkLightbox');
+  if (lb) lb.classList.remove('active');
+  else console.warn('[DOM] closeSDMKLightbox: #sdmkLightbox tidak ditemukan');
+  
+  var lbImg = document.getElementById('sdmkLightboxImg');
+  if (lbImg) lbImg.src = '';
+  
+  document.body.style.overflow = '';
 }
 
 
