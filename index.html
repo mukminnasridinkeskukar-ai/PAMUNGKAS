@@ -1656,7 +1656,7 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-// === PAMUNGKAS NHOST v3.0 - COMPLETE FIX ===
+// === PAMUNGKAS NHOST v4.0 - FINAL PRODUCTION ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -2190,28 +2190,81 @@ function callServer(action, data) {
 
         // VALIDATE ADMIN LOGIN - Query multiusers table from Nhost
         case 'validateAdminLogin':
-          result = await graphqlRequest('GetMultiusers', GRAPHQL_QUERIES.getMultiusers);
-          const users = result.multiusers || [];
-          const adminUser = users.find(u => 
-            u.username === data.username && 
-            u.password === data.password && 
-            u.status === 'active'
-          );
-          if (adminUser) {
-            // Store auth info (NOT in localStorage for sensitive data)
-            sessionStorage.setItem('nhost_admin_level', adminUser.level);
-            sessionStorage.setItem('nhost_admin_username', adminUser.username);
-            resolve({ 
-              success: true, 
-              username: adminUser.username, 
-              level: adminUser.level,
-              message: 'Login berhasil'
-            });
-          } else {
-            resolve({ 
-              success: false, 
-              message: 'Username atau password salah, atau akun tidak aktif.' 
-            });
+          try {
+            console.log('[Auth] Attempting login for user:', data.username);
+            
+            result = await graphqlRequest('GetMultiusers', GRAPHQL_QUERIES.getMultiusers);
+            const users = result.multiusers || [];
+            
+            console.log('[Auth] Found', users.length, 'users in database');
+            console.log('[Auth] Users:', users.map(u => ({username: u.username, level: u.level, status: u.status})));
+            
+            // Try multiple matching strategies
+            let adminUser = null;
+            
+            // Strategy 1: Exact match (case-sensitive)
+            adminUser = users.find(u => 
+              u.username === data.username && 
+              u.password === data.password && 
+              u.status === 'active'
+            );
+            
+            // Strategy 2: Case-insensitive username
+            if (!adminUser) {
+              adminUser = users.find(u => 
+                u.username.toLowerCase() === data.username.toLowerCase() && 
+                u.password === data.password && 
+                u.status === 'active'
+              );
+              if (adminUser) console.log('[Auth] Matched with case-insensitive username');
+            }
+            
+            // Strategy 3: Trimmed values
+            if (!adminUser) {
+              adminUser = users.find(u => 
+                u.username.trim() === data.username.trim() && 
+                u.password.trim() === data.password.trim() && 
+                u.status === 'active'
+              );
+              if (adminUser) console.log('[Auth] Matched with trimmed values');
+            }
+            
+            if (adminUser) {
+              console.log('[Auth] Login SUCCESS for:', adminUser.username, 'Level:', adminUser.level);
+              
+              // Store auth info in sessionStorage
+              sessionStorage.setItem('pamungkas_admin_level', adminUser.level);
+              sessionStorage.setItem('pamungkas_admin_user', adminUser.username);
+              
+              resolve({ 
+                success: true, 
+                username: adminUser.username, 
+                level: adminUser.level,
+                message: 'Login berhasil'
+              });
+            } else {
+              console.warn('[Auth] Login FAILED for:', data.username);
+              console.warn('[Auth] Possible reasons:');
+              console.warn('  - Username not found in DB');
+              console.warn('  - Password mismatch');
+              console.warn('  - Account not active (status != active)');
+              
+              // Provide more specific error message
+              const userExists = users.some(u => u.username.toLowerCase() === data.username.toLowerCase());
+              if (!userExists) {
+                resolve({ success: false, message: 'Username tidak ditemukan di database.' });
+              } else {
+                const userInactive = users.find(u => u.username.toLowerCase() === data.username.toLowerCase());
+                if (userInactive && userInactive.status !== 'active') {
+                  resolve({ success: false, message: 'Akun tidak aktif. Hubungi administrator.' });
+                } else {
+                  resolve({ success: false, message: 'Password salah. Silakan coba lagi.' });
+                }
+              }
+            }
+          } catch (loginError) {
+            console.error('[Auth] Login error:', loginError);
+            reject(loginError);
           }
           break;
 
@@ -2397,15 +2450,43 @@ function showAdminButtons(){document.getElementById('btnTambahPengumuman').style
 
 /* ========== DASHBOARD ========== */
 function loadDashboard(){
+  console.log('[Dashboard] Loading dashboard data...');
   showLoading('Memuat data dashboard...');
+  
   callServer('getDashboardData').then(function(res){
     hideLoading();
-    if(!res||!res.success){showToast(res?res.message:'Data tidak tersedia. Pastikan Spreadsheet terhubung.','error');renderEmptyDashboard();return;}
+    
+    console.log('[Dashboard] Response:', res ? (res.success ? 'SUCCESS' : 'FAILED') : 'NULL');
+    
+    if(!res||!res.success){
+      console.error('[Dashboard] Error:', res ? res.message : 'No response');
+      showToast(res?res.message:'Data tidak tersedia. Pastikan koneksi database.','error');
+      renderEmptyDashboard();
+      return;
+    }
+    
     var data=res.data;
+    console.log('[Dashboard] Data received:', {
+      indikator: (data.indikator||[]).length,
+      summary: data.summary,
+      pendaftaran: (data.allPendaftaran||[]).length,
+      sdmk: (data.allSdmk||[]).length,
+      recent: (data.recentRegistrations||[]).length
+    });
+    
     renderIKP(data.indikator||[]);
     renderStatCards(data.summary||{});
-    _dashAllPendaftaran=data.allPendaftaran||[];_dashAllSdmk=data.allSdmk||[];renderDashboardTable(data.recentRegistrations||[]);
-  }).catch(function(e){hideLoading();showToast('Gagal memuat data: '+(e.message||e),'error');renderEmptyDashboard();});
+    _dashAllPendaftaran=data.allPendaftaran||[];
+    _dashAllSdmk=data.allSdmk||[];
+    renderDashboardTable(data.recentRegistrations||[]);
+    
+    console.log('[Dashboard] Dashboard loaded successfully');
+  }).catch(function(e){
+    hideLoading();
+    console.error('[Dashboard] Load error:', e);
+    showToast('Gagal memuat data: '+(e.message||e),'error');
+    renderEmptyDashboard();
+  });
 }
 /* ========== INDIKATOR KINERJA PROGRAM ========== */
 /*
@@ -2728,6 +2809,10 @@ function openIKPPopup(label, value, target, unit, source, desc){
 
 function renderStatCards(s){
   var g=document.getElementById('statsGrid');
+  
+  // Safety: return if element not found
+  if(!g){console.error('[Dashboard] #statsGrid not found!');return;}
+  
   var cards=[
     {icon:'fa-user-md',label:'Total SDMK',value:s.totalSDMK||0,hint:'Tenaga kesehatan terlatih',color:'var(--primary)',src:'sdmk'},
     {icon:'fa-clipboard-list',label:'Total Pendaftar',value:s.totalPendaftar||0,hint:'Pendaftaran pelatihan',color:'var(--secondary)',src:'pendaftaran'},
@@ -2743,10 +2828,12 @@ function renderStatCards(s){
     {icon:'fa-mars',label:'Laki-laki',value:s.laki||0,hint:'Jenis kelamin laki-laki',color:'#0EA5E9',src:'pendaftaran',filterCol:'Jenis Kelamin',filterVal:'laki'},
     {icon:'fa-venus',label:'Perempuan',value:s.perempuan||0,hint:'Jenis kelamin perempuan',color:'#EC4899',src:'pendaftaran',filterCol:'Jenis Kelamin',filterVal:'perempuan'}
   ];
+  
   g.innerHTML='';
   g.style.display='grid';
   g.style.gridTemplateColumns='repeat(auto-fill,minmax(180px,1fr))';
   g.style.gap='14px';
+  
   cards.forEach(function(c){
     var d=document.createElement('div');d.className='stat-card';
     d.style.borderTop='3px solid '+(c.color||'var(--primary)');
@@ -2754,12 +2841,28 @@ function renderStatCards(s){
     d.addEventListener('click',function(){openStatPopup(c);});
     g.appendChild(d);
   });
+  
+  console.log('[Dashboard] StatCards rendered:', cards.length, 'cards');
 }
 function renderDashboardTable(rows){
-  const tb=document.getElementById('dashboardTableBody'),em=document.getElementById('dashboardTableEmpty'),st=document.getElementById('tableSubtitle');
+  const tb=document.getElementById('dashboardTableBody'),
+        em=document.getElementById('dashboardTableEmpty'),
+        st=document.getElementById('tableSubtitle');
+  
+  // Safety checks
+  if(!tb){console.error('[Dashboard] #dashboardTableBody not found');return;}
+  
   tb.innerHTML='';
-  if(!rows||!rows.length){em.style.display='block';st.textContent='Tidak ada data';return;}
-  em.style.display='none';st.textContent=rows.length+' data terakhir dari Google Sheet';
+  
+  if(!rows||!rows.length){
+    if(em)em.style.display='block';
+    if(st)st.textContent='Tidak ada data pendaftaran';
+    console.log('[Dashboard] No registration data to show');
+    return;
+  }
+  
+  if(em)em.style.display='none';
+  if(st)st.textContent=rows.length+' data pendaftaran terakhir';
 
   const _driveThumb=function(url){if(!url||typeof url!=='string')return null;url=url.trim();if(/\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/i.test(url))return url;let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';return null;};
   const _driveFull=function(url){if(!url)return'';let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800';m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800';return url;};
@@ -2833,9 +2936,14 @@ function closeDashLightbox(){
 function renderEmptyDashboard(){
   renderIKP();
 
-  var g=document.getElementById('statsGrid'),cards=[{icon:'fa-user-md',label:'Total SDMK Terlatih'},{icon:'fa-clipboard-list',label:'Total Pendaftar'},{icon:'fa-certificate',label:'Sertifikat Terbit'},{icon:'fa-bullhorn',label:'Pengumuman Aktif'}];
+  var g=document.getElementById('statsGrid');
+  if(!g){console.error('[Dashboard] #statsGrid not found in renderEmptyDashboard');return;}
+  
+  var cards=[{icon:'fa-user-md',label:'Total SDMK Terlatih'},{icon:'fa-clipboard-list',label:'Total Pendaftar'},{icon:'fa-certificate',label:'Sertifikat Terbit'},{icon:'fa-bullhorn',label:'Pengumuman Aktif'}];
   g.innerHTML='';
   cards.forEach(function(c){var d=document.createElement('div');d.className='stat-card';d.style.cursor='default';d.innerHTML='<div class="stat-card-top"><div class="stat-card-icon"><i class="fas '+c.icon+'"></i></div></div><div class="stat-card-value">-</div><div class="stat-card-label">'+c.label+'</div><div class="stat-card-hint"><i class="fas fa-exclamation-triangle" style="color:var(--accent);"></i> Data tidak tersedia</div>';g.appendChild(d);});
+  
+  console.log('[Dashboard] Empty dashboard rendered (fallback mode)');
 }
 
 
@@ -2889,14 +2997,30 @@ function loadPengumuman(){
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
 }
 function renderPengumuman(data){
-  var g=document.getElementById('pengumumanGrid'),em=document.getElementById('pengumumanEmpty');
+  // NULL-SAFE: Check elements exist before accessing
+  var g=document.getElementById('pengumumanGrid');
+  var em=document.getElementById('pengumumanEmpty');
+  
+  if(!g){console.error('[Pengumuman] #pengumumanGrid not found!');return;}
+  
   g.innerHTML='';
-  if(!data.length){em.style.display='block';return;}em.style.display='none';
+  
+  // Handle empty data safely
+  if(!data||!data.length){
+    if(em)em.style.display='block';
+    else console.warn('[Pengumuman] #pengumumanEmpty not found');
+    return;
+  }
+  
+  if(em)em.style.display='none';
+  
   data.forEach(function(r,i){
     var d=document.createElement('div');d.className='ann-card';d.setAttribute('data-index',i);
     d.innerHTML='<div class="ann-card-header"><h4>'+escHTML(r.Judul||'-')+'</h4><span class="status-badge '+statusClass(r.Status)+'">'+escHTML(r.Status||'-')+'</span></div><div class="ann-card-body">'+escHTML(r.Isi||'-')+'</div><div class="ann-card-meta"><span><i class="fas fa-calendar-alt"></i> '+(r.Tanggal||'-')+'</span><span><i class="fas fa-hashtag"></i> '+(r.ID||'-')+'</span></div><div class="ann-card-actions"><button class="btn btn-sm btn-primary" onclick="openDetailModal(\'Detail Pengumuman\',_allPengumuman['+i+'])"><i class="fas fa-eye"></i> Detail</button>'+(canWrite('pengumuman')?'<button class="btn btn-sm btn-warning" onclick="editPengumuman('+i+')"><i class="fas fa-edit"></i> Edit</button><button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Pengumuman\','+i+')"><i class="fas fa-trash"></i> Hapus</button>':'')+'</div>';
     g.appendChild(d);
   });
+  
+  console.log('[Pengumuman] Rendered', data.length, 'items');
 }
 function filterPengumuman(){var q=document.getElementById('searchPengumuman').value.toLowerCase();var f=_allPengumuman.filter(function(r){return(r.Judul||'').toLowerCase().indexOf(q)!==-1||(r.Isi||'').toLowerCase().indexOf(q)!==-1;});renderPengumuman(f);}
 function openPengumumanForm(idx){document.getElementById('pengumumanEditIndex').value=idx!==undefined?idx:-1;document.getElementById('pengumumanFormTitle').textContent=idx!==undefined?'Edit Pengumuman':'Tambah Pengumuman';if(idx!==undefined){var r=_allPengumuman[idx];document.getElementById('annJudul').value=r.Judul||'';document.getElementById('annIsi').value=r.Isi||'';document.getElementById('annTanggal').value=r.Tanggal||'';document.getElementById('annStatus').value=r.Status||'Aktif';}else{document.getElementById('pengumumanForm').reset();document.getElementById('annTanggal').value=new Date().toISOString().split('T')[0];}openModal('pengumumanFormModal');}
