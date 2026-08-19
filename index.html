@@ -1656,6 +1656,21 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
+
+// ========== DEBUG ERROR CATCHER ==========
+window.__DEBUG_ERRORS = [];
+window.onerror = function(msg, url, line, col, error) {
+  window.__DEBUG_ERRORS.push({message: msg, line: line, column: col, error: error});
+  console.error("DEBUG ERROR:", msg, "at line", line);
+  document.body.insertAdjacentHTML("beforeend", 
+    '<div style="position:fixed;top:0;left:0;right:0;background:#dc3545;color:white;padding:10px;z-index:99999;font-family:monospace;font-size:12px;">'
+    + '<strong>JS ERROR:</strong> ' + msg + ' at line ' + line 
+    + '<button onclick="this.parentElement.remove()" style="float:right;background:#fff;color:red;border:none;padding:2px 8px;cursor:pointer;">✕</button></div>'
+  );
+  return false;
+};
+console.log("Debug mode enabled - watching for errors...");
+
 /* ========== STATE ========== */
 var adminLevel = '';
 var adminUsername = '';
