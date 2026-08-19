@@ -1656,7 +1656,7 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-// === PAMUNGKAS NHOST v2.0 - FIXED pageConfig issue ===
+// === PAMUNGKAS NHOST v2.1 - SUPER FIXED ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -1666,7 +1666,9 @@ var _dataCache = {}; // cache data per sheet
 var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [], _allMateri = [], _allAdmin = [];
 
 
-/* ========== PAGE CONFIGURATION (MOVED TO TOP FOR SAFETY) ========== */
+
+/* ========== PAGE CONFIG - SUPER FORCED ========== */
+// Method 1: Direct assignment
 var pageConfig = {
   'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
   'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
@@ -1677,7 +1679,13 @@ var pageConfig = {
   'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
   'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
 };
-console.log("✓ pageConfig defined at TOP level");
+
+// Method 2: Also attach to window object for extra safety
+window.pageConfig = pageConfig;
+
+// Method 3: Log confirmation
+console.log("[SUPER] pageConfig defined via var + window:", Object.keys(pageConfig).length, "pages");
+
 
 
 /* ========== SISTEM LEVEL ADMIN ==========
@@ -2266,15 +2274,17 @@ function navigateTo(page){
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');if(i.getAttribute('data-page')===page)i.classList.add('active');});
   document.querySelectorAll('.page-section').forEach(function(s){s.classList.remove('active');});
   var t=document.getElementById('page-'+page);if(t)t.classList.add('active');
-  // Safety: if pageConfig not defined for some reason, define it here
-if(typeof pageConfig==='undefined'){
-  var pageConfig={
+  // Safety: Triple-check pageConfig availability
+if(typeof pageConfig==='undefined' || !pageConfig || typeof window.pageConfig==='undefined'){
+  // Emergency fallback - should NEVER reach here with super fix
+  var pageConfig=window.pageConfig||{
     'dashboard':{title:'Dashboard',subtitle:''},'pengumuman':{title:'Pengumuman',subtitle:''},
     'profil-sdmk':{title:'Profil SDMK',subtitle:''},'pendaftaran':{title:'Pendaftaran',subtitle:''},
     'cek-sertifikat':{title:'Cek Sertifikat',subtitle:''},'cek-materi':{title:'Cek Materi',subtitle:''},
     'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:''},'panel-admin':{title:'Panel Admin',subtitle:''}
   };
-  console.warn("pageConfig was undefined - used fallback");
+  if(!window.pageConfig) window.pageConfig = pageConfig;
+  console.error("EMERGENCY: pageConfig fallback used - investigate why!");
 }
 var c=pageConfig[page]||{title:page,subtitle:''};
   document.getElementById('topbarTitle').textContent=c.title;
