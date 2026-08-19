@@ -601,6 +601,44 @@
     .admin-info-bar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--bg-body);border-radius:var(--radius-sm);margin-bottom:20px;font-size:.85rem;color:var(--text-secondary)}
     .admin-info-bar .level-badge{font-size:.75rem}
   
+  /* ===== ADMIN DASHBOARD: STATISTICS GRID ===== */
+  .admin-stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:28px;}
+  .admin-stat-card{display:flex;align-items:center;gap:16px;padding:20px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);cursor:pointer;transition:all .25s ease;}
+  .admin-stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--primary);}
+  .admin-stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+  .admin-stat-info{display:flex;flex-direction:column;gap:4px;flex:1;}
+  .admin-stat-count{font-size:1.75rem;font-weight:800;color:var(--text-primary);line-height:1;}
+  .admin-stat-label{font-size:.8rem;color:var(--text-secondary);font-weight:500;}
+  .admin-stat-arrow{font-size:.8rem;opacity:.5;transition:all .2s ease;}
+  .admin-stat-card:hover .admin-stat-arrow{opacity:1;transform:translateX(3px);}
+  .admin-stats-loading,.admin-stats-error{text-align:center;padding:40px 20px;color:var(--text-muted);grid-column:1 / -1;}
+  .admin-stats-loading i{font-size:2rem;margin-bottom:10px;animation:spin 1s linear infinite;}
+  .admin-stats-error i{font-size:2rem;margin-bottom:10px;color:var(--danger);}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  
+  /* ===== ADMIN DASHBOARD: CATEGORY LAYOUT ===== */
+  .admin-category{margin-bottom:24px;}
+  .admin-category-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border-color);font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+  .admin-category-header i{font-size:1rem;}
+  .admin-category-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px;}
+  
+  /* ===== ADMIN DASHBOARD: ENHANCED MENU CARD ===== */
+  .admin-menu-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden;}
+  .admin-menu-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg, var(--primary), var(--secondary));opacity:0;transition:opacity .25s ease;}
+  .admin-menu-card:hover::before{opacity:1;}
+  .admin-menu-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);border-color:var(--primary);}
+  .admin-menu-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--primary);font-size:1.2rem;transition:all .25s ease;}
+  .admin-menu-card:hover .admin-menu-card-icon{background:var(--primary);color:#fff;}
+  .admin-menu-card-content{width:100%;}
+  .admin-menu-card h4{font-size:.95rem;font-weight:700;margin-bottom:4px;line-height:1.3;}
+  .admin-menu-card p{font-size:.78rem;color:var(--text-secondary);line-height:1.4;margin-bottom:8px;}
+  
+  /* Badges */
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600;}
+  .badge-success{background:var(--secondary-light);color:var(--secondary-dark);}
+  .badge-secondary{background:var(--bg-body);color:var(--text-muted);border:1px solid var(--border-color);}
+  .badge-warning{background:var(--accent-light);color:var(--accent-dark);}
+  
 /* ===== ADMIN CRUD: ADVANCED DATA TABLE ===== */
 .crud-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(13,110,253,.1);border-radius:var(--radius-md);}
 .crud-toolbar .crud-search{position:relative;flex:1;min-width:200px;}
@@ -1421,6 +1459,11 @@
         <div id="adminDashboard" style="display:none;">
           <div class="page-header"><h2>Panel Admin</h2><p>Selamat datang, <strong id="adminName">Admin</strong>.</p></div>
           <div id="adminInfoBar"></div>
+          
+          <!-- Real Statistics from Nhost -->
+          <div id="adminStatsGrid" class="admin-stats-grid"></div>
+          
+          <!-- Menu Grid organized by category -->
           <div class="admin-grid" id="adminMenuGrid"></div>
         </div>
         <!-- Sub-halaman CRUD Admin -->
@@ -1560,6 +1603,56 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('materiFormModal')">Batal</button>
       <button class="btn btn-primary" onclick="document.getElementById('materiForm').dispatchEvent(new Event('submit',{cancelable:true}))"><i class="fas fa-save"></i> Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: FORM INDIKATOR ==================== -->
+<div class="modal-overlay" id="indikatorFormModal">
+  <div class="modal-box modal-md">
+    <div class="modal-header"><h3 id="indikatorFormTitle">Tambah Indikator Baru</h3><button class="modal-close" onclick="closeModal('indikatorFormModal')">&times;</button></div>
+    <div class="modal-body">
+      <form id="indikatorForm" onsubmit="submitIndikatorForm(event)">
+        <input type="hidden" id="indikatorEditIndex" value="-1" />
+        
+        <div class="form-group">
+          <label>Nama Indikator *</label>
+          <input type="text" id="indikatorNama" required placeholder="Contoh: Jumlah SDMK Dinas Kesehatan" />
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nilai Capaian</label>
+            <input type="number" id="indikatorNilai" step="0.01" placeholder="0.00" />
+          </div>
+          
+          <div class="form-group">
+            <label>Target</label>
+            <input type="number" id="indikatorTarget" step="0.01" placeholder="100" />
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Satuan</label>
+            <select id="indikatorSatuan">
+              <option value="Orang">Orang</option>
+              <option value="Persen">Persen</option>
+              <option value="Unit">Unit</option>
+              <option value="Kegiatan">Kegiatan</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Periode</label>
+            <input type="text" id="indikatorPeriode" placeholder="Contoh: 2024, Triwulan I, dll." />
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('indikatorFormModal')">Batal</button>
+      <button class="btn btn-primary" onclick="document.getElementById('indikatorForm').dispatchEvent(new Event('submit',{cancelable:true}))"><i class="fas fa-save"></i> Simpan</button>
     </div>
   </div>
 </div>
@@ -1990,6 +2083,11 @@ const GRAPHQL_QUERIES = {
   updateMultiuser: `mutation UpdateMultiuser($id: uuid!, $object: multiusers_set_input!) { update_multiusers_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
   deleteMultiuser: `mutation DeleteMultiuser($id: uuid!) { delete_multiusers_by_pk(id: $id) { id } }`,
   
+  // === INDIKATOR MUTATIONS (Previously Missing!) ===
+  insertIndikator: `mutation InsertIndikator($object: indikator_insert_input!) { insert_indikator_one(object: $object) { id indikator nilai target satuan } }`,
+  updateIndikator: `mutation UpdateIndikator($id: uuid!, $object: indikator_set_input!) { update_indikator_by_pk(pk_columns: {id: $id}, _set: object) { id indikator nilai target satuan } }`,
+  deleteIndikator: `mutation DeleteIndikator($id: uuid!) { delete_indikator_by_pk(id: $id) { id } }`,
+  
   // Special query for authentication (returns password field)
   getAllUsersForAuth: `
     query GetAllUsersForAuth {
@@ -2142,6 +2240,46 @@ function callServer(action, data) {
         case 'getIndikator':
           result = await graphqlRequest('GetIndikator', GRAPHQL_QUERIES.getIndikator);
           resolve({ success: true, data: result.indikator || [] });
+          break;
+
+        // === INDIKATOR CRUD (Previously Missing!) ===
+        case 'tambahIndikator':
+          console.log('[ADMIN] CREATE Indikator:', data);
+          await graphqlRequest('InsertIndikator', GRAPHQL_QUERIES.insertIndikator, {
+            object: { 
+              indikator: data.indikator || data.Indikator, 
+              nilai: data.nilai !== undefined ? parseFloat(data.nilai) : null,
+              target: data.target !== undefined ? parseFloat(data.target) : null,
+              satuan: data.satuan || data.Satuan || 'Orang',
+              periode: data.periode || data.Periode || null
+            }
+          });
+          resolve({ success: true, message: 'Indikator berhasil ditambahkan' });
+          break;
+
+        case 'updateIndikator':
+          console.log('[ADMIN] UPDATE Indikator:', data);
+          const indikatorId = data.id || _allIndikator?.[data.idx]?.id;
+          if (!indikatorId) { reject(new Error('ID Indikator tidak ditemukan')); return; }
+          await graphqlRequest('UpdateIndikator', GRAPHQL_QUERIES.updateIndikator, {
+            id: indikatorId,
+            object: { 
+              indikator: data.indikator, 
+              nilai: data.nilai !== undefined ? parseFloat(data.nilai) : null,
+              target: data.target !== undefined ? parseFloat(data.target) : null,
+              satuan: data.satuan, 
+              periode: data.periode 
+            }
+          });
+          resolve({ success: true, message: 'Indikator berhasil diperbarui' });
+          break;
+
+        case 'deleteIndikator':
+          console.log('[ADMIN] DELETE Indikator:', data);
+          const delIndikatorId = data.id || _allIndikator?.[data.idx]?.id;
+          if (!delIndikatorId) { reject(new Error('ID Indikator tidak ditemukan')); return; }
+          await graphqlRequest('DeleteIndikator', GRAPHQL_QUERIES.deleteIndikator, { id: delIndikatorId });
+          resolve({ success: true, message: 'Indikator berhasil dihapus' });
           break;
 
         // CREATE OPERATIONS
@@ -4384,29 +4522,606 @@ function handleLogout(){
 }
 
 /* ========== ADMIN: DASHBOARD MENU ========== */
-function renderAdminDashboard(){
-  var bar=document.getElementById('adminInfoBar');
-  bar.innerHTML='<div class="admin-info-bar"><i class="fas '+levelIcon()+'" style="font-size:1.2rem;color:var(--primary);"></i><div><strong>'+escHTML(adminUsername)+'</strong> \u2014 '+levelBadgeHTML()+'<br><span style="font-size:.78rem;">'+(adminLevel==='super_admin'?'Akses penuh ke semua data, import/export, dan kelola akun admin.':adminLevel==='operator'?'Dapat mengelola Pendaftaran, Sertifikat, dan Materi. Menu lainnya hanya dapat dilihat.':'Hanya dapat melihat semua data. Tidak ada akses untuk menambah, mengedit, atau menghapus.')+'</span></div></div>';
 
-  var grid=document.getElementById('adminMenuGrid');
-  var cards=[
-    {id:'pengumuman',icon:'fa-bullhorn',title:'Kelola Pengumuman',desc:'CRUD data pengumuman',write:canWrite('pengumuman'),access:canAccessAdminMenu('pengumuman')},
-    {id:'sdmk',icon:'fa-user-md',title:'Kelola SDMK',desc:'CRUD data SDMK terlatih + Import/Export',write:canWrite('sdmk'),access:canAccessAdminMenu('sdmk')},
-    {id:'pendaftaran',icon:'fa-clipboard-list',title:'Kelola Pendaftaran',desc:'CRUD data pendaftaran + Import/Export',write:canWrite('pendaftaran'),access:canAccessAdminMenu('pendaftaran')},
-    {id:'sertifikat',icon:'fa-certificate',title:'Kelola Sertifikat',desc:'CRUD data sertifikat',write:canWrite('sertifikat'),access:canAccessAdminMenu('sertifikat')},
-    {id:'materi',icon:'fa-book-open',title:'Kelola Materi',desc:'CRUD data materi pelatihan',write:canWrite('materi'),access:canAccessAdminMenu('materi')},
-    {id:'admin',icon:'fa-users-cog',title:'Kelola Admin',desc:'Tambah/edit/hapus akun admin',write:canWrite('admin'),access:adminLevel==='super_admin'}
+/**
+ * ADMIN_TABLES Configuration - Complete mapping of all Nhost tables
+ * This is the single source of truth for Panel Admin menu structure
+ */
+const ADMIN_TABLES = {
+  // DATA UTAMA (Main Data)
+  indikator: {
+    id: 'indikator',
+    label: 'Indikator',
+    table: 'indikator',
+    icon: 'fa-chart-line',
+    description: 'Kelola indikator kinerja program SDM Kesehatan',
+    category: 'data-utama',
+    fields: ['id', 'indikator', 'nilai', 'target', 'satuan', 'periode'],
+    displayFields: ['indikator', 'nilai', 'target', 'satuan'],
+    canWrite: true,
+    queryAction: 'getIndikator',
+    createAction: 'tambahIndikator',
+    updateAction: 'updateIndikator',
+    deleteAction: 'deleteIndikator'
+  },
+  
+  sdmk: {
+    id: 'sdmk',
+    label: 'SDMK',
+    table: 'sdmk',
+    icon: 'fa-user-md',
+    description: 'Data tenaga kesehatan terlatih',
+    category: 'data-utama',
+    fields: ['id', 'foto', 'nama', 'nik', 'profesi', 'unit_kerja', 'nomor_sertifikat', 'judul_kegiatan', 'tanggal_pelaksanaan', 'tahun', 'tempat_pelaksanaan'],
+    displayFields: ['nama', 'nik', 'profesi', 'unit_kerja', 'judul_kegiatan'],
+    canWrite: true,
+    queryAction: 'getSDMK',
+    createAction: 'tambahSDMK',
+    updateAction: 'updateSDMK',
+    deleteAction: 'deleteSDMK'
+  },
+  
+  pendaftaran: {
+    id: 'pendaftaran',
+    label: 'Pendaftaran',
+    table: 'pendaftaran',
+    icon: 'fa-clipboard-list',
+    description: 'Data pendaftaran pelatihan',
+    category: 'data-utama',
+    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_profesi', 'email_plataran_sehat', 'judul_kegiatan', 'status'],
+    displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_profesi', 'status'],
+    canWrite: true,
+    queryAction: 'getPendaftaran',
+    createAction: 'tambahPendaftaran',
+    updateAction: 'updatePendaftaran',
+    deleteAction: 'deletePendaftaran'
+  },
+  
+  materi: {
+    id: 'materi',
+    label: 'Materi',
+    table: 'materi',
+    icon: 'fa-book-open',
+    description: 'Materi dan bahan pelatihan',
+    category: 'data-utama',
+    fields: ['id', 'judul_materi', 'kategori', 'link_download', 'deskripsi', 'created_at'],
+    displayFields: ['judul_materi', 'kategori', 'deskripsi'],
+    canWrite: true,
+    queryAction: 'getMateri',
+    createAction: 'tambahMateri',
+    updateAction: 'updateMateri',
+    deleteAction: 'deleteMateri'
+  },
+  
+  // INFORMASI (Information)
+  pengumuman: {
+    id: 'pengumuman',
+    label: 'Pengumuman',
+    table: 'pengumuman',
+    icon: 'fa-bullhorn',
+    description: 'Informasi dan pengumuman resmi',
+    category: 'informasi',
+    fields: ['id', 'judul', 'isi_pengumuman', 'tanggal', 'status', 'created_at'],
+    displayFields: ['judul', 'tanggal', 'status'],
+    canWrite: true,
+    queryAction: 'getPengumuman',
+    createAction: 'tambahPengumuman',
+    updateAction: 'updatePengumuman',
+    deleteAction: 'deletePengumuman'
+  },
+  
+  sertifikat: {
+    id: 'sertifikat',
+    label: 'Sertifikat',
+    table: 'sertifikat',
+    icon: 'fa-certificate',
+    description: 'Data sertifikat pelatihan',
+    category: 'informasi',
+    fields: ['id', 'nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit', 'link_sertifikat'],
+    displayFields: ['nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit'],
+    canWrite: true,
+    queryAction: 'getSertifikat',
+    createAction: 'tambahSertifikat',
+    updateAction: 'updateSertifikat',
+    deleteAction: 'deleteSertifikat'
+  },
+  
+  // SISTEM (System)
+  multiusers: {
+    id: 'multiusers',
+    label: 'Multiusers',
+    table: 'multiusers',
+    icon: 'fa-users-cog',
+    description: 'Manajemen pengguna dan akun admin',
+    category: 'sistem',
+    fields: ['id', 'username', 'level', 'status', 'created_at'],
+    displayFields: ['username', 'level', 'status'],
+    canWrite: true, // Only super_admin should write
+    queryAction: 'getAdmin', // Uses getAdmin which maps to getMultiusers
+    createAction: 'tambahMultiuser',
+    updateAction: 'updateMultiuser',
+    deleteAction: 'deleteMultiuser',
+    requireSuperAdmin: true
+  }
+};
+
+// Store for Indikator data (global)
+var _allIndikator = [];
+
+/**
+ * Load real statistics from Nhost for Admin Dashboard
+ */
+function loadAdminStats() {
+  console.log('[ADMIN] Loading dashboard statistics from Nhost...');
+  
+  var statsContainer = document.getElementById('adminStatsGrid');
+  if (!statsContainer) {
+    console.warn('[DOM] loadAdminStats: #adminStatsGrid tidak ditemukan');
+    return;
+  }
+  
+  // Show loading state
+  statsContainer.innerHTML = '<div class="admin-stats-loading"><i class="fas fa-spinner fa-spin"></i> Memuat statistik...</div>';
+  
+  // Query Nhost for aggregate data
+  graphqlRequest('GetDashboardData', GRAPHQL_QUERIES.getDashboardData)
+    .then(function(result) {
+      console.log('[ADMIN] Dashboard stats response:', result);
+      
+      if (!result) {
+        throw new Error('Response kosong dari Nhost');
+      }
+      
+      // Extract counts from aggregates
+      var sdmkCount = result.sdmk_aggregate?.aggregate?.count || 0;
+      var pendaftaranCount = result.pendaftaran_aggregate?.aggregate?.count || 0;
+      var sertifikatCount = result.sertifikat_aggregate?.aggregate?.count || 0;
+      var pengumumanCount = (result.pengumuman || []).length;
+      var indikatorCount = (result.indikator || []).length;
+      
+      // Render statistics cards
+      var html = '';
+      html += createStatCard('sdmk', 'Total SDMK', sdmkCount, 'fa-user-md', 'var(--primary)');
+      html += createStatCard('pendaftaran', 'Pendaftaran', pendaftaranCount, 'fa-clipboard-list', 'var(--secondary)');
+      html += createStatCard('sertifikat', 'Sertifikat', sertifikatCount, 'fa-certificate', 'var(--accent)');
+      html += createStatCard('pengumuman', 'Pengumuman', pengumumanCount, 'fa-bullhorn', '#8B5CF6');
+      html += createStatCard('indikator', 'Indikator', indikatorCount, 'fa-chart-line', '#06B6D4');
+      
+      statsContainer.innerHTML = html;
+      
+      console.log('[ADMIN] Statistics loaded successfully');
+    })
+    .catch(function(error) {
+      console.error('[ADMIN] Failed to load statistics:', error);
+      statsContainer.innerHTML = `
+        <div class="admin-stats-error">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Gagal memuat statistik dari Nhost</p>
+          <small>${escHTML(error.message || 'Unknown error')}</small>
+        </div>
+      `;
+    });
+}
+
+/**
+ * Create a statistic card for dashboard
+ */
+function createStatCard(type, label, count, icon, color) {
+  return `
+    <div class="admin-stat-card" onclick="openAdminCrud('${type}')" title="Klik untuk kelola ${label}">
+      <div class="admin-stat-icon" style="background: ${color}20; color: ${color};">
+        <i class="fas ${icon}"></i>
+      </div>
+      <div class="admin-stat-info">
+        <span class="admin-stat-count">${count.toLocaleString('id-ID')}</span>
+        <span class="admin-stat-label">${label}</span>
+      </div>
+      <i class="fas fa-chevron-right admin-stat-arrow" style="color: ${color};"></i>
+    </div>
+  `;
+}
+
+/**
+ * Main render function for Admin Dashboard
+ * Shows: User info + Real Stats + Menu Grid organized by category
+ */
+function renderAdminDashboard(){
+  console.log('[ADMIN] Rendering admin dashboard...');
+  
+  // 1. Render user info bar
+  var bar = document.getElementById('adminInfoBar');
+  if (bar) {
+    bar.innerHTML = '<div class="admin-info-bar">' +
+      '<i class="fas ' + levelIcon() + '" style="font-size:1.2rem;color:var(--primary);"></i>' +
+      '<div>' +
+        '<strong>' + escHTML(adminUsername) + '</strong> — ' + levelBadgeHTML() +
+        '<br><span style="font-size:.78rem;">' + 
+        (adminLevel === 'super_admin' ? 'Akses penuh ke semua data, import/export, dan kelola akun admin.' :
+         adminLevel === 'operator' ? 'Dapat mengelola Pendaftaran, Sertifikat, dan Materi. Menu lainnya hanya dapat dilihat.' :
+         'Hanya dapat melihat semua data. Tidak ada akses untuk menambah, mengedit, atau menghapus.') +
+        '</span>' +
+      '</div></div>';
+  } else {
+    console.warn('[DOM] renderAdminDashboard: #adminInfoBar tidak ditemukan');
+  }
+  
+  // 2. Load real statistics from Nhost
+  loadAdminStats();
+  
+  // 3. Render menu grid organized by category
+  var grid = document.getElementById('adminMenuGrid');
+  if (!grid) {
+    console.warn('[DOM] renderAdminDashboard: #adminMenuGrid tidak ditemukan');
+    return;
+  }
+  
+  // Define categories
+  var categories = [
+    { id: 'data-utama', label: 'DATA UTAMA', icon: 'fa-database', color: 'var(--primary)' },
+    { id: 'informasi', label: 'INFORMASI', icon: 'fa-info-circle', color: '#8B5CF6' },
+    { id: 'sistem', label: 'SISTEM', icon: 'fa-cogs', color: '#F59E0B' }
   ];
-  grid.innerHTML='';
-  cards.forEach(function(c){
-    if(!c.access)return;
-    var d=document.createElement('div');
-    d.className='admin-menu-card'+(c.write?'':' disabled');
-    d.onclick=function(){openAdminCrud(c.id);};
-    var badge=c.write?'<span style="display:inline-block;margin-top:8px;font-size:.7rem;padding:2px 8px;border-radius:10px;background:var(--secondary-light);color:var(--secondary-dark);font-weight:600;">Read &amp; Write</span>':'<span style="display:inline-block;margin-top:8px;font-size:.7rem;padding:2px 8px;border-radius:10px;background:var(--bg-body);color:var(--text-muted);font-weight:600;">Read Only</span>';
-    d.innerHTML='<i class="fas '+c.icon+'"></i><h4>'+c.title+'</h4><p>'+c.desc+'</p>'+badge;
-    grid.appendChild(d);
+  
+  var html = '';
+  
+  // Render each category with its tables
+  categories.forEach(function(cat) {
+    html += '<div class="admin-category">';
+    html += '  <div class="admin-category-header" style="color:' + cat.color + '">';
+    html += '    <i class="fas ' + cat.icon + '"></i>';
+    html += '    <h3>' + cat.label + '</h3>';
+    html += '  </div>';
+    html += '  <div class="admin-category-grid">';
+    
+    // Get tables in this category
+    Object.values(ADMIN_TABLES).forEach(function(tableConfig) {
+      if (tableConfig.category !== cat.id) return;
+      
+      // Check access permissions
+      var hasAccess = canAccessAdminMenu(tableConfig.id);
+      var canWriteTable = canWrite(tableConfig.id);
+      
+      // Special check for multiusers (requires super_admin)
+      if (tableConfig.requireSuperAdmin && adminLevel !== 'super_admin') {
+        hasAccess = false;
+      }
+      
+      if (!hasAccess) return;
+      
+      var writeBadge = canWriteTable 
+        ? '<span class="badge badge-success">Read & Write</span>'
+        : '<span class="badge badge-secondary">Read Only</span>';
+      
+      html += '<div class="admin-menu-card' + (canWriteTable ? '' : ' disabled') + '" onclick="openAdminCrud(\'' + tableConfig.id + '\')">';
+      html += '  <div class="admin-menu-card-icon"><i class="fas ' + tableConfig.icon + '"></i></div>';
+      html += '  <div class="admin-menu-card-content">';
+      html += '    <h4>' + tableConfig.label + '</h4>';
+      html += '    <p>' + tableConfig.description + '</p>';
+      html += '    ' + writeBadge;
+      html += '  </div>';
+      html += '</div>';
+    });
+    
+    html += '  </div>'; // end category-grid
+    html += '</div>'; // end category
   });
+  
+  grid.innerHTML = html;
+  console.log('[ADMIN] Dashboard rendered with', Object.keys(ADMIN_TABLES).length, 'table menus');
+}
+
+/**
+ * Open CRUD interface for a specific table
+ */
+function openAdminCrud(type) {
+  console.log('[ADMIN] Opening CRUD for:', type);
+  
+  if (!canAccessAdminMenu(type)) {
+    showToast('Anda tidak memiliki akses ke menu ini.', 'error');
+    return;
+  }
+  
+  var tableConfig = ADMIN_TABLES[type];
+  if (!tableConfig) {
+    console.error('[ADMIN] Table config not found for:', type);
+    showToast('Konfigurasi tabel tidak ditemukan: ' + type, 'error');
+    return;
+  }
+  
+  _safeDisplay('adminDashboard', 'none');
+  _safeDisplay('adminCrudSection', 'block');
+  
+  var titles = {};
+  Object.values(ADMIN_TABLES).forEach(function(t) { titles[t.id] = 'Kelola ' + t.label; });
+  
+  var writable = canWrite(type);
+  var readOnly = !writable;
+  
+  var c = document.getElementById('adminCrudContent');
+  if (!c) { console.warn('[DOM] openAdminCrud: #adminCrudContent tidak ditemukan'); return; }
+  
+  var infoBar = readOnly 
+    ? '<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>' + levelLabel() + '</strong> — mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>' 
+    : '';
+  
+  // Add Import button for admin users who are logged in
+  var isAdminLoggedIn = isAdminUser() && writable;
+  var importBtn = (isAdminLoggedIn && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','indikator'].includes(type))
+    ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\'' + type + '\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
+    : '';
+  
+  c.innerHTML = '<div class="page-header">' +
+    '<h2><i class="fas ' + tableConfig.icon + '" style="margin-right:8px;color:var(--primary);"></i>' + 
+    (titles[type] || type) + '</h2>' +
+    '<p>Kelola data <strong>' + tableConfig.table + '</strong> dari database Nhost.</p>' + 
+    importBtn + '</div>' + 
+    infoBar + 
+    '<div id="adminCrudTable"></div>';
+  
+  console.log('[ADMIN] Loading table:', type, '→ Action:', tableConfig.queryAction);
+  
+  // Special handling for different table types
+  if (type === 'multiusers' || type === 'admin') {
+    loadAdminList();
+    return;
+  }
+  
+  if (type === 'indikator') {
+    loadIndikatorList();
+    return;
+  }
+  
+  // For other tables, use the existing action mapping
+  _crud.sheetType = type;
+  _crud.writable = writable;
+  _crud.page = 1;
+  _crud.perPage = 10;
+  _crud.sortCol = '';
+  _crud.sortDir = 'asc';
+  _crud.searchTerm = '';
+  _crud.filters = {};
+  
+  var actionMap = {
+    pengumuman: 'getPengumuman',
+    sdmk: 'getSDMK',
+    pendaftaran: 'getPendaftaran',
+    sertifikat: 'getSertifikat',
+    materi: 'getMateri'
+  };
+  
+  showLoading('Memuat data ' + tableConfig.label + '...');
+  
+  callServer(actionMap[type]).then(function(res) {
+    hideLoading();
+    
+    if (!res || !res.success) {
+      document.getElementById('adminCrudTable').innerHTML = 
+        '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="font-size:2rem;color:var(--accent);"></i><p>' + 
+        escHTML(res ? res.message : 'Gagal memuat data') + '</p></div>';
+      return;
+    }
+    
+    _crud.allData = res.data || [];
+    _crud.filteredData = [..._crud.allData];
+    
+    if (_crud.allData.length > 0) {
+      _crud.headers = Object.keys(_crud.allData[0]);
+    } else {
+      _crud.headers = tableConfig.fields || [];
+    }
+    
+    _crud.visibleCols = [..._crud.headers];
+    _crud.filterCols = detectFilterColumns(type);
+    
+    renderCrudTable();
+    
+    console.log('[ADMIN] Data loaded:', _crud.allData.length, 'records from', tableConfig.table);
+    
+  }).catch(function(e) {
+    hideLoading();
+    console.error('[ADMIN] Error loading', type, ':', e);
+    showToast('Gagal memuat data: ' + (e.message || e), 'error');
+    document.getElementById('adminCrudTable').innerHTML = 
+      '<div class="empty-state"><i class="fas fa-exclamation-circle" style="font-size:2rem;color:var(--danger);"></i><p>Error: ' + 
+      escHTML(e.message || 'Unknown error') + '</p></div>';
+  });
+}
+
+/**
+ * Load Indikator list specifically (with proper CRUD support)
+ */
+function loadIndikatorList() {
+  console.log('[ADMIN] Loading Indikator data from Nhost...');
+  
+  showLoading('Memuat data Indikator...');
+  
+  callServer('getIndikator').then(function(res) {
+    hideLoading();
+    
+    var ct = document.getElementById('adminCrudTable');
+    if (!ct) { console.warn('[DOM] loadIndikatorList: #adminCrudTable tidak ditemukan'); return; }
+    
+    if (!res || !res.success) {
+      ct.innerHTML = '<div class="empty-state"><p>' + escHTML(res ? res.message : 'Gagal memuat data Indikator') + '</p></div>';
+      return;
+    }
+    
+    _allIndikator = res.data || [];
+    console.log('[ADMIN] Indikator data loaded:', _allIndikator.length, 'items');
+    
+    var html = '';
+    
+    // Add button
+    if (canWrite('indikator')) {
+      html += '<div class="toolbar" style="margin-bottom:16px;">';
+      html += '  <button class="btn btn-primary" onclick="openIndikatorForm()"><i class="fas fa-plus"></i> Tambah Indikator</button>';
+      html += '  <button class="btn btn-secondary ml-2" onclick="loadIndikatorList()"><i class="fas fa-sync-alt"></i> Refresh</button>';
+      html += '</div>';
+    }
+    
+    if (_allIndikator.length === 0) {
+      html += '<div class="empty-state">';
+      html += '  <i class="fas fa-chart-line" style="font-size:2rem;color:var(--text-muted);"></i>';
+      html += '  <p>Belum ada data Indikator.</p>';
+      html += '  <small>Tambahkan indikator kinerja untuk memulai.</small>';
+      html += '</div>';
+      ct.innerHTML = html;
+      return;
+    }
+    
+    // Render table
+    html += '<div class="crud-table-container"><div class="crud-table-scroll">';
+    html += '<table class="crud-table">';
+    html += '<thead><tr>';
+    html += '<th class="no-sort" style="text-align:center;width:50px;">No</th>';
+    html += '<th>Indikator</th>';
+    html += '<th>Nilai</th>';
+    html += '<th>Target</th>';
+    html += '<th>Satuan</th>';
+    html += '<th>Periode</th>';
+    if (canWrite('indikator')) {
+      html += '<th class="no-sort" style="text-align:center;">Aksi</th>';
+    }
+    html += '</tr></thead><tbody>';
+    
+    _allIndikator.forEach(function(item, idx) {
+      html += '<tr>';
+      html += '<td class="td-no">' + (idx + 1) + '</td>';
+      html += '<td><strong>' + escHTML(item.indikator || item.Indikator || '-') + '</strong></td>';
+      html += '<td>' + (item.nilai !== null && item.nilai !== undefined ? item.nilai : '-') + '</td>';
+      html += '<td>' + (item.target !== null && item.target !== undefined ? item.target : '-') + '</td>';
+      html += '<td>' + escHTML(item.satuan || item.Satuan || '-') + '</td>';
+      html += '<td>' + escHTML(item.periode || item.Periode || '-') + '</td>';
+      if (canWrite('indikator')) {
+        html += '<td style="text-align:center;">';
+        html += '  <button class="btn btn-sm btn-warning" onclick="openIndikatorForm(' + idx + ')" title="Edit"><i class="fas fa-edit"></i></button>';
+        html += '  <button class="btn btn-sm btn-danger" onclick="confirmDeleteIndikator(' + idx + ')" title="Hapus"><i class="fas fa-trash"></i></button>';
+        html += '</td>';
+      }
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table></div></div>';
+    html += '<div class="table-info">Total: ' + _allIndikator.length + ' data indikator</div>';
+    
+    ct.innerHTML = html;
+    
+  }).catch(function(e) {
+    hideLoading();
+    console.error('[ADMIN] Error loading Indikator:', e);
+    showToast('Error: ' + (e.message || e), 'error');
+  });
+}
+
+/**
+ * Open form to add/edit Indikator
+ */
+function openIndikatorForm(idx) {
+  console.log('[ADMIN] Opening Indikator form, index:', idx);
+  
+  var editMode = idx !== undefined;
+  var item = editMode ? _allIndikator[idx] : null;
+  
+  // Set form values
+  _safeValue('indikatorEditIndex', idx !== undefined ? idx : -1);
+  _safeText('indikatorFormTitle', editMode ? 'Edit Indikator' : 'Tambah Indikator Baru');
+  
+  if (editMode && item) {
+    _safeValue('indikatorNama', item.indikator || '');
+    _safeValue('indikatorNilai', item.nilai !== null ? item.nilai : '');
+    _safeValue('indikatorTarget', item.target !== null ? item.target : '');
+    _safeValue('indikatorSatuan', item.satuan || 'Orang');
+    _safeValue('indikatorPeriode', item.periode || '');
+  } else {
+    // Reset form
+    _safeValue('indikatorNama', '');
+    _safeValue('indikatorNilai', '');
+    _safeValue('indikatorTarget', '');
+    _safeValue('indikatorSatuan', 'Orang');
+    _safeValue('indikatorPeriode', '');
+  }
+  
+  openModal('indikatorFormModal');
+}
+
+/**
+ * Submit Indikator form (Create/Update)
+ */
+function submitIndikatorForm(e) {
+  e.preventDefault();
+  
+  console.log('[ADMIN] Submitting Indikator form...');
+  
+  var idx = parseInt(_safeValue('indikatorEditIndex'));
+  var isEdit = idx >= 0;
+  
+  var data = {
+    indikator: _safeValue('indikatorNama'),
+    nilai: _safeValue('indikatorNilai'),
+    target: _safeValue('indikatorTarget'),
+    satuan: _safeValue('indikatorSatuan'),
+    periode: _safeValue('indikatorPeriode')
+  };
+  
+  // Validation
+  if (!data.indikator) {
+    showToast('Nama indikator wajib diisi!', 'warning');
+    return;
+  }
+  
+  showLoading(isEdit ? 'Menyimpan perubahan...' : 'Menambahkan indikator...');
+  
+  var action = isEdit ? 'updateIndikator' : 'tambahIndikator';
+  var payload = isEdit ? { idx: idx, id: _allIndikator[idx]?.id, ...data } : data;
+  
+  callServer(action, payload).then(function(res) {
+    hideLoading();
+    closeModal('indikatorFormModal');
+    
+    if (res.success) {
+      showToast(res.message, 'success');
+      loadIndikatorList(); // Refresh from Nhost
+      loadAdminStats(); // Update dashboard stats
+    } else {
+      showToast(res.message || 'Operasi gagal', 'error');
+    }
+  }).catch(function(err) {
+    hideLoading();
+    console.error('[ADMIN] Indikator form error:', err);
+    showToast('Error: ' + (err.message || err), 'error');
+  });
+}
+
+/**
+ * Confirm and delete Indikator
+ */
+function confirmDeleteIndikator(idx) {
+  var item = _allIndikator[idx];
+  if (!item) return;
+  
+  var itemName = item.indikator || 'Indikator #' + (idx + 1);
+  
+  if (confirm('Apakah Anda yakin ingin menghapus indikator "' + itemName + '"?')) {
+    console.log('[ADMIN] Deleting Indikator:', idx, item.id);
+    
+    showLoading('Menghapus indikator...');
+    
+    callServer('deleteIndikator', { idx: idx, id: item.id }).then(function(res) {
+      hideLoading();
+      
+      if (res.success) {
+        showToast(res.message, 'success');
+        loadIndikatorList(); // Refresh from Nhost
+        loadAdminStats(); // Update dashboard stats
+      } else {
+        showToast(res.message || 'Gagal menghapus', 'error');
+      }
+    }).catch(function(err) {
+      hideLoading();
+      console.error('[ADMIN] Delete Indikator error:', err);
+      showToast('Error: ' + (err.message || err), 'error');
+    });
+  }
 }
 
 /* ========== ADMIN: NAVIGATION ========== */
