@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Debug Tool - PAMUNGKAS</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 600px;
+      padding: 40px;
+    }
+    h1 { color: #333; text-align: center; margin-bottom: 10px; font-size: 24px; }
+    .subtitle { color: #666; text-align: center; margin-bottom: 30px; }
+    
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 12px 16px;
+      border: 2px solid #e1e5e9;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    
+    button {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    
+    .result-box {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+    }
+    .result-box.success { background: #d4edda; border: 1px solid #c3e6cb; }
+    .result-box.error { background: #f8d7da; border: 1px solid #f5c6cb; }
+    .result-box.info { background: #cce5ff; border: 1px solid #b8daff; }
+    
+    pre {
+      background: #1a1a2e;
+      color: #00ff88;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+    .step {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background: #e1e5e9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #666;
+    }
+    .step.active { background: #667eea; color: white; }
+    .step.done { background: #28a745; color: white; }
+    
+    .config-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Login Debug Tool</h1>
+    <p class="subtitle">Test koneksi dan login ke Nhost Database</p>
+    
+    <!-- NHOST CONFIG -->
+    <div class="config-box" id="configDisplay">
+      <strong>Nhost Configuration:</strong><br>
+      <span id="configUrl">Loading...</span>
+    </div>
+    
+    <!-- Step Indicators -->
+    <div class="step-indicator">
+      <div class="step active" id="step1">1</div>
+      <div class="step" id="step2">2</div>
+      <div class="step" id="step3">3</div>
+      <div class="step" id="step4">4</div>
+    </div>
+    
+    <!-- Test Connection Button -->
+    <button onclick="testConnection()" id="btnTestConn">
+      🌐 Step 1: Test Koneksi Nhost
+    </button>
+    
+    <!-- Login Form -->
+    <div id="loginForm" style="display:none; margin-top: 20px;">
+      <div class="form-group">
+        <label>Username:</label>
+        <input type="text" id="username" placeholder="Masukkan username dari DB" value="">
+      </div>
+      <div class="form-group">
+        <label>Password:</label>
+        <input type="password" id="password" placeholder="Masukkan password dari DB" value="">
+      </div>
+      <button onclick="testLogin()" id="btnLogin">
+        🔑 Step 2: Test Login
+      </button>
+    </div>
+    
+    <!-- Results -->
+    <div class="result-box info" id="resultInfo"></div>
+    <div class="result-box success" id="resultSuccess"></div>
+    <div class="result-box error" id="resultError"></div>
+  </div>
+
+<script>
+// NHOST CONFIG (same as main app)
+var NHOST_CONFIG = {
+  graphqlUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/graphql',
+  adminSecret: '6zFaZ5::7R5^Rwg!zPM%s,7XHicFuwvB',
+  authUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/auth',
+  storageUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/storage'
+};
+
+// Display config
+document.getElementById('configUrl').innerHTML = 
+  '<strong>GraphQL:</strong> ' + NHOST_CONFIG.graphqlUrl;
+
+// GraphQL Request Function
+async function graphqlRequest(operationName, query, variables = {}) {
+  const url = NHOST_CONFIG.graphqlUrl;
+  const headers = { 'Content-Type': 'application/json' };
+  
+  if (NHOST_CONFIG.adminSecret) {
+    headers['x-hasura-admin-secret'] = NHOST_CONFIG.adminSecret;
+  }
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({ query, variables, operationName })
+  });
+  
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  
+  const result = await response.json();
+  if (result.errors) throw new Error(result.errors[0].message);
+  
+  return result.data;
+}
+
+// Show result
+function showResult(type, title, content) {
+  document.getElementById('resultInfo').style.display = type === 'info' ? 'block' : 'none';
+  document.getElementById('resultSuccess').style.display = type === 'success' ? 'block' : 'none';
+  document.getElementById('resultError').style.display = type === 'error' ? 'block' : 'none';
+  
+  const box = document.getElementById('result' + type.charAt(0).toUpperCase() + type.slice(1));
+  box.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+}
+
+// Update step indicator
+function setStep(stepNum) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < stepNum) el.classList.add('done');
+    else if (i === stepNum) el.classList.add('active');
+  }
+}
+
+// STEP 1: Test Connection
+async function testConnection() {
+  setStep(1);
+  document.getElementById('btnTestConn').disabled = true;
+  document.getElementById('btnTestConn').textContent = '⏳ Testing...';
+  
+  try {
+    // Simple health check
+    const result = await graphqlRequest('HealthCheck', `
+      query HealthCheck {
+        multiusers(limit: 1) { id username level status }
+      }
+    `);
+    
+    const users = result.multiusers || [];
+    
+    showResult('info', '✅ Koneksi Berhasil!', 
+      `Connected to Nhost Hasura!\n\n` +
+      `Found ${users.length} users in table (showing first 1)\n\n` +
+      `Sample users from DB:\n` +
+      JSON.stringify(users.map(u => ({
+        id: u.id,
+        username: u.username,
+        level: u.level,
+        status: u.status,
+        password_length: '[hidden]'
+      })), null, 2)
+    );
+    
+    setStep(2);
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('btnTestConn').textContent = '✅ Koneksi OK!';
+    
+  } catch (error) {
+    showResult('error', '❌ Koneksi Gagal!', 
+      `Error: ${error.message}\n\n` +
+      `Possible causes:\n` +
+      `- Wrong GraphQL URL\n` +
+      `- Admin secret incorrect\n` +
+      `- Network issue\n` +
+      `- CORS error`
+    );
+    document.getElementById('btnTestConn').disabled = false;
+    document.getElementById('btnTestConn').textContent = '🌐 Retry Connection';
+  }
+}
+
+// STEP 2: Test Login with Detailed Logging
+async function testLogin() {
+  setStep(3);
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  
+  if (!username || !password) {
+    showResult('error', '❌ Input Kosong!', 'Username dan password wajib diisi.');
+    return;
+  }
+  
+  document.getElementById('btnLogin').disabled = true;
+  document.getElementById('btnLogin').textContent = '⏳ Authenticating...';
+  
+  let log = [];
+  
+  try {
+    log.push(`[1] Testing login for: "${username}"`);
+    log.push(`[2] Password length: ${password.length} characters`);
+    
+    // Fetch ALL users
+    const result = await graphqlRequest('GetAllUsers', `
+      query GetAllUsers {
+        multiusers {
+          id
+          username
+          password
+          level
+          status
+          created_at
+        }
+      }
+    `);
+    
+    const users = result.multiusers || [];
+    log.push(`[3] Found ${users.length} total users in database`);
+    log.push('');
+    log.push('[4] All users in database:');
+    users.forEach((u, i) => {
+      log.push(`    ${i+1}. Username: "${u.username}" | Level: "${u.level}" | Status: "${u.status}" | Password: "${u.password.substring(0,3)}..."`);
+    });
+    log.push('');
+    
+    // Try to find matching user
+    let matchedUser = null;
+    let matchMethod = '';
+    
+    // Method 1: Exact match
+    log.push('[5] Trying EXACT match...');
+    matchedUser = users.find(u => u.username === username && u.password === password);
+    if (matchedUser) { matchMethod = 'EXACT'; log.push('    ✓ EXACT match found!'); }
+    
+    // Method 2: Case-insensitive
+    if (!matchedUser) {
+      log.push('[6] Trying CASE-INSENSITIVE match...');
+      matchedUser = users.find(u => 
+        u.username.toLowerCase() === username.toLowerCase() && 
+        u.password === password
+      );
+      if (matchedUser) { matchMethod = 'CASE-INSENSITIVE'; log.push('    ✓ Case-insensitive match found!'); }
+    }
+    
+    // Method 3: Trimmed values
+    if (!matchedUser) {
+      log.push('[7] Trying TRIMMED match...');
+      matchedUser = users.find(u => 
+        u.username.trim() === username.trim() && 
+        u.password.trim() === password.trim()
+      );
+      if (matchedUser) { matchMethod = 'TRIMMED'; log.push('    ✓ Trimmed match found!'); }
+    }
+    
+    log.push('');
+    
+    if (matchedUser) {
+      setStep(4);
+      
+      // Check status
+      if (matchedUser.status !== 'active') {
+        log.push(`[❌] User FOUND but NOT ACTIVE!`);
+        log.push(`    Status: "${matchedUser.status}" (should be "active")`);
+        showResult('error', '⚠️ Akun Tidak Aktif!', log.join('\n'));
+      } else {
+        log.push(`[✅] LOGIN SUCCESSFUL!`);
+        log.push('');
+        log.push(`Match Method: ${matchMethod}`);
+        log.push(`User ID: ${matchedUser.id}`);
+        log.push(`Username: ${matchedUser.username}`);
+        log.push(`Level: ${matchedUser.level}`);
+        log.push(`Status: ${matchedUser.status}`);
+        
+        showResult('success', '🎉 Login Berhasil!', log.join('\n'));
+        
+        // Store session
+        sessionStorage.setItem('pamungkas_admin_level', matchedUser.level);
+        sessionStorage.setItem('pamungkas_admin_user', matchedUser.username);
+      }
+    } else {
+      // No match found - analyze why
+      log.push(`[❌] NO MATCH FOUND`);
+      log.push('');
+      log.push('[Analysis]:');
+      
+      const sameUserDiffPass = users.find(u => 
+        u.username.toLowerCase() === username.toLowerCase()
+      );
+      
+      if (sameUserDiffPass) {
+        log.push(`  • Username "${username}" EXISTS in DB`);
+        log.push(`  • But PASSWORD does not match`);
+        log.push(`  • DB Password: "${sameUserDiffPass.password}"`);
+        log.push(`  • Your Password: "${password}"`);
+        log.push(`  → Check for typos or extra spaces!`);
+      } else {
+        log.push(`  • Username "${username}" NOT FOUND in database`);
+        log.push(`  → Available usernames:`);
+        users.forEach(u => log.push(`    - "${u.username}"`));
+      }
+      
+      showResult('error', '❌ Login Gagal!', log.join('\n'));
+    }
+    
+  } catch (error) {
+    log.push(`[ERROR] ${error.message}`);
+    showResult('error', '❌ System Error!', log.join('\n'));
+  }
+  
+  document.getElementById('btnLogin').disabled = false;
+  document.getElementById('btnLogin').textContent = '🔑 Test Login Again';
+}
+</script>
+</body>
+</html>
