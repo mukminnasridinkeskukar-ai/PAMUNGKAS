@@ -4,22 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <!-- GitHub Pages & CORS Compatibility -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; 
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; 
-    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-    font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.googleapis.com;
-    connect-src 'self' https://fxqicegiwzfonrugxine.nhost.run https://api.allorigins.win https://corsproxy.io https://thingproxy.freeboard.io *;
-    img-src 'self' data: blob: https:;">
+  <!-- REMOVED CSP - Allow all connections for GitHub Pages compatibility -->
   
   <title>PAMUNGKAS — Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</title>
   
-  <!-- Preconnect untuk performa (termasuk Nhost & CORS proxies) -->
+  <!-- Preconnect untuk performa -->
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://fxqicegiwzfonrugxine.nhost.run" crossorigin />
   <link rel="preconnect" href="https://api.allorigins.win" crossorigin />
+  <link rel="preconnect" href="https://corsproxy.io" crossorigin />
+  <link rel="preconnect" href="https://api.codetabs.com" crossorigin />
   
   <!-- Font Awesome - CDN dengan defer -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'" />
