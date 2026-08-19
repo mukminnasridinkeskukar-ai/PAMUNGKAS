@@ -3,12 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- GitHub Pages & CORS Compatibility -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; 
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; 
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+    font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://fonts.googleapis.com;
+    connect-src 'self' https://fxqicegiwzfonrugxine.nhost.run https://api.allorigins.win https://corsproxy.io https://thingproxy.freeboard.io *;
+    img-src 'self' data: blob: https:;">
+  
   <title>PAMUNGKAS — Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</title>
   
-  <!-- Preconnect untuk performa -->
+  <!-- Preconnect untuk performa (termasuk Nhost & CORS proxies) -->
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://fxqicegiwzfonrugxine.nhost.run" crossorigin />
+  <link rel="preconnect" href="https://api.allorigins.win" crossorigin />
   
   <!-- Font Awesome - CDN dengan defer -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'" />
@@ -17,7 +28,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   
   <!-- NHOST CONFIGURATION - WAJIB DIISI SEBELUM MENGGUNAKAN -->
-  <script src="nhost-config.js"></script>
+  <script src="nhost-config.js" onerror="
+    console.error('❌ Gagal memuat nhost-config.js!');
+    console.error('Pastikan file nhost-config.js ada di folder yang sama dengan index.html');
+    document.getElementById('config-error').style.display = 'block';
+  "></script>
+  
+  <!-- Fallback config jika nhost-config.js gagal load -->
+  <div id="config-error" style="display:none; position:fixed; top:0; left:0; right:0; background:#EF4444; color:white; padding:15px; text-align:center; z-index:99999;">
+    <strong>⚠️ Error:</strong> File <code>nhost-config.js</code> tidak ditemukan!<br>
+    <small>Pastikan file <code>nhost-config.js</code> berada di folder yang sama dengan <code>index.html</code></small>
+  </div>
+  
+  <!-- Check if NHOST_CONFIG loaded properly -->
+  <script>
+    if (typeof NHOST_CONFIG === 'undefined') {
+      console.warn('⚠️ NHOST_CONFIG tidak terdefinisi. Menggunakan fallback...');
+      window.NHOST_CONFIG = {
+        hasuraUrl: 'https://fxqicegiwzfonrugxine.nhost.run/v1/graphql',
+        adminSecret: 'pamungkas_admin_2025',
+        authUrl: 'https://fxqicegiwzfonrugxine.nhost.run/v1/auth',
+        timeout: 30000,
+        debug: true,
+        transportMode: 'auto'
+      };
+    }
+  </script>
   
   <!-- Lazy Load Libraries (hanya load saat dibutuhkan) -->
   <script>
