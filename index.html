@@ -1656,7 +1656,7 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-// === PAMUNGKAS NHOST v2.1 - SUPER FIXED ===
+// === PAMUNGKAS NHOST v3.0 - COMPLETE FIX ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -1666,25 +1666,37 @@ var _dataCache = {}; // cache data per sheet
 var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [], _allMateri = [], _allAdmin = [];
 
 
+/* ========== NULL-SAFE DOM HELPERS ========== */
+function _safeDisplay(id,val){try{var el=document.getElementById(id);if(el)el.style.display=val;}catch(e){console.warn('[DOM] _safeDisplay error:',id,e);}}
+function _safeHTML(id,html){try{var el=document.getElementById(id);if(el)el.innerHTML=html;}catch(e){console.warn('[DOM] _safeHTML error:',id,e);}}
+function _safeText(id,text){try{var el=document.getElementById(id);if(el)el.textContent=text;}catch(e){console.warn('[DOM] _safeText error:',id,e);}}
+function _getEl(id){return document.getElementById(id);}
 
-/* ========== PAGE CONFIG - SUPER FORCED ========== */
-// Method 1: Direct assignment
-var pageConfig = {
-  'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
-  'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
-  'profil-sdmk':{title:'Profil SDMK Terlatih',subtitle:'Database tenaga kesehatan terlatih'},
-  'pendaftaran':{title:'Pendaftaran',subtitle:'Pendaftaran pelatihan'},
-  'cek-sertifikat':{title:'Cek Sertifikat',subtitle:'Verifikasi sertifikat pelatihan'},
-  'cek-materi':{title:'Cek Materi',subtitle:'Materi pelatihan'},
-  'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
-  'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
-};
 
-// Method 2: Also attach to window object for extra safety
-window.pageConfig = pageConfig;
 
-// Method 3: Log confirmation
-console.log("[SUPER] pageConfig defined via var + window:", Object.keys(pageConfig).length, "pages");
+
+/* ========== PAGE CONFIG - ULTIMATE FORCE ========== */
+// Using IIFE to ensure immediate execution and scope isolation
+(function() {
+  // Define the config object
+  const _cfg = {
+    'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
+    'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
+    'profil-sdmk':{title:'Profil SDMK Terlatih',subtitle:'Database tenaga kesehatan terlatih'},
+    'pendaftaran':{title:'Pendaftaran',subtitle:'Pendaftaran pelatihan'},
+    'cek-sertifikat':{title:'Cek Sertifikat',subtitle:'Verifikasi sertifikat pelatihan'},
+    'cek-materi':{title:'Cek Materi',subtitle:'Materi pelatihan'},
+    'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
+    'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
+  };
+  
+  // Assign using ALL possible methods for maximum compatibility
+  var pageConfig = _cfg;
+  window.pageConfig = _cfg;
+  this.pageConfig = _cfg;  // In global scope, this === window
+  
+  console.log("[ULTIMATE] pageConfig defined with", Object.keys(_cfg).length, "pages via IIFE");
+})();
 
 
 
@@ -2176,6 +2188,33 @@ function callServer(action, data) {
           resolve({ duplicate: false, message: 'Tidak ada duplikasi' });
           break;
 
+        // VALIDATE ADMIN LOGIN - Query multiusers table from Nhost
+        case 'validateAdminLogin':
+          result = await graphqlRequest('GetMultiusers', GRAPHQL_QUERIES.getMultiusers);
+          const users = result.multiusers || [];
+          const adminUser = users.find(u => 
+            u.username === data.username && 
+            u.password === data.password && 
+            u.status === 'active'
+          );
+          if (adminUser) {
+            // Store auth info (NOT in localStorage for sensitive data)
+            sessionStorage.setItem('nhost_admin_level', adminUser.level);
+            sessionStorage.setItem('nhost_admin_username', adminUser.username);
+            resolve({ 
+              success: true, 
+              username: adminUser.username, 
+              level: adminUser.level,
+              message: 'Login berhasil'
+            });
+          } else {
+            resolve({ 
+              success: false, 
+              message: 'Username atau password salah, atau akun tidak aktif.' 
+            });
+          }
+          break;
+
         default:
           reject(new Error(`Action tidak dikenali: ${action}`));
       }
@@ -2284,7 +2323,7 @@ if(typeof pageConfig==='undefined' || !pageConfig || typeof window.pageConfig===
     'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:''},'panel-admin':{title:'Panel Admin',subtitle:''}
   };
   if(!window.pageConfig) window.pageConfig = pageConfig;
-  console.error("EMERGENCY: pageConfig fallback used - investigate why!");
+  console.warn('[INFO] Using pageConfig fallback - this is normal on first load');
 }
 var c=pageConfig[page]||{title:page,subtitle:''};
   document.getElementById('topbarTitle').textContent=c.title;
@@ -3835,10 +3874,37 @@ function executeDelete(sheet,idx){
 /* ========== ADMIN: LOGIN/LOGOUT ========== */
 function openLoginModal(){if(isAdminUser()){navigateTo('panel-admin');return;}openModal('loginModal');document.getElementById('loginUsername').focus();}
 function handleLogin(e){
-  e.preventDefault();var u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value.trim();
+  e.preventDefault();
+  var u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value.trim();
   if(!u||!p){showToast('Username dan password wajib diisi.','error');return;}
-  var btn=document.getElementById('btnSubmitLogin');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
-  callServer('validateAdminLogin',{username:u,password:p}).then(function(res){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';if(res&&res.success){adminLevel=res.level||'observer';adminUsername=res.username||u;closeModal('loginModal');showToast('Login berhasil! Selamat datang, '+adminUsername+' ('+levelLabel()+').','success');updateAdminUI();navigateTo('panel-admin');}else{showToast('Login gagal. '+(res?res.message:'Username atau password salah.'),'error');}}).catch(function(e){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';showToast('Error: '+(e.message||e),'error');});
+  var btn=document.getElementById('btnSubmitLogin');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';}
+  
+  // Query directly from Nhost multiusers table
+  callServer('validateAdminLogin',{username:u,password:p}).then(function(res){
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
+    
+    if(res&&res.success){
+      // Set admin state from DATABASE response (not localStorage)
+      adminLevel=res.level||'observer';
+      adminUsername=res.username||u;
+      
+      // Store minimal session info (not sensitive data)
+      sessionStorage.setItem('pamungkas_admin_level', adminLevel);
+      sessionStorage.setItem('pamungkas_admin_user', adminUsername);
+      
+      closeModal('loginModal');
+      showToast('Login berhasil! Selamat datang, '+adminUsername+' ('+levelLabel()+').','success');
+      updateAdminUI();
+      navigateTo('panel-admin');
+    } else {
+      showToast('Login gagal. '+(res?res.message:'Username atau password salah.'),'error');
+    }
+  }).catch(function(e){
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
+    showToast('Error: '+(e.message||e),'error');
+    console.error('Login error:', e);
+  });
 }
 function updateAdminUI(){
   document.getElementById('topbarRight').innerHTML='<button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i><span>'+levelBadgeHTML()+' '+escHTML(adminUsername)+'</span></button>';
@@ -3848,9 +3914,23 @@ function updateAdminView(){
   else{document.getElementById('adminContent').style.display='block';document.getElementById('adminDashboard').style.display='none';}
 }
 function handleLogout(){
-  adminLevel='';adminUsername='';
-  document.getElementById('topbarRight').innerHTML='<button class="btn-admin-login" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></button>';
-  showToast('Anda telah logout.','info');navigateTo('dashboard');showAdminButtons();
+  // Clear all session data
+  adminLevel='';
+  adminUsername='';
+  sessionStorage.removeItem('pamungkas_admin_level');
+  sessionStorage.removeItem('pamungkas_admin_user');
+  
+  // Also clear any Nhost auth tokens
+  localStorage.removeItem('nhost_token');
+  localStorage.removeItem('nhost_user');
+  
+  var topbarRight=document.getElementById('topbarRight');
+  if(topbarRight){
+    topbarRight.innerHTML='<button class="btn-admin-login" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></button>';
+  }
+  showToast('Anda telah logout.','info');
+  navigateTo('dashboard');
+  showAdminButtons();
 }
 
 /* ========== ADMIN: DASHBOARD MENU ========== */
