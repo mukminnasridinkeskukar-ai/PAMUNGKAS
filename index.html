@@ -6,7 +6,27 @@
   <title>PAMUNGKAS — Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <!-- SheetJS for Excel import/export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+
+// ========== DEBUG REPORT ==========
+console.log("=== EXECUTION COMPLETE ===");
+console.log("Execution log:", window.__executionLog);
+if (typeof pageConfig === 'undefined') {
+  console.error("!!! pageConfig NOT DEFINED !!!");
+  console.error("Last successful checkpoint:", window.__executionLog[window.__executionLog.length-1] || "NONE");
+  document.body.innerHTML = 
+    '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;color:#fff;z-index:99999;padding:20px;font-family:monospace;">'
+    + '<h1>⚠️ DEBUG REPORT</h1>'
+    + '<p><strong>Error:</strong> pageConfig is not defined</p>'
+    + '<p><strong>Last Checkpoint:</strong> ' + (window.__executionLog[window.__executionLog.length-1] || 'No checkpoints reached') + '</p>'
+    + '<h3>Execution Log:</h3><pre>' + JSON.stringify(window.__executionLog, null, 2) + '</pre>'
+    + '<button onclick="this.parentElement.remove()" style="margin-top:20px;padding:10px 20px;cursor:pointer;">Close</button></div>'
+    + document.body.innerHTML;
+} else {
+  console.log("✓ pageConfig defined successfully");
+}
+
+</script>
   <!-- jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -1657,19 +1677,18 @@
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
 
-// ========== DEBUG ERROR CATCHER ==========
-window.__DEBUG_ERRORS = [];
-window.onerror = function(msg, url, line, col, error) {
-  window.__DEBUG_ERRORS.push({message: msg, line: line, column: col, error: error});
-  console.error("DEBUG ERROR:", msg, "at line", line);
-  document.body.insertAdjacentHTML("beforeend", 
-    '<div style="position:fixed;top:0;left:0;right:0;background:#dc3545;color:white;padding:10px;z-index:99999;font-family:monospace;font-size:12px;">'
-    + '<strong>JS ERROR:</strong> ' + msg + ' at line ' + line 
-    + '<button onclick="this.parentElement.remove()" style="float:right;background:#fff;color:red;border:none;padding:2px 8px;cursor:pointer;">✕</button></div>'
-  );
-  return false;
-};
-console.log("Debug mode enabled - watching for errors...");
+// ========== COMPREHENSIVE DEBUGGING ==========
+console.log("=== SCRIPT STARTING ===");
+console.log("Line ~1658: Script tag opened");
+
+// Track execution flow
+window.__executionLog = [];
+function debugLog(msg) {
+  window.__executionLog.push(msg);
+  console.log("[DEBUG]", msg);
+}
+
+debugLog("Debug system initialized");
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -1719,6 +1738,7 @@ function levelIcon(){
  * GANTI nilai di bawah ini sesuai dengan project Nhost Anda
  * Dapatkan dari: Nhost Dashboard > Hasura > Settings > API Endpoint
  * ============================================================ */
+debugLog("Checkpoint: NHOST_CONFIG defined");
 var NHOST_CONFIG = {
   // Hasura GraphQL Endpoint (WAJIB DIUBAH)
   graphqlUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/graphql',
@@ -1735,6 +1755,7 @@ var NHOST_CONFIG = {
 };
 
 /* ========== GRAPHQL QUERY DEFINITIONS ========== */
+debugLog("Checkpoint: GRAPHQL_QUERIES defined");
 const GRAPHQL_QUERIES = {
   // === QUERIES ===
   getDashboardData: `
@@ -1861,6 +1882,7 @@ const GRAPHQL_QUERIES = {
 
 /* ========== GRAPHQL HELPER FUNCTIONS ========== */
 
+debugLog("Checkpoint: graphqlRequest function defined");
 async function graphqlRequest(operationName, query, variables = {}) {
   const url = NHOST_CONFIG.graphqlUrl;
   const headers = { 'Content-Type': 'application/json' };
@@ -1899,6 +1921,7 @@ async function graphqlRequest(operationName, query, variables = {}) {
  * Legacy callServer function - now uses GraphQL internally
  * Maintains backward compatibility with existing code structure
  */
+debugLog("Checkpoint: callServer function defined");
 function callServer(action, data) {
   return new Promise(async function(resolve, reject) {
     try {
@@ -2176,6 +2199,7 @@ function callServer(action, data) {
 }
 
 /* ========== AUTHENTICATION HELPERS (NHOST) ========== */
+debugLog("Checkpoint: nhostLogin function defined");
 async function nhostLogin(email, password) {
   try {
     const response = await fetch(`${NHOST_CONFIG.authUrl}/password/signIn`, {
@@ -2215,6 +2239,7 @@ function isAuthenticated() {
  * Fungsi ini tetap kompatibel dengan kode existing
  * ============================================================
 
+debugLog("Checkpoint: pageConfig defining...");
 var pageConfig = {
   'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
   'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
@@ -2223,9 +2248,11 @@ var pageConfig = {
   'cek-sertifikat':{title:'Cek Sertifikat',subtitle:'Verifikasi sertifikat pelatihan'},
   'cek-materi':{title:'Cek Materi',subtitle:'Materi pelatihan'},
   'cek-pendaftaran':{title:'Cek Pendaftaran',subtitle:'Cari data pendaftaran berdasarkan NIK atau NIP'},
-  'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
+  debugLog("Checkpoint: pageConfig FULLY defined ✓");
+'panel-admin':{title:'Panel Admin',subtitle:'Pengelolaan sistem'}
 };
 
+debugLog("Checkpoint: Landing page section starting");
 /* ========== LANDING PAGE PREMIUM ========== */
 (function(){
   try{
@@ -2266,6 +2293,7 @@ var pageConfig = {
 })();
 
 /* ========== NAVIGASI ========== */
+debugLog("Checkpoint: navigateTo function defined ✓");
 function navigateTo(page){
   currentPage=page;
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');if(i.getAttribute('data-page')===page)i.classList.add('active');});
