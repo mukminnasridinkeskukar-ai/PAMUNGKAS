@@ -1656,7 +1656,7 @@
 
 <!-- ==================== JAVASCRIPT UTAMA ==================== -->
 <script>
-// === PAMUNGKAS NHOST v5.0 - WITH BULK IMPORT ===
+// === PAMUNGKAS NHOST v7.0 - CLEAN & SECURE ===
 
 /* ========== STATE ========== */
 var adminLevel = '';
@@ -1878,7 +1878,21 @@ const GRAPHQL_QUERIES = {
   
   insertMultiuser: `mutation InsertMultiuser($object: multiusers_insert_input!) { insert_multiusers_one(object: $object) { id } }`,
   updateMultiuser: `mutation UpdateMultiuser($id: uuid!, $object: multiusers_set_input!) { update_multiusers_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
-  deleteMultiuser: `mutation DeleteMultiuser($id: uuid!) { delete_multiusers_by_pk(id: $id) { id } }`
+  deleteMultiuser: `mutation DeleteMultiuser($id: uuid!) { delete_multiusers_by_pk(id: $id) { id } }`,
+  
+  // Special query for authentication (returns password field)
+  getAllUsersForAuth: `
+    query GetAllUsersForAuth {
+      multiusers {
+        id
+        username
+        password
+        level
+        status
+        created_at
+      }
+    }
+  `
 };
 
 /* ========== GRAPHQL HELPER FUNCTIONS ========== */
@@ -2188,51 +2202,95 @@ function callServer(action, data) {
           resolve({ duplicate: false, message: 'Tidak ada duplikasi' });
           break;
 
-        // VALIDATE ADMIN LOGIN - Query multiusers table from Nhost
+        // VALIDATE ADMIN LOGIN - Enhanced version with full logging
         case 'validateAdminLogin':
           try {
-            console.log('[Auth] Attempting login for user:', data.username);
+            console.log('%c[AUTH] Starting login process...', 'color: blue; font-weight: bold;');
+            console.log('[AUTH] Input username:', JSON.stringify(data.username));
+            console.log('[AUTH] Input password length:', data.password ? data.password.length : 0);
             
-            result = await graphqlRequest('GetMultiusers', GRAPHQL_QUERIES.getMultiusers);
+            // CRITICAL: Fetch ALL fields including password for comparison
+            result = await graphqlRequest('GetAllUsersForAuth', `
+              query GetAllUsersForAuth {
+                multiusers {
+                  id
+                  username
+                  password
+                  level
+                  status
+                  created_at
+                }
+              }
+            `);
+            
             const users = result.multiusers || [];
             
-            console.log('[Auth] Found', users.length, 'users in database');
-            console.log('[Auth] Users:', users.map(u => ({username: u.username, level: u.level, status: u.status})));
+            console.log('%c[AUTH] Database query complete', 'color: green;');
+            console.log('[AUTH] Total users in DB:', users.length);
+            console.table(users.map(u => ({
+              username: u.username,
+              password_preview: (u.password || '').substring(0, 3) + '***',
+              level: u.level,
+              status: u.status
+            })));
             
-            // Try multiple matching strategies
             let adminUser = null;
+            let matchReason = '';
             
-            // Strategy 1: Exact match (case-sensitive)
+            // STRATEGY 1: Exact match (most strict)
+            console.log('[AUTH] Strategy 1: Exact match...');
             adminUser = users.find(u => 
-              u.username === data.username && 
-              u.password === data.password && 
-              u.status === 'active'
+              String(u.username || '') === String(data.username || '') && 
+              String(u.password || '') === String(data.password || '') && 
+              String(u.status || '') === 'active'
             );
+            if (adminUser) { matchReason = 'EXACT_MATCH'; console.log('[AUTH] ✓ Strategy 1 SUCCESS'); }
             
-            // Strategy 2: Case-insensitive username
+            // STRATEGY 2: Case-insensitive username
             if (!adminUser) {
+              console.log('[AUTH] Strategy 2: Case-insensitive username...');
               adminUser = users.find(u => 
-                u.username.toLowerCase() === data.username.toLowerCase() && 
-                u.password === data.password && 
-                u.status === 'active'
+                String(u.username || '').toLowerCase() === String(data.username || '').toLowerCase() && 
+                String(u.password || '') === String(data.password || '') && 
+                String(u.status || '') === 'active'
               );
-              if (adminUser) console.log('[Auth] Matched with case-insensitive username');
+              if (adminUser) { matchReason = 'CASE_INSENSITIVE'; console.log('[AUTH] ✓ Strategy 2 SUCCESS'); }
             }
             
-            // Strategy 3: Trimmed values
+            // STRATEGY 3: Trim whitespace
             if (!adminUser) {
+              console.log('[AUTH] Strategy 3: Trimmed values...');
               adminUser = users.find(u => 
-                u.username.trim() === data.username.trim() && 
-                u.password.trim() === data.password.trim() && 
-                u.status === 'active'
+                String(u.username || '').trim() === String(data.username || '').trim() && 
+                String(u.password || '').trim() === String(data.password || '').trim() && 
+                String(u.status || '').trim() === 'active'
               );
-              if (adminUser) console.log('[Auth] Matched with trimmed values');
+              if (adminUser) { matchReason = 'TRIMMED'; console.log('[AUTH] ✓ Strategy 3 SUCCESS'); }
+            }
+            
+            // STRATEGY 4: Compare char by char (for hidden characters)
+            if (!adminUser) {
+              console.log('[AUTH] Strategy 4: Character analysis...');
+              const similarUser = users.find(u => 
+                String(u.username || '').toLowerCase().includes(String(data.username || '').toLowerCase()) ||
+                String(data.username || '').toLowerCase().includes(String(u.username || '').toLowerCase())
+              );
+              
+              if (similarUser) {
+                console.log('[AUTH] Similar user found, analyzing differences:');
+                console.log('[AUTH] DB username chars:', [...(similarUser.username || '')].map(c => c.charCodeAt(0)));
+                console.log('[AUTH] Input username chars:', [...(data.username || '')].map(c => c.charCodeAt(0)));
+                console.log('[AUTH] DB password chars:', [...(similarUser.password || '')].map(c => c.charCodeAt(0)));
+                console.log('[AUTH] Input password chars:', [...(data.password || '')].map(c => c.charCodeAt(0)));
+              }
             }
             
             if (adminUser) {
-              console.log('[Auth] Login SUCCESS for:', adminUser.username, 'Level:', adminUser.level);
+              console.log('%c[AUTH] ✅ LOGIN SUCCESS!', 'color: green; font-size: 16px; font-weight: bold;');
+              console.log('[AUTH] Match reason:', matchReason);
+              console.log('[AUTH] Logged in as:', adminUser.username, '(' + adminUser.level + ')');
               
-              // Store auth info in sessionStorage
+              // Store session
               sessionStorage.setItem('pamungkas_admin_level', adminUser.level);
               sessionStorage.setItem('pamungkas_admin_user', adminUser.username);
               
@@ -2243,27 +2301,35 @@ function callServer(action, data) {
                 message: 'Login berhasil'
               });
             } else {
-              console.warn('[Auth] Login FAILED for:', data.username);
-              console.warn('[Auth] Possible reasons:');
-              console.warn('  - Username not found in DB');
-              console.warn('  - Password mismatch');
-              console.warn('  - Account not active (status != active)');
+              console.log('%c[AUTH] ❌ LOGIN FAILED', 'color: red; font-size: 16px; font-weight: bold;');
               
-              // Provide more specific error message
-              const userExists = users.some(u => u.username.toLowerCase() === data.username.toLowerCase());
-              if (!userExists) {
-                resolve({ success: false, message: 'Username tidak ditemukan di database.' });
-              } else {
-                const userInactive = users.find(u => u.username.toLowerCase() === data.username.toLowerCase());
-                if (userInactive && userInactive.status !== 'active') {
-                  resolve({ success: false, message: 'Akun tidak aktif. Hubungi administrator.' });
+              // Detailed failure analysis
+              const inputUserLower = String(data.username || '').toLowerCase();
+              const dbUser = users.find(u => String(u.username || '').toLowerCase() === inputUserLower);
+              
+              if (dbUser) {
+                console.log('[AUTH] Failure analysis: USER EXISTS but credentials invalid');
+                console.log('[AUTH] DB password:', JSON.stringify(dbUser.password));
+                console.log('[AUTH] Input password:', JSON.stringify(data.password));
+                console.log('[AUTH] Passwords equal?', dbUser.password === data.password);
+                
+                if (dbUser.status !== 'active') {
+                  resolve({ success: false, message: 'Akun "' + dbUser.username + '" tidak aktif. Status: ' + dbUser.status });
                 } else {
-                  resolve({ success: false, message: 'Password salah. Silakan coba lagi.' });
+                  resolve({ success: false, message: 'Password salah untuk user "' + data.username + '". Periksa spasi atau karakter tersembunyi.' });
                 }
+              } else {
+                console.log('[AUTH] Failure analysis: USERNAME NOT FOUND');
+                console.log('[AUTH] Available usernames:', users.map(u => '"' + u.username + '"'));
+                
+                resolve({ 
+                  success: false, 
+                  message: 'Username "' + data.username + '" tidak ditemukan. User tersedia: ' + users.map(u => u.username).join(', ')
+                });
               }
             }
           } catch (loginError) {
-            console.error('[Auth] Login error:', loginError);
+            console.error('[AUTH] System error:', loginError);
             reject(loginError);
           }
           break;
@@ -4165,8 +4231,9 @@ function openAdminCrud(type){
   var readOnly=!writable;
   var c=document.getElementById('adminCrudContent');
   var infoBar=readOnly?'<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>'+levelLabel()+'</strong> \u2014 mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>':'';
-  // Add Import button for supported modules
-  const importBtn = (['pengumuman','sdmk','pendaftaran','sertifikat','materi','admin'].includes(type) && writable) 
+  // Add Import button ONLY for admin users who are logged in
+  const isAdminLoggedIn = isAdminUser() && canWrite(type);
+  const importBtn = (isAdminLoggedIn && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','admin'].includes(type)) 
     ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\''+type+'\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
     : '';
     
@@ -5675,10 +5742,18 @@ const IMPORT_CONFIG = {
   }
 };
 
-// Open bulk import modal
+// Open bulk import modal (SECURITY: Only for logged-in admins)
 function openBulkImportModal() {
+  // Security check: Must be logged in as admin
+  if (!isAdminUser()) {
+    showToast('Anda harus login sebagai admin untuk mengakses fitur ini.', 'error');
+    return;
+  }
+  
   resetImportState();
   document.getElementById('bulkImportModal').classList.add('active');
+  
+  console.log('[Import] Modal opened by user:', adminUsername, '(Level:', adminLevel, ')');
 }
 
 // Close bulk import modal
@@ -5687,8 +5762,21 @@ function closeBulkImportModal() {
   resetImportState();
 }
 
-// Open bulk import for specific module (from admin CRUD)
+// Open bulk import for specific module from admin CRUD (SECURITY CHECKED)
 function openBulkImportForModule(moduleType) {
+  // Double security check
+  if (!isAdminUser()) {
+    showToast('Akses ditolak. Login sebagai admin diperlukan.', 'error');
+    return;
+  }
+  
+  if (!canWrite(moduleType)) {
+    showToast('Anda tidak memiliki akses tulis untuk modul ini.', 'error');
+    return;
+  }
+  
+  console.log('[Import] Opening import for:', moduleType, 'by:', adminUsername);
+  
   resetImportState();
   
   // Set the module
@@ -5944,12 +6032,22 @@ function backToImportStep1() {
   document.getElementById('importStep2').style.display = 'none';
 }
 
-// Execute bulk import
+// Execute bulk import (SECURITY: Verify admin session before importing)
 async function executeBulkImport() {
+  // Final security check before executing import
+  if (!isAdminUser()) {
+    document.getElementById('importProgressOverlay').style.display = 'none';
+    showToast('Sesi admin tidak valid. Silakan login ulang.', 'error');
+    closeBulkImportModal();
+    return;
+  }
+  
   if (!_importModule || _importData.length === 0) {
     showToast('Tidak ada data untuk diimport.', 'error');
     return;
   }
+  
+  console.log('[Import] Executing import by:', adminUsername, 'Module:', _importModule);
   
   const config = IMPORT_CONFIG[_importModule];
   const skipDuplicates = document.getElementById('importSkipDuplicates').checked;
@@ -6299,10 +6397,7 @@ console.log('[Bulk Import] System initialized');
   </div>
 </div>
 
-<!-- Bulk Import Button (floating) -->
-<button class="fab-btn" id="fabBulkImport" onclick="openBulkImportModal()" title="Import Data Massal">
-  <i class="fas fa-file-import"></i>
-</button>
+
 
 <style>
 /* ========== BULK IMPORT STYLES ========== */
