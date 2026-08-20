@@ -1102,6 +1102,40 @@
     .cek-reg-data .reg-field .val{font-size:.88rem;color:var(--text-primary);line-height:1.5;word-break:break-word;}
     .cek-reg-data .reg-field .val a{color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px;}
     .cek-reg-data .reg-field .val a:hover{text-decoration:underline;}
+    
+    /* ✅ Catatan Admin - Styling Khusus (Highlight) */
+    .cek-reg-data .reg-field-highlight{
+      background:linear-gradient(135deg, #FFF7ED 0%, #FEF3C7 100%);
+      border:1px solid #F59E0B;
+      border-radius:10px;
+      padding:14px;
+      margin:8px 0;
+      grid-column:1/-1 !important;
+      box-shadow:0 2px 8px rgba(245,158,11,0.15);
+    }
+    .cek-reg-data .reg-field-highlight label{
+      color:#92400E;
+      font-size:.78rem;
+      font-weight:800;
+      display:flex;align-items:center;gap:6px;
+    }
+    .cek-reg-data .catatan-admin-content{
+      background:#fff;
+      border-radius:8px;
+      padding:12px 16px;
+      margin-top:6px;
+      font-size:.92rem;
+      line-height:1.7;
+      color:#451A03;
+      border-left:4px solid #F59E0B;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .cek-reg-data .catatan-admin-content i{
+      color:#F59E0B;
+      margin-right:6px;
+    }
+    
     .cek-reg-data .reg-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 14px;border-radius:20px;font-size:.78rem;font-weight:600;width:fit-content;}
     .cek-reg-data .reg-status-badge.diterima{background:var(--secondary-light);color:var(--secondary-dark);}
     .cek-reg-data .reg-status-badge.ditolak{background:var(--danger-light);color:var(--danger);}
@@ -3223,13 +3257,26 @@ function callServer(action, data) {
 
         case 'tambahPendaftaran':
           await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
-            object: { foto: data.Foto || null, nama_lengkap_dengan_gelar: data['Nama Lengkap dengan Gelar'],
-              nik: data.NIK, nip: data.NIP, unit_kerja: data['Unit Kerja'], jenis_sdmk: data['Jenis SDMK'],
-              jenis_profesi: data['Jenis Profesi'], pekerjaan: data.Pekerjaan, jenis_kelamin: data['Jenis Kelamin'],
-              tempat_dan_tanggal_lahir: data['Tempat dan Tanggal Lahir'], email_plataran_sehat: data.Email,
-              lama_bekerja_di_unit_sekarang: data['Lama Bekerja'], nomor_whatsapp: data.WhatsApp || data['Nomor WhatsApp'],
-              alamat_rumah: data['Alamat Rumah'], surat_pernyataan: data['Surat Pernyataan'],
-              judul_kegiatan: data['Judul Kegiatan'], status: 'pending' }
+            object: { 
+              foto: data.Foto || null, 
+              nama_lengkap_dengan_gelar: data['Nama Lengkap dengan Gelar'],
+              nik: data.NIK, 
+              nip: data.NIP, 
+              unit_kerja: data['Unit Kerja'], 
+              jenis_sdmk: data['Jenis SDMK'],
+              jenis_profesi: data['Jenis Profesi'], 
+              pekerjaan: data.Pekerjaan || data['Status Pekerjaan'],
+              jenis_kelamin: data['Jenis Kelamin'],
+              tempat_dan_tanggal_lahir: data['Tempat dan Tanggal Lahir'], 
+              email_plataran_sehat: data.Email || data['Email Plataran Sehat'],
+              lama_bekerja_di_unit_sekarang: data['Lama Bekerja'] || data['Lama Bekerja di Unit Sekarang'],
+              nomor_whatsapp: data.WhatsApp || data['Nomor WhatsApp / Telepon'] || data.Kontak,
+              alamat_rumah: data['Alamat Rumah'], 
+              surat_pernyataan: data['Surat Pernyataan'],
+              judul_kegiatan: data['Judul Kegiatan'], 
+              status: 'pending',
+              catatan_admin: data['Catatan Admin'] || data.catatan_admin || null  // ✅ TAMBAHAN
+            }
           });
           resolve({ success: true, message: 'Pendaftaran berhasil dikirim' });
           break;
@@ -3295,19 +3342,21 @@ function callServer(action, data) {
           // Ambil ID dari data (bisa id atau ID)
           const pendaftaranId = _crud.allData[data.idx]?.id || _crud.allData[data.idx]?.ID || data.idx;
           
-          // Build object dengan SEMUA field yang valid (sesuai schema Nhost)
+          // Build object dengan SEMUA field yang valid (sesuai schema Nhost/Hasura)
+          // ✅ PERBAIKAN: Hanya include field yang benar-benar ada di database
           var pendaftaranUpdate = {};
           
-          // Field yang boleh diupdate (sesuai schema Nhost)
+          // Field yang boleh diupdate (HARUS SESUAI SCHEMA DATABASE EXACT!)
           var allowedFields = [
             'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja',
             'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin',
             'tempat_dan_tanggal_lahir', 'email_plataran_sehat',
             'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
-            'surat_pernyataan', 'judul_kegiatan', 'status'
+            'surat_pernyataan', 'judul_kegiatan', 'status',
+            'catatan_admin'  // ✅ TAMBAHAN: Kolom catatan admin
           ];
           
-          // Mapping nama form ke nama field database
+          // Mapping nama form ke nama field database (EXACT MATCH)
           var fieldMapping = {
             'Nama Lengkap dengan Gelar': 'nama_lengkap_dengan_gelar',
             'NIK': 'nik', 'NIP': 'nip',
@@ -3315,27 +3364,55 @@ function callServer(action, data) {
             'Jenis SDMK': 'jenis_sdmk',
             'Jenis Profesi': 'jenis_profesi',
             'Pekerjaan': 'pekerjaan',
+            'Status Pekerjaan': 'pekerjaan',
             'Jenis Kelamin': 'jenis_kelamin',
             'Tempat dan Tanggal Lahir': 'tempat_dan_tanggal_lahir',
+            'Email Plataran Sehat': 'email_plataran_sehat',
             'Email': 'email_plataran_sehat',
             'Alamat Rumah': 'alamat_rumah',
             'Lama Bekerja': 'lama_bekerja_di_unit_sekarang',
+            'Lama Bekerja di Unit Sekarang': 'lama_bekerja_di_unit_sekarang',
             'Surat Pernyataan': 'surat_pernyataan',
             'Judul Kegiatan': 'judul_kegiatan',
-            'Status': 'status'
+            'Status': 'status',
+            'Catatan Admin': 'catatan_admin',
+            'Catatan': 'catatan_admin'
           };
+          
+          console.log('[UPDATE] Raw data keys:', Object.keys(data));
           
           // Proses setiap field dari data
           Object.keys(data).forEach(function(key) {
-            // Skip internal fields
-            if (['_user', 'idx'].includes(key)) return;
+            // Skip internal fields dan fields yang tidak relevan
+            if (['_user', 'idx', 'ID', 'id', 'created_at', 'updated_at', 
+                'Diubah Oleh', 'Tanggal Ubah Status', 'Tanggal Perbaikan',
+                'Catatan Status'].includes(key)) return;
             
             // Cari nama field yang sesuai
-            var dbField = fieldMapping[key] || key.toLowerCase().replace(/ /g, '_');
+            var dbField = fieldMapping[key];
             
-            // Jika field ada di daftar yang diizinkan
+            // Jika tidak ada di mapping, coba konversi otomatis
+            if (!dbField) {
+              dbField = key.toLowerCase()
+                .replace(/ /g, '_')
+                .replace(/\//g, '_')
+                .replace(/[^a-z0-9_]/g, '');
+            }
+            
+            // ✅ KRITIS: Hanya tambahkan jika field BENAR-BENAR ada di allowedFields
             if (allowedFields.includes(dbField) && data[key] !== undefined && data[key] !== '') {
-              pendaftaranUpdate[dbField] = data[key];
+              // Pastikan value adalah string (bukan object/array)
+              var value = data[key];
+              if (typeof value === 'string') {
+                value = value.trim();
+              } else if (typeof value !== 'number' && typeof value !== 'boolean') {
+                value = String(value || '').trim();
+              }
+              
+              // Hanya tambahkan jika value valid
+              if (value !== '' && value !== null && value !== undefined) {
+                pendaftaranUpdate[dbField] = value;
+              }
             }
           });
           
@@ -3351,6 +3428,10 @@ function callServer(action, data) {
               pendaftaranUpdate.status = 'approved';
             } else if (statusVal === 'ditolak') {
               pendaftaranUpdate.status = 'rejected';
+            } else if (statusVal === 'menunggu') {
+              pendaftaranUpdate.status = 'pending';
+            } else if (statusVal === 'proses verifikasi') {
+              pendaftaranUpdate.status = 'verified';
             } else {
               // Default ke pending jika tidak dikenali
               pendaftaranUpdate.status = 'pending';
@@ -3358,7 +3439,20 @@ function callServer(action, data) {
             console.log('[UPDATE] Status normalized:', statusVal, '→', pendaftaranUpdate.status);
           }
           
+          // ✅ Handle catatan_admin khusus (textarea/paragraf)
+          var catatanVal = data['Catatan Admin'] || data.catatan_admin || data.Catatan || '';
+          if (catatanVal) {
+            pendaftaranUpdate.catatan_admin = String(catatanVal).trim();
+          }
+          
+          console.log('[UPDATE] Final pendaftaranUpdate:', pendaftaranUpdate);
           console.log('[UPDATE] Pendaftaran fields:', Object.keys(pendaftaranUpdate));
+          
+          // ✅ VALIDASI: Pastikan object tidak kosong
+          if (Object.keys(pendaftaranUpdate).length === 0) {
+            resolve({ success: false, message: 'Tidak ada data yang diubah' });
+            break;
+          }
           
           await graphqlRequest('UpdatePendaftaran', GRAPHQL_QUERIES.updatePendaftaran, {
             id: pendaftaranId,
@@ -3925,6 +4019,11 @@ function callServer(action, data) {
                 ).trim() || null,
                 
                 foto: String(row.foto || '').trim() || null,
+                
+                // ✅ TAMBAHAN: Catatan Admin (paragraf/textarea)
+                catatan_admin: String(
+                  row.catatan_admin || row.catatan || row['Catatan Admin'] || ''
+                ).trim() || null,
                 
                 status: 'pending'
               };
@@ -6460,8 +6559,8 @@ const ADMIN_TABLES = {
     icon: 'fa-clipboard-list',
     description: 'Data pendaftaran pelatihan',
     category: 'data-utama',
-    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'email_plataran_sehat', 'judul_kegiatan', 'status'],
-    displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'status'],
+    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'email_plataran_sehat', 'alamat_rumah', 'lama_bekerja_di_unit_sekarang', 'surat_pernyataan', 'judul_kegiatan', 'status', 'catatan_admin'],
+    displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'status', 'catatan_admin'],
     canWrite: true,
     queryAction: 'getPendaftaran',
     createAction: 'tambahPendaftaran',
@@ -9088,7 +9187,9 @@ function renderCekRegResult(ct,r,idx){
     {label:'Alamat Rumah',keys:['Alamat Rumah','Alamat'],full:true,textarea:true},
     {label:'Judul Kegiatan',keys:['Judul Kegiatan','Judul Pelatihan','Kegiatan','Pelatihan'],full:true},
     {label:'Tanggal',keys:['Tanggal','Tanggal Pendaftaran','Tgl Daftar']},
-    {label:'Catatan',keys:['Catatan','Keterangan','Notes'],full:true,textarea:true}
+    {label:'Catatan',keys:['Catatan','Keterangan','Notes'],full:true,textarea:true},
+    // ✅ TAMBAHAN: Catatan Admin (paragraf - terpisah & menonjol)
+    {label:'📝 Catatan Admin',keys:['catatan_admin','Catatan Admin'],full:true,textarea:true,highlight:true}
   ];
 
   fields.forEach(function(f){
@@ -9103,12 +9204,21 @@ function renderCekRegResult(ct,r,idx){
       // not a link
     }
 
-    h+='<div class="reg-field'+(f.full?' full':'')+'">';
+    // ✅ Special styling untuk Catatan Admin (highlight)
+    var fieldClass = 'reg-field' + (f.full ? ' full' : '');
+    if (f.highlight) {
+      fieldClass += ' reg-field-highlight';
+    }
+    
+    h+='<div class="'+fieldClass+'">';
     h+='<label>'+f.label+'</label>';
     if(isLink){
       h+='<div class="val"><a href="'+escHTML(v)+'" target="_blank"><i class="fas fa-external-link-alt"></i> Lihat/Download Surat Pernyataan</a></div>';
+    } else if (f.highlight && v && v !== '-') {
+      // Catatan Admin dengan styling khusus (paragraf)
+      h+='<div class="val catatan-admin-content"><i class="fas fa-sticky-note"></i> '+escHTML(v).replace(/\n/g, '<br>')+'</div>';
     } else {
-      h+='<div class="val">'+escHTML(v||'-')+'</div>';
+      h+='<div class="val">'+(f.textarea ? escHTML(v||'-').replace(/\n/g, '<br>') : escHTML(v||'-'))+'</div>';
     }
     h+='</div>';
   });
