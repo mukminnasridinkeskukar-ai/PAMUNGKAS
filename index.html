@@ -3065,69 +3065,175 @@ function callServer(action, data) {
           break;
 
         // === IMPORT OPERATIONS (Legacy Import Modal) ===
-        case 'importPendaftaran':
+        case 'importPendaftaran': {
           console.log('[IMPORT] Starting legacy import for', data.rows?.length || 0, 'records');
           
           if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
             reject(new Error('Tidak ada data untuk di-import'));
-            return;
+            break;
           }
           
           let importSuccess = 0;
           let importFailed = 0;
+          let importSkipped = 0;  // For duplicates
           const importErrors = [];
+          const legacyNikSet = new Set();  // Track NIK to detect duplicates
+          const legacyEmailSet = new Set();  // Track email to detect duplicates
           
           // Process each row
           for (let i = 0; i < data.rows.length; i++) {
             try {
               const row = data.rows[i];
               
-              // Map fields - handle both camelCase and original field names
+              // Extract and normalize fields according to DATABASE SCHEMA
+              const nik = String(row.nik || row.NIK || row['NIK/NIP'] || '').trim();
+              const email = String(row.email || row.Email || row.email_plataran_sehat || '').trim();
+              
+              // Check for duplicate NIK in this batch
+              if (nik && legacyNikSet.has(nik)) {
+                importSkipped++;
+                importErrors.push({ 
+                  row: i + 1, 
+                  error: 'NIK duplikat dalam file ini', 
+                  data: { nik }
+                });
+                console.warn('[IMPORT] Skipping duplicate NIK in batch:', nik, 'row:', i + 1);
+                continue;  // Skip this row
+              }
+              
+              // Check for duplicate email in this batch
+              if (email && legacyEmailSet.has(email)) {
+                importSkipped++;
+                importErrors.push({ 
+                  row: i + 1, 
+                  error: 'Email duplikat dalam file ini', 
+                  data: { email }
+                });
+                console.warn('[IMPORT] Skipping duplicate email in batch:', email, 'row:', i + 1);
+                continue;  // Skip this row
+              }
+              
+              // Build object matching EXACT database schema
               const pendaftaranObject = {
-                nik: String(row.nik || row.NIK || row['NIK/NIP'] || '').trim(),
-                nama_lengkap_dengan_gelar: String(row.nama_lengkap || row.Nama || row['Nama Lengkap dengan Gelar'] || '').trim(),
-                jenis_kelamin: String(row.jenis_kelamin || row.kelamin || row['Jenis Kelamin'] || '').trim(),
+                // Required fields (NOT NULL in DB)
+                nama_lengkap_dengan_gelar: String(
+                  row.nama_lengkap || row.Nama || row['Nama Lengkap dengan Gelar'] || ''
+                ).trim() || 'Tidak Diketahui',
+                
+                nik: nik,
+                
+                unit_kerja: String(
+                  row.unit_kerja || row.unitKerja || row['Unit Kerja'] || row.unit || ''
+                ).trim() || 'Belum Ditentukan',
+                
+                judul_kegiatan: String(
+                  row.judul_kegiatan || row['Judul Kegiatan'] || row.kegiatan || 'Pelatihan SDMK'
+                ).trim(),
+                
+                // Optional fields
+                nip: String(row.nip || row.NIP || '').trim() || null,
+                jenis_kelamin: String(
+                  row.jenis_kelamin || row.kelamin || row['Jenis Kelamin'] || ''
+                ).trim() || null,
+                
                 tempat_dan_tanggal_lahir: [
                   String(row.tempat_lahir || row.Tempat_Lahir || ''),
                   String(row.tanggal_lahir || row.Tanggal_Lahir || '')
                 ].filter(Boolean).join(', ') || null,
-                nip: String(row.nip || row.NIP || '').trim() || null,
-                jabatan: String(row.jabatan || row.Jabatan || '').trim() || null,
-                unit_kerja: String(row.unit_kerja || row.unitKerja || row['Unit Kerja'] || '').trim(),
-                profesi: String(row.profesi || row.Profesi || row['Jenis Profesi'] || '').trim(),
-                pendidikan_terakhir: String(row.pendidikan_terakhir || row.pendidikan || row.Pendidikan || '').trim() || null,
-                no_telepon: String(row.no_telepon || row.telepon || row['No Telepon'] || '').trim() || null,
-                email: String(row.email || row.Email || '').trim() || null,
-                alamat_rumah: String(row.alamat || row.Alamat || row['Alamat Rumah'] || '').trim() || null,
-                judul_kegiatan: String(row.judul_kegiatan || row['Judul Kegiatan'] || 'Pelatihan SDMK').trim(),
-                status: 'pending',
-                created_by: data._user || adminUsername || 'legacy_import'
+                
+                email_plataran_sehat: email || null,
+                nomor_whatsapp: String(
+                  row.nomor_whatsapp || row.whatsapp || row.no_telepon || row.telepon || row['No Telepon'] || ''
+                ).trim() || null,
+                
+                alamat_rumah: String(
+                  row.alamat_rumah || row.alamat || row.Alamat || row['Alamat Rumah'] || ''
+                ).trim() || null,
+                
+                jenis_sdmk: String(
+                  row.jenis_sdmk || row['Jenis SDMK'] || ''
+                ).trim() || null,
+                
+                jenis_profesi: String(
+                  row.jenis_profesi || row.profesi || row.Profesi || row['Jenis Profesi'] || ''
+                ).trim() || null,
+                
+                pekerjaan: String(
+                  row.pekerjaan || row.Pekerjaan || ''
+                ).trim() || null,
+                
+                lama_bekerja_di_unit_sekarang: String(
+                  row.lama_bekerja || row.lama_bekerja_di_unit_sekarang || row['Lama Bekerja'] || ''
+                ).trim() || null,
+                
+                surat_pernyataan: String(
+                  row.surat_pernyataan || row.surat || row['Surat Pernyataan'] || ''
+                ).trim() || null,
+                
+                foto: String(row.foto || row.Foto || '').trim() || null,
+                
+                status: 'pending'
               };
               
-              // Validate required
-              if (!pendaftaranObject.nik) throw new Error('NIK kosong');
-              if (!pendaftaranObject.nama_lengkap_dengan_gelar) throw new Error('Nama kosong');
+              // Validate REQUIRED fields
+              if (!pendaftaranObject.nik) {
+                throw new Error('NIK wajib diisi');
+              }
+              if (!pendaftaranObject.nama_lengkap_dengan_gelar || pendaftaranObject.nama_lengkap_dengan_gelar === 'Tidak Diketahui') {
+                throw new Error('Nama lengkap wajib diisi');
+              }
               
-              // Insert to database
-              await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
+              // Insert to database with detailed logging
+              console.log('[IMPORT] Inserting row', i + 1, ':', {
+                nik: pendaftaranObject.nik,
+                nama: pendaftaranObject.nama_lengkap_dengan_gelar.substring(0, 30) + '...'
+              });
+              
+              const result = await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
                 object: pendaftaranObject
               });
               
-              importSuccess++;
+              // Verify insertion was successful
+              if (result && result.insert_pendaftaran_one && result.insert_pendaftaran_one.id) {
+                importSuccess++;
+                // Track NIK and email to prevent duplicates
+                if (nik) legacyNikSet.add(nik);
+                if (email) legacyEmailSet.add(email);
+                console.log('[INSERT] ✓ Success row', i + 1, '- ID:', result.insert_pendaftaran_one.id);
+              } else {
+                throw new Error('Insert returned no ID');
+              }
+              
             } catch (rowError) {
               importFailed++;
-              importErrors.push({ row: i + 1, error: rowError.message, data: data.rows[i] });
+              const errorMsg = rowError.message || 'Unknown error';
+              importErrors.push({ 
+                row: i + 1, 
+                error: errorMsg, 
+                data: data.rows[i],
+                isDuplicate: errorMsg.includes('unique') || errorMsg.includes('duplicate') || errorMsg.includes('duplikat')
+              });
+              console.error('[INSERT] ✗ Failed row', i + 1, ':', errorMsg);
             }
           }
           
+          console.log('[IMPORT] Legacy import complete:', {
+            total: data.rows.length,
+            success: importSuccess,
+            failed: importFailed,
+            skipped: importSkipped
+          });
+          
           resolve({
-            success: true,
-            message: `Import Pendaftaran selesai! ${importSuccess} berhasil, ${importFailed} gagal.`,
+            success: importSuccess > 0,
+            message: `Import selesai!\n✅ Berhasil: ${importSuccess} data\n❌ Gagal: ${importFailed} data\n⚠️ Lewati (duplikat): ${importSkipped} data`,
             successCount: importSuccess,
             failedCount: importFailed,
+            skippedCount: importSkipped,
             errors: importErrors
           });
           break;
+        }
 
         case 'importSDMK':
           console.log('[IMPORT] Starting SDMK import for', data.rows?.length || 0, 'records');
@@ -3192,63 +3298,152 @@ function callServer(action, data) {
           
           let successCount = 0;
           let failedCount = 0;
+          let skippedCount = 0;
           const errors = [];
+          const nikSet = new Set();
+          const emailSet = new Set();
           
           // Process each record
           for (let i = 0; i < data.data.length; i++) {
             try {
               const row = data.data[i];
               
-              // Map CSV fields to database columns
+              // Extract and normalize fields according to DATABASE SCHEMA
+              const nik = String(row.nik || '').trim();
+              const email = String(row.email || row.email_plataran_sehat || '').trim();
+              
+              // Check for duplicate NIK in this batch
+              if (nik && nikSet.has(nik)) {
+                skippedCount++;
+                errors.push({ rowNum: i + 1, error: 'NIK duplikat dalam batch ini', data: { nik } });
+                console.warn('[BULK IMPORT] Skipping duplicate NIK:', nik);
+                continue;
+              }
+              
+              // Check for duplicate email in this batch
+              if (email && emailSet.has(email)) {
+                skippedCount++;
+                errors.push({ rowNum: i + 1, error: 'Email duplikat dalam batch ini', data: { email } });
+                console.warn('[BULK IMPORT] Skipping duplicate email:', email);
+                continue;
+              }
+              
+              // Map CSV fields to EXACT database columns (matching schema)
               const pendaftaranObject = {
-                nik: String(row.nik || '').trim(),
-                nama_lengkap_dengan_gelar: String(row.nama_lengkap || row.nama || '').trim(),
-                jenis_kelamin: String(row.jenis_kelamin || row.kelamin || '').trim(),
-                tempat_dan_tanggal_lahir: String(row.tempat_lahir || '') + ', ' + String(row.tanggal_lahir || ''),
+                // Required fields (NOT NULL in database)
+                nama_lengkap_dengan_gelar: String(
+                  row.nama_lengkap || row.nama || row.Nama || ''
+                ).trim() || 'Tidak Diketahui',
+                
+                nik: nik,
+                
+                unit_kerja: String(
+                  row.unit_kerja || row.unitKerja || row['Unit Kerja'] || ''
+                ).trim() || 'Belum Ditentukan',
+                
+                judul_kegiatan: String(
+                  row.judul_kegiatan || row['Judul Kegiatan'] || 'Pelatihan SDMK'
+                ).trim(),
+                
+                // Optional fields (exact column names from schema)
                 nip: String(row.nip || '').trim() || null,
-                jabatan: String(row.jabatan || '').trim() || null,
-                unit_kerja: String(row.unit_kerja || row.unitKerja || '').trim(),
-                profesi: String(row.profesi || '').trim(),
-                pendidikan_terakhir: String(row.pendidikan_terakhir || row.pendidikan || '').trim() || null,
-                no_telepon: String(row.no_telepon || row.telepon || '').trim() || null,
-                email: String(row.email || '').trim() || null,
-                alamat: String(row.alamat || '').trim() || null,
-                judul_kegiatan: String(row.judul_kegiatan || 'Pelatihan SDMK').trim(),
-                status: 'pending',
-                created_by: adminUsername || 'bulk_import'
+                jenis_kelamin: String(
+                  row.jenis_kelamin || row.kelamin || ''
+                ).trim() || null,
+                
+                tempat_dan_tanggal_lahir: [
+                  String(row.tempat_lahir || ''),
+                  String(row.tanggal_lahir || '')
+                ].filter(Boolean).join(', ') || null,
+                
+                email_plataran_sehat: email || null,
+                nomor_whatsapp: String(
+                  row.nomor_whatsapp || row.whatsapp || row.no_telepon || ''
+                ).trim() || null,
+                
+                alamat_rumah: String(
+                  row.alamat_rumah || row.alamat || ''
+                ).trim() || null,
+                
+                jenis_sdmk: String(
+                  row.jenis_sdmk || ''
+                ).trim() || null,
+                
+                jenis_profesi: String(
+                  row.jenis_profesi || row.profesi || ''
+                ).trim() || null,
+                
+                pekerjaan: String(
+                  row.pekerjaan || ''
+                ).trim() || null,
+                
+                lama_bekerja_di_unit_sekarang: String(
+                  row.lama_bekerja || ''
+                ).trim() || null,
+                
+                surat_pernyataan: String(
+                  row.surat_pernyataan || row.surat || ''
+                ).trim() || null,
+                
+                foto: String(row.foto || '').trim() || null,
+                
+                status: 'pending'
               };
               
               // Validate required fields
-              if (!pendaftaranObject.nik || pendaftaranObject.nik.length === 0) {
+              if (!pendaftaranObject.nik) {
                 throw new Error('NIK wajib diisi');
               }
-              if (!pendaftaranObject.nama_lengkap_dengan_gelar || pendaftaranObject.nama_lengkap_dengan_gelar.length === 0) {
+              if (!pendaftaranObject.nama_lengkap_dengan_gelar || pendaftaranObject.nama_lengkap_dengan_gelar === 'Tidak Diketahui') {
                 throw new Error('Nama lengkap wajib diisi');
               }
               
-              // Insert into database
-              await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
+              // Insert into database with verification
+              console.log('[BULK INSERT] Processing record', i + 1, '- NIK:', nik);
+              
+              const result = await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
                 object: pendaftaranObject
               });
               
-              successCount++;
+              // Verify insertion was successful
+              if (result && result.insert_pendaftaran_one && result.insert_pendaftaran_one.id) {
+                successCount++;
+                // Track to prevent duplicates in this batch
+                if (nik) nikSet.add(nik);
+                if (email) emailSet.add(email);
+                console.log('[BULK INSERT] ✓ Success - ID:', result.insert_pendaftaran_one.id);
+              } else {
+                throw new Error('Insert gagal - tidak ada ID dikembalikan');
+              }
+              
             } catch (recordError) {
               failedCount++;
+              const errorMsg = recordError.message || 'Unknown error';
               errors.push({
-                row: i + 1,
-                error: recordError.message || 'Unknown error',
-                data: data.data[i]
+                rowNum: i + 1,
+                error: errorMsg,
+                data: data.data[i],
+                isDuplicate: errorMsg.toLowerCase().includes('unique') || 
+                             errorMsg.toLowerCase().includes('duplicate') ||
+                             errorMsg.toLowerCase().includes('duplikat')
               });
-              console.error('[IMPORT] Error inserting record', i + 1, ':', recordError);
+              console.error('[BULK INSERT] ✗ Failed record', i + 1, ':', errorMsg);
             }
           }
           
-          console.log('[IMPORT] Bulk insert complete:', { success: successCount, failed: failedCount });
+          console.log('[BULK IMPORT] Complete:', { 
+            total: data.data.length, 
+            success: successCount, 
+            failed: failedCount, 
+            skipped: skippedCount 
+          });
+          
           resolve({ 
-            success: true, 
-            message: `Import selesai! ${successCount} berhasil, ${failedCount} gagal.`,
+            success: successCount > 0,
+            message: `Import selesai!\n✅ Berhasil: ${successCount} data\n❌ Gagal: ${failedCount} data\n⚠️ Lewati (duplikat): ${skippedCount} data`,
             successCount: successCount,
             failedCount: failedCount,
+            skippedCount: skippedCount,
             errors: errors
           });
           break;
