@@ -594,9 +594,9 @@
   
     /* ADMIN LEVEL BADGES */
     .level-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
-    .level-badge.super-admin{background:var(--primary);color:#fff}
+    .level-badge.admin{background:var(--primary);color:#fff}
     .level-badge.operator{background:var(--accent);color:#fff}
-    .level-badge.observer{background:var(--text-muted);color:#fff}
+    .level-badge.user{background:var(--text-muted);color:#fff}
     .admin-menu-card.disabled{opacity:.45;pointer-events:none;filter:grayscale(.5)}
     .admin-info-bar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--bg-body);border-radius:var(--radius-sm);margin-bottom:20px;font-size:.85rem;color:var(--text-secondary)}
     .admin-info-bar .level-badge{font-size:.75rem}
@@ -1000,18 +1000,8 @@
       <div class="sidebar-logo"><i class="fas fa-heartbeat"></i></div>
       <div class="sidebar-brand"><h2>PAMUNGKAS</h2><p>Mutu dan Kompetensi SDMK</p></div>
     </div>
-    <nav class="sidebar-nav">
-      <div class="nav-label">Menu Utama</div>
-      <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')"><i class="fas fa-th-large"></i><span>Dashboard</span></a>
-      <a class="nav-item" data-page="pengumuman" onclick="navigateTo('pengumuman')"><i class="fas fa-bullhorn"></i><span>Pengumuman</span></a>
-      <a class="nav-item" data-page="profil-sdmk" onclick="navigateTo('profil-sdmk')"><i class="fas fa-user-md"></i><span>Profil SDMK Terlatih</span></a>
-      <a class="nav-item" data-page="pendaftaran" onclick="navigateTo('pendaftaran')"><i class="fas fa-clipboard-list"></i><span>Pendaftaran</span></a>
-      <a class="nav-item" data-page="cek-sertifikat" onclick="navigateTo('cek-sertifikat')"><i class="fas fa-certificate"></i><span>Cek Sertifikat</span></a>
-      <a class="nav-item" data-page="cek-materi" onclick="navigateTo('cek-materi')"><i class="fas fa-book-open"></i><span>Cek Materi</span></a>
-      <a class="nav-item" data-page="cek-pendaftaran" onclick="navigateTo('cek-pendaftaran')"><i class="fas fa-search-location"></i><span>Cek Pendaftaran</span></a>
-      <div class="nav-divider"></div>
-      <div class="nav-label">Administrasi</div>
-      <a class="nav-item" data-page="panel-admin" onclick="navigateTo('panel-admin')"><i class="fas fa-shield-alt"></i><span>Panel Admin</span></a>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <!-- Sidebar akan di-render dinamis oleh renderDynamicSidebar() -->
     </nav>
     <div class="sidebar-footer">
       <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-chevron-left"></i><span>Tutup Sidebar</span></button>
@@ -1668,9 +1658,9 @@
         <div class="form-group"><label>Password *</label><input type="text" id="admPassword" required placeholder="Password (plain text)" /><small style="font-size:.7rem;color:var(--text-muted);">Kosongkan jika tidak ingin mengubah password.</small></div>
         <div class="form-group"><label>Level Akses *</label>
           <select id="admLevel" required>
-            <option value="super_admin">Super Admin — Akses penuh ke semua data</option>
-            <option value="operator">Operator — CRUD Pendaftaran, Sertifikat, Materi</option>
-            <option value="observer" selected>Observer — Hanya lihat semua data</option>
+            <option value="admin">Admin — Akses penuh ke semua data (Full Access)</option>
+            <option value="operator">Operator — Pendaftaran & Sertifikat</option>
+            <option value="user" selected>User — Tidak ada akses admin</option>
           </select>
         </div>
       </form>
@@ -1753,11 +1743,271 @@
 // === PAMUNGKAS NHOST v7.0 - CLEAN & SECURE ===
 
 /* ========== STATE ========== */
-var adminLevel = '';
+var adminLevel = '';  // admin, operator (dari multiusers.level)
 var adminUsername = '';
+var currentUser = null;  // { id, username, nama_lengkap, level }
+var currentRole = '';    // normalized: admin, operator
 var currentPage = 'dashboard';
 var _dataCache = {}; // cache data per sheet
 var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [], _allMateri = [], _allAdmin = [];
+
+/* ============================================================
+ * SISTEM ROLE & HAK AKSES (RBAC) - PAMUNGKAS v7.1
+ * Role dari database multiusers.level: admin | operator | user
+ * ============================================================ */
+
+/**
+ * ROLE_PERMISSIONS - Konfigurasi terpusat hak akses
+ * Single source of truth untuk seluruh permission system
+ * 
+ * Role mapping dari DB (multiusers.level):
+ * - admin     = Full Access (semua modul)
+ * - operator  = Pendaftaran + Sertifikat
+ * - user      = Tidak ada akses admin (hanya view publik)
+ */
+const ROLE_PERMISSIONS = {
+  // ADMIN = Full Access (Super Admin)
+  admin: {
+    dashboard: true,
+    indikator: ['read', 'create', 'update', 'delete'],
+    materi: ['read', 'create', 'update', 'delete'],
+    multiusers: ['read', 'create', 'update', 'delete'],
+    pendaftaran: ['read', 'create', 'update', 'delete'],
+    pengumuman: ['read', 'create', 'update', 'delete'],
+    sdmk: ['read', 'create', 'update', 'delete'],
+    sertifikat: ['read', 'create', 'update', 'delete'],
+    user_accounts: ['read', 'create', 'update', 'delete']
+  },
+  
+  // OPERATOR = Pendaftaran + Sertifikat only
+  operator: {
+    dashboard: true,
+    pendaftaran: ['read', 'create', 'update', 'delete'],
+    sertifikat: ['read', 'create', 'update', 'delete']
+  },
+  
+  // USER = No admin access (regular user, read-only public pages)
+  user: {
+    dashboard: false
+  }
+};
+
+/**
+ * SIDEBAR_MENU_CONFIG - Konfigurasi menu sidebar per role
+ * Menu yang tidak memiliki permission TIDAK akan dirender
+ * Role dari DB: admin | operator
+ */
+const SIDEBAR_MENU_CONFIG = {
+  // ADMIN = Full Access (semua menu)
+  admin: {
+    mainMenu: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
+      { id: 'pengumuman', label: 'Pengumuman', icon: 'fa-bullhorn', page: 'pengumuman' },
+      { id: 'profil-sdmk', label: 'Profil SDMK Terlatih', icon: 'fa-user-md', page: 'profil-sdmk' },
+      { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
+      { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' },
+      { id: 'cek-materi', label: 'Cek Materi', icon: 'fa-book-open', page: 'cek-materi' },
+      { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
+    ],
+    panelAdmin: [
+      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+    ],
+    dataUtama: [
+      { id: 'indikator', label: 'Indikator', icon: 'fa-chart-line', module: 'indikator' },
+      { id: 'materi', label: 'Materi', icon: 'fa-book-open', module: 'materi' },
+      { id: 'sdmk', label: 'SDMK', icon: 'fa-user-md', module: 'sdmk' },
+      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }
+    ],
+    informasi: [
+      { id: 'pengumuman-admin', label: 'Pengumuman', icon: 'fa-bullhorn', module: 'pengumuman' },
+      { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
+    ],
+    sistem: [
+      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' },
+      { id: 'user-accounts', label: 'Akun User', icon: 'fa-user-shield', module: 'user_accounts' }
+    ]
+  },
+  
+  // OPERATOR = Pendaftaran + Sertifikat only
+  operator: {
+    mainMenu: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
+      { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
+      { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' },
+      { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
+    ],
+    panelAdmin: [
+      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+    ],
+    data: [
+      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' },
+      { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
+    ]
+  }
+};
+
+/**
+ * ROLE_LABELS - Label dan deskripsi untuk setiap role
+ * Sesuai dengan nilai di multiusers.level
+ */
+const ROLE_LABELS = {
+  admin: {
+    name: 'ADMIN',
+    description: 'Full Access',
+    detail: 'Akses penuh ke semua data dan fitur sistem.',
+    icon: 'fa-crown',
+    color: '#EF4444',
+    bgClass: 'role-admin'
+  },
+  operator: {
+    name: 'OPERATOR',
+    description: 'Pendaftaran & Sertifikat',
+    detail: 'Mengelola pendaftaran dan sertifikat pelatihan.',
+    icon: 'fa-user-shield',
+    color: '#0D6EFD',
+    bgClass: 'role-operator'
+  },
+  user: {
+    name: 'USER',
+    description: 'No Admin Access',
+    detail: 'User biasa tanpa akses panel admin.',
+    icon: 'fa-user',
+    color: '#6B7280',
+    bgClass: 'role-user'
+  }
+};
+
+/**
+ * VALID_ROLES - Daftar role yang valid (sesuai multiusers.level di database)
+ */
+const VALID_ROLES = ['admin', 'operator'];
+
+/**
+ * hasPermission() - Helper utama untuk pengecekan hak akses
+ * @param {string} role - Role user (admin, operator)
+ * @param {string} module - Module/modul yang diakses
+ * @param {string} action - Aksi yang dilakukan (read, create, update, delete)
+ * @returns {boolean} - True jika diizinkan, false jika tidak
+ */
+function hasPermission(role, module, action) {
+  // Normalize role to lowercase
+  var normalizedRole = (role || '').toLowerCase().trim();
+  var normalizedModule = (module || '').toLowerCase().trim();
+  var normalizedAction = (action || '').toLowerCase().trim();
+  
+  // Check if role is valid
+  if (!normalizedRole || !VALID_ROLES.includes(normalizedRole)) {
+    console.warn('[RBAC] Invalid role:', role);
+    return false;
+  }
+  
+  // Get permissions for this role
+  var rolePermissions = ROLE_PERMISSIONS[normalizedRole];
+  if (!rolePermissions) {
+    console.error('[RBAC] No permissions defined for role:', normalizedRole);
+    return false;
+  }
+  
+  // Check if module exists in permissions
+  var modulePermissions = rolePermissions[normalizedModule];
+  if (!modulePermissions) {
+    // Module not found = no access
+    console.log('[RBAC] Module not found for role:', normalizedRole, '-', normalizedModule);
+    return false;
+  }
+  
+  // If it's a boolean (like dashboard: true), return it
+  if (typeof modulePermissions === 'boolean') {
+    var allowed = modulePermissions;
+    console.log('[RBAC] Permission check:', {
+      role: normalizedRole,
+      module: normalizedModule,
+      action: normalizedAction,
+      allowed: allowed
+    });
+    return allowed;
+  }
+  
+  // Check if action is in the array
+  var hasAccess = modulePermissions.includes(normalizedAction);
+  
+  console.log('[RBAC] Permission check:', {
+    role: normalizedRole,
+    module: normalizedModule,
+    action: normalizedAction,
+    allowed: hasAccess
+  });
+  
+  return hasAccess;
+}
+
+/**
+ * getCurrentRole() - Mendapatkan role saat ini
+ * @returns {string} Current role or empty string
+ */
+function getCurrentRole() {
+  return currentRole || adminLevel || '';
+}
+
+/**
+ * isValidRole() - Validasi apakah role valid
+ * @param {string} role - Role yang dicek
+ * @returns {boolean}
+ */
+function isValidRole(role) {
+  return VALID_ROLES.includes((role || '').toLowerCase().trim());
+}
+
+/**
+ * normalizeRole() - Normalisasi role dari database ke format standar
+ * Database field: multiusers.level
+ * Values: 'admin', 'operator', 'user'
+ * @param {string} rawRole - Role asli dari database (multiusers.level)
+ * @returns {string} Role ternormalisasi (admin, operator, atau empty)
+ */
+function normalizeRole(rawRole) {
+  if (!rawRole) return '';
+  
+  var role = rawRole.toString().toLowerCase().trim();
+  
+  // Mapping role dari database ke format standar
+  // Database multiusers.level values: admin, operator, user
+  var roleMapping = {
+    // Admin variants (Full Access)
+    'admin': 'admin',
+    'administrator': 'admin',
+    'super_admin': 'admin',      // Legacy → admin (full access)
+    'superadmin': 'admin',       // Legacy → admin (full access)
+    'administrator_basic': 'admin',
+    
+    // Operator variants (Pendaftaran + Sertifikat)
+    'operator': 'operator',
+    'operator_basic': 'operator',
+    'observer': 'operator',      // Legacy observer → operator
+    
+    // User/No Access
+    'user': '',                  // Regular user = no admin access
+    'staff': '',
+    'verifikator': '',
+    'guest': ''
+  };
+  
+  var normalized = roleMapping[role];
+  
+  // If mapping exists and is valid, return it
+  if (normalized !== undefined && (normalized === '' || isValidRole(normalized))) {
+    return normalized;
+  }
+  
+  // If already valid, return as-is
+  if (isValidRole(role)) {
+    return role;
+  }
+  
+  // Default: empty (no access)
+  console.warn('[AUTH] Unknown role normalized to empty:', rawRole, '→', role);
+  return '';
+}
 
 
 /* ========== NULL-SAFE DOM HELPERS ========== */
@@ -1903,40 +2153,129 @@ function _qs(selector) {
 
 
 
-/* ========== SISTEM LEVEL ADMIN ==========
- * super_admin : Akses penuh — CRUD semua data + kelola akun admin
- * operator    : CRUD terbatas — Pendaftaran, Sertifikat, Materi
- *               View-only: Pengumuman, SDMK
- * observer    : Hanya lihat semua data, tidak bisa tambah/edit/hapus
+/* ========== SISTEM LEVEL ADMIN (RBAC v7.1) ===========
+ * Role dari database multiusers.level:
+ * - admin     : FULL ACCESS - Semua tabel + kelola user
+ * - operator  : PENDAFTARAN + SERTIFIKAT saja
+ * - user      : Tidak ada akses admin (hanya view publik)
+ * Menggunakan hasPermission() untuk pengecekan hak akses
  * ========================================================== */
-function isAdminUser(){return adminLevel!=='';}
+
+/**
+ * isAdminUser() - Cek apakah user login sebagai admin (any role)
+ */
+function isAdminUser(){
+  var role = getCurrentRole();
+  var isValid = isValidRole(role);
+  console.log('[AUTH] isAdminUser:', { role, isValid });
+  return isValid;
+}
+
+/**
+ * canWrite() - Cek apakah role memiliki akses tulis pada module
+ */
 function canWrite(module){
-  if(!adminLevel)return false;
-  if(adminLevel==='super_admin')return true;
-  if(adminLevel==='operator')return module==='pendaftaran'||module==='sertifikat'||module==='materi';
-  return false;
+  var role = getCurrentRole();
+  if (!role) return false;
+  return hasPermission(role, module, 'create') || 
+         hasPermission(role, module, 'update') || 
+         hasPermission(role, module, 'delete');
 }
+
+/**
+ * canRead() - Cek apakah role memiliki akses baca pada module
+ */
+function canRead(module){
+  return hasPermission(getCurrentRole(), module, 'read');
+}
+
+/**
+ * canAccessAdminMenu() - Cek apakah role dapat mengakses menu admin
+ */
 function canAccessAdminMenu(module){
-  if(!adminLevel)return false;
-  if(adminLevel==='super_admin')return true;
-  if(adminLevel==='operator')return module==='pendaftaran'||module==='sertifikat'||module==='materi';
-  if(adminLevel==='observer')return true;
-  return false;
+  var role = getCurrentRole();
+  if (!role) return false;
+  return canRead(module);
 }
+
+/**
+ * canCreate(), canUpdate(), canDelete() - Shortcut functions
+ */
+function canCreate(module) { return hasPermission(getCurrentRole(), module, 'create'); }
+function canUpdate(module) { return hasPermission(getCurrentRole(), module, 'update'); }
+function canDelete(module) { return hasPermission(getCurrentRole(), module, 'delete'); }
+
+/**
+ * levelLabel() - Mendapatkan label role saat ini
+ */
 function levelLabel(){
-  var m={super_admin:'Super Admin',operator:'Operator',observer:'Observer'};
-  return m[adminLevel]||'';
+  var role = getCurrentRole();
+  var labels = ROLE_LABELS[role];
+  return labels ? labels.name : '';
 }
+
+/**
+ * levelDescription() - Mendapatkan deskripsi role
+ */
+function levelDescription(){
+  var role = getCurrentRole();
+  var labels = ROLE_LABELS[role];
+  return labels ? labels.description : '';
+}
+
+/**
+ * levelDetail() - Mendapatkan detail deskripsi role
+ */
+function levelDetail(){
+  var role = getCurrentRole();
+  var labels = ROLE_LABELS[role];
+  return labels ? labels.detail : '';
+}
+
+/**
+ * levelBadgeHTML() - Generate HTML badge untuk role
+ */
 function levelBadgeHTML(){
-  if(!adminLevel)return '';
-  var cls=adminLevel==='super_admin'?'super-admin':adminLevel;
-  var icon=adminLevel==='super_admin'?'fa-crown':adminLevel==='operator'?'fa-user-edit':'fa-eye';
-  return '<span class="level-badge '+cls+'"><i class="fas '+icon+'"></i> '+levelLabel()+'</span>';
+  var role = getCurrentRole();
+  if (!role) return '';
+  
+  var labels = ROLE_LABELS[role];
+  if (!labels) return '';
+  
+  return '<span class="level-badge ' + labels.bgClass + '" style="background:' + labels.color + '20;color:' + labels.color + ';border:1px solid ' + labels.color + '40;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;">' +
+         '<i class="fas ' + labels.icon + '" style="margin-right:4px;"></i> ' + labels.name + '</span>';
 }
+
+/**
+ * levelIcon() - Mendapatkan icon class untuk role
+ */
 function levelIcon(){
-  if(adminLevel==='super_admin')return 'fa-crown';
-  if(adminLevel==='operator')return 'fa-user-edit';
-  return 'fa-eye';
+  var role = getCurrentRole();
+  var labels = ROLE_LABELS[role];
+  return labels ? labels.icon : 'fa-user';
+}
+
+/**
+ * requirePermission() - Helper untuk memblokir aksi tanpa permission
+ * Gunakan di awal setiap fungsi CRUD
+ */
+function requirePermission(module, action) {
+  var role = getCurrentRole();
+  
+  if (!hasPermission(role, module, action)) {
+    var actionLabels = {
+      create: 'menambah',
+      read: 'melihat',
+      update: 'mengedit',
+      delete: 'menghapus'
+    };
+    
+    showToast('Anda tidak memiliki izin untuk ' + (actionLabels[action] || action) + ' data ' + module + '.', 'error');
+    console.error('[RBAC] Access denied:', { role, module, action });
+    return false;
+  }
+  
+  return true;
 }
 
 
@@ -4452,37 +4791,210 @@ function executeDelete(sheet,idx){
 function openLoginModal(){if(isAdminUser()){navigateTo('panel-admin');return;}openModal('loginModal');document.getElementById('loginUsername').focus();}
 function handleLogin(e){
   e.preventDefault();
-  var u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value.trim();
-  if(!u||!p){showToast('Username dan password wajib diisi.','error');return;}
-  var btn=document.getElementById('btnSubmitLogin');
-  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';}
+  var u = document.getElementById('loginUsername').value.trim();
+  var p = document.getElementById('loginPassword').value.trim();
+  if(!u || !p) {showToast('Username dan password wajib diisi.', 'error'); return;}
+  
+  var btn = document.getElementById('btnSubmitLogin');
+  if(btn){btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';}
   
   // Query directly from Nhost multiusers table
-  callServer('validateAdminLogin',{username:u,password:p}).then(function(res){
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
+  callServer('validateAdminLogin', {username: u, password: p}).then(function(res){
+    if(btn){btn.disabled=false; btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
     
-    if(res&&res.success){
-      // Set admin state from DATABASE response (not localStorage)
-      adminLevel=res.level||'observer';
-      adminUsername=res.username||u;
+    if(res && res.success){
+      // Get raw role from database response
+      var rawRole = res.level || res.role || '';
       
-      // Store minimal session info (not sensitive data)
+      // NORMALIZE role using normalizeRole() function
+      var normalizedRole = normalizeRole(rawRole);
+      
+      console.log('[AUTH] Login successful:', {
+        username: u,
+        rawRole: rawRole,
+        normalizedRole: normalizedRole,
+        userData: res
+      });
+      
+      // VALIDATE: Check if role is valid for admin access
+      if(!normalizedRole || !isValidRole(normalizedRole)) {
+        console.error('[AUTH] Invalid role after normalization:', rawRole, '→', normalizedRole);
+        showToast('Login gagal. Role user tidak valid untuk akses admin.', 'error');
+        return;
+      }
+      
+      // Set state variables (NEW RBAC SYSTEM)
+      adminLevel = normalizedRole;
+      adminUsername = res.username || res.nama_lengkap || u;
+      
+      // Build currentUser object from database response
+      currentUser = {
+        id: res.id || null,
+        username: res.username || u,
+        nama_lengkap: res.nama_lengkap || res.name || u,
+        role: normalizedRole,
+        level: normalizedRole, // backward compatibility
+        status: res.status || 'active'
+      };
+      
+      // Set currentRole (main RBAC variable)
+      currentRole = normalizedRole;
+      
+      // Store session data (minimal, non-sensitive)
       sessionStorage.setItem('pamungkas_admin_level', adminLevel);
       sessionStorage.setItem('pamungkas_admin_user', adminUsername);
+      sessionStorage.setItem('pamungkas_current_role', currentRole);
+      sessionStorage.setItem('pamungkas_current_user', JSON.stringify(currentUser));
+      
+      console.log('[AUTH] Current user:', currentUser);
+      console.log('[AUTH] Current role:', currentRole);
+      console.log('[AUTH] Permissions:', ROLE_PERMISSIONS[currentRole]);
       
       closeModal('loginModal');
-      showToast('Login berhasil! Selamat datang, '+adminUsername+' ('+levelLabel()+').','success');
+      showToast('Login berhasil! Selamat datang, ' + (currentUser.nama_lengkap || adminUsername) + ' (' + levelLabel() + ').', 'success');
+      
+      // Update UI components
       updateAdminUI();
+      renderDynamicSidebar(); // Re-render sidebar with role-based menu
       navigateTo('panel-admin');
     } else {
-      showToast('Login gagal. '+(res?res.message:'Username atau password salah.'),'error');
+      showToast('Login gagal. ' + (res ? res.message : 'Username atau password salah.'), 'error');
     }
   }).catch(function(e){
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
-    showToast('Error: '+(e.message||e),'error');
+    if(btn){btn.disabled=false; btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Masuk';}
+    showToast('Error: ' + (e.message || e), 'error');
     console.error('Login error:', e);
   });
 }
+
+/* ========== DYNAMIC SIDEBAR (RBAC) ========== */
+
+/**
+ * renderDynamicSidebar() - Render sidebar menu berdasarkan role
+ * Menu yang tidak memiliki permission TIDAK akan dirender sama sekali
+ * Dipanggil setelah login, logout, atau perubahan role
+ */
+function renderDynamicSidebar() {
+  var sidebarNav = document.getElementById('sidebarNav');
+  if (!sidebarNav) {
+    console.warn('[DOM] renderDynamicSidebar: #sidebarNav tidak ditemukan');
+    return;
+  }
+  
+  var role = getCurrentRole();
+  console.log('[ADMIN] Rendering dynamic sidebar for role:', role);
+  
+  var html = '';
+  var visibleMenus = [];
+  
+  // Default menu untuk semua user (belum login)
+  if (!role || !isValidRole(role)) {
+    // Menu publik tanpa Panel Admin
+    html += '<div class="nav-label">Menu Utama</div>';
+    html += '<a class="nav-item" data-page="dashboard" onclick="navigateTo(\'dashboard\')"><i class="fas fa-th-large"></i><span>Dashboard</span></a>';
+    html += '<a class="nav-item" data-page="pengumuman" onclick="navigateTo(\'pengumuman\')"><i class="fas fa-bullhorn"></i><span>Pengumuman</span></a>';
+    html += '<a class="nav-item" data-page="profil-sdmk" onclick="navigateTo(\'profil-sdmk\')"><i class="fas fa-user-md"></i><span>Profil SDMK Terlatih</span></a>';
+    html += '<a class="nav-item" data-page="pendaftaran" onclick="navigateTo(\'pendaftaran\')"><i class="fas fa-clipboard-list"></i><span>Pendaftaran</span></a>';
+    html += '<a class="nav-item" data-page="cek-sertifikat" onclick="navigateTo(\'cek-sertifikat\')"><i class="fas fa-certificate"></i><span>Cek Sertifikat</span></a>';
+    html += '<a class="nav-item" data-page="cek-materi" onclick="navigateTo(\'cek-materi\')"><i class="fas fa-book-open"></i><span>Cek Materi</span></a>';
+    html += '<a class="nav-item" data-page="cek-pendaftaran" onclick="navigateTo(\'cek-pendaftaran\')"><i class="fas fa-search-location"></i><span>Cek Pendaftaran</span></a>';
+    
+    // Login button di sidebar
+    html += '<div class="nav-divider"></div>';
+    html += '<a class="nav-item" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></a>';
+    
+    sidebarNav.innerHTML = html;
+    console.log('[ADMIN] Visible menus (public):', ['Dashboard', 'Pengumuman', 'Profil SDMK', 'Pendaftaran', 'Cek Sertifikat', 'Cek Materi', 'Cek Pendaftaran', 'Login']);
+    return;
+  }
+  
+  // Get menu config for this role
+  var menuConfig = SIDEBAR_MENU_CONFIG[role];
+  if (!menuConfig) {
+    console.error('[RBAC] No menu config for role:', role);
+    return;
+  }
+  
+  // === MENU UTAMA ===
+  if (menuConfig.mainMenu && menuConfig.mainMenu.length > 0) {
+    html += '<div class="nav-label">Menu Utama</div>';
+    menuConfig.mainMenu.forEach(function(menu) {
+      html += '<a class="nav-item" data-page="' + menu.page + '" onclick="navigateTo(\'' + menu.page + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+      visibleMenus.push(menu.label);
+    });
+  }
+  
+  // === PANEL ADMIN ===
+  if (menuConfig.panelAdmin && menuConfig.panelAdmin.length > 0) {
+    html += '<div class="nav-divider"></div>';
+    html += '<div class="nav-label">Panel Admin</div>';
+    menuConfig.panelAdmin.forEach(function(menu) {
+      html += '<a class="nav-item" data-page="' + menu.page + '" onclick="navigateTo(\'' + menu.page + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+      visibleMenus.push(menu.label);
+    });
+  }
+  
+  // === DATA UTAMA / DATA (Superadmin & Admin) ===
+  if (menuConfig.dataUtama || menuConfig.data) {
+    var dataMenus = menuConfig.dataUtama || menuConfig.data;
+    if (dataMenus.length > 0) {
+      html += '<div class="nav-divider"></div>';
+      html += '<div class="nav-label">' + (menuConfig.dataUtama ? 'DATA UTAMA' : 'DATA') + '</div>';
+      dataMenus.forEach(function(menu) {
+        // Only show if user has read permission for this module
+        if (hasPermission(role, menu.module, 'read')) {
+          html += '<a class="nav-item" onclick="openAdminCrud(\'' + menu.module + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+          visibleMenus.push(menu.label);
+        }
+      });
+    }
+  }
+  
+  // === INFORMASI (Superadmin only) ===
+  if (menuConfig.informasi && menuConfig.informasi.length > 0) {
+    html += '<div class="nav-divider"></div>';
+    html += '<div class="nav-label">INFORMASI</div>';
+    menuConfig.informasi.forEach(function(menu) {
+      if (hasPermission(role, menu.module, 'read')) {
+        html += '<a class="nav-item" onclick="openAdminCrud(\'' + menu.module + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+        visibleMenus.push(menu.label);
+      }
+    });
+  }
+  
+  // === SISTEM (Superadmin only) ===
+  if (menuConfig.sistem && menuConfig.sistem.length > 0) {
+    html += '<div class="nav-divider"></div>';
+    html += '<div class="nav-label">SISTEM</div>';
+    menuConfig.sistem.forEach(function(menu) {
+      if (hasPermission(role, menu.module, 'read')) {
+        html += '<a class="nav-item" onclick="openAdminCrud(\'' + menu.module + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+        visibleMenus.push(menu.label);
+      }
+    });
+  }
+  
+  // Logout button
+  html += '<div class=\"nav-divider\"></div>';
+  html += '<a class=\"nav-item\" onclick=\"handleLogout()\" style=\"color:var(--danger);\"><i class=\"fas fa-sign-out-alt\"></i><span>Logout</span></a>';
+  
+  sidebarNav.innerHTML = html;
+  
+  console.log('[ADMIN] Visible menus for ' + role + ':', visibleMenus);
+  console.log('[AUTH] Current user:', currentUser);
+  console.log('[AUTH] Current role:', currentRole);
+  console.log('[AUTH] Permissions:', ROLE_PERMISSIONS[role]);
+}
+
+/**
+ * initSidebar() - Initialize sidebar on page load
+ * Called from DOMContentLoaded or after app initialization
+ */
+function initSidebar() {
+  console.log('[ADMIN] Initializing sidebar...');
+  renderDynamicSidebar();
+}
+
 function updateAdminUI(){
   var topbarRight = document.getElementById('topbarRight');
   if (topbarRight) {
@@ -4503,20 +5015,29 @@ function updateAdminView(){
 }
 function handleLogout(){
   // Clear all session data
-  adminLevel='';
-  adminUsername='';
+  adminLevel = '';
+  adminUsername = '';
+  currentUser = null;
+  currentRole = '';
+  
   sessionStorage.removeItem('pamungkas_admin_level');
   sessionStorage.removeItem('pamungkas_admin_user');
+  sessionStorage.removeItem('pamungkas_current_user');
+  sessionStorage.removeItem('pamungkas_current_role');
   
   // Also clear any Nhost auth tokens
   localStorage.removeItem('nhost_token');
   localStorage.removeItem('nhost_user');
   
-  var topbarRight=document.getElementById('topbarRight');
-  if(topbarRight){
-    topbarRight.innerHTML='<button class="btn-admin-login" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></button>';
+  var topbarRight = document.getElementById('topbarRight');
+  if (topbarRight) {
+    topbarRight.innerHTML = '<button class="btn-admin-login" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></button>';
   }
-  showToast('Anda telah logout.','info');
+  
+  // Re-render sidebar to show public menu
+  renderDynamicSidebar();
+  
+  showToast('Anda telah logout.', 'info');
   navigateTo('dashboard');
   showAdminButtons();
 }
@@ -4636,12 +5157,12 @@ const ADMIN_TABLES = {
     category: 'sistem',
     fields: ['id', 'username', 'level', 'status', 'created_at'],
     displayFields: ['username', 'level', 'status'],
-    canWrite: true, // Only super_admin should write
+    canWrite: true, // Only admin (full access) should write
     queryAction: 'getAdmin', // Uses getAdmin which maps to getMultiusers
     createAction: 'tambahMultiuser',
     updateAction: 'updateMultiuser',
     deleteAction: 'deleteMultiuser',
-    requireSuperAdmin: true
+    requireAdmin: true
   }
 };
 
@@ -4659,6 +5180,8 @@ function loadAdminStats() {
     console.warn('[DOM] loadAdminStats: #adminStatsGrid tidak ditemukan');
     return;
   }
+  
+  var role = getCurrentRole();
   
   // Show loading state
   statsContainer.innerHTML = '<div class="admin-stats-loading"><i class="fas fa-spinner fa-spin"></i> Memuat statistik...</div>';
@@ -4679,17 +5202,35 @@ function loadAdminStats() {
       var pengumumanCount = (result.pengumuman || []).length;
       var indikatorCount = (result.indikator || []).length;
       
-      // Render statistics cards
+      // Build statistics data array
+      var allStats = [
+        { type: 'sdmk', label: 'Total SDMK', count: sdmkCount, icon: 'fa-user-md', color: 'var(--primary)', module: 'sdmk' },
+        { type: 'pendaftaran', label: 'Pendaftaran', count: pendaftaranCount, icon: 'fa-clipboard-list', color: 'var(--secondary)', module: 'pendaftaran' },
+        { type: 'sertifikat', label: 'Sertifikat', count: sertifikatCount, icon: 'fa-certificate', color: 'var(--accent)', module: 'sertifikat' },
+        { type: 'pengumuman', label: 'Pengumuman', count: pengumumanCount, icon: 'fa-bullhorn', color: '#8B5CF6', module: 'pengumuman' },
+        { type: 'indikator', label: 'Indikator', count: indikatorCount, icon: 'fa-chart-line', color: '#06B6D4', module: 'indikator' }
+      ];
+      
+      // FILTER statistics based on role permissions
+      var visibleStats = allStats.filter(function(stat) {
+        return hasPermission(role, stat.module, 'read');
+      });
+      
+      console.log('[ADMIN] Filtered statistics for role ' + role + ':', visibleStats.length, 'of', allStats.length, 'cards');
+      
+      // Render filtered statistics cards
       var html = '';
-      html += createStatCard('sdmk', 'Total SDMK', sdmkCount, 'fa-user-md', 'var(--primary)');
-      html += createStatCard('pendaftaran', 'Pendaftaran', pendaftaranCount, 'fa-clipboard-list', 'var(--secondary)');
-      html += createStatCard('sertifikat', 'Sertifikat', sertifikatCount, 'fa-certificate', 'var(--accent)');
-      html += createStatCard('pengumuman', 'Pengumuman', pengumumanCount, 'fa-bullhorn', '#8B5CF6');
-      html += createStatCard('indikator', 'Indikator', indikatorCount, 'fa-chart-line', '#06B6D4');
+      if (visibleStats.length === 0) {
+        html = '<div class="empty-state" style="padding:20px;"><i class="fas fa-chart-bar" style="font-size:2rem;color:var(--text-muted);"></i><p style="margin-top:8px;">Tidak ada statistik yang dapat ditampilkan untuk role ini.</p></div>';
+      } else {
+        visibleStats.forEach(function(stat) {
+          html += createStatCard(stat.type, stat.label, stat.count, stat.icon, stat.color);
+        });
+      }
       
       statsContainer.innerHTML = html;
       
-      console.log('[ADMIN] Statistics loaded successfully');
+      console.log('[ADMIN] Statistics loaded successfully:', visibleStats.length, 'cards rendered');
     })
     .catch(function(error) {
       console.error('[ADMIN] Failed to load statistics:', error);
@@ -4728,97 +5269,145 @@ function createStatCard(type, label, count, icon, color) {
 function renderAdminDashboard(){
   console.log('[ADMIN] Rendering admin dashboard...');
   
-  // 1. Render user info bar
+  var role = getCurrentRole();
+  var displayName = (currentUser && currentUser.nama_lengkap) ? currentUser.nama_lengkap : adminUsername;
+  
+  // 1. Render user info bar with DYNAMIC role badge
   var bar = document.getElementById('adminInfoBar');
   if (bar) {
     bar.innerHTML = '<div class="admin-info-bar">' +
-      '<i class="fas ' + levelIcon() + '" style="font-size:1.2rem;color:var(--primary);"></i>' +
-      '<div>' +
-        '<strong>' + escHTML(adminUsername) + '</strong> — ' + levelBadgeHTML() +
-        '<br><span style="font-size:.78rem;">' + 
-        (adminLevel === 'super_admin' ? 'Akses penuh ke semua data, import/export, dan kelola akun admin.' :
-         adminLevel === 'operator' ? 'Dapat mengelola Pendaftaran, Sertifikat, dan Materi. Menu lainnya hanya dapat dilihat.' :
-         'Hanya dapat melihat semua data. Tidak ada akses untuk menambah, mengedit, atau menghapus.') +
-        '</span>' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<i class="fas ' + levelIcon() + '" style="font-size:1.5rem;color:' + (ROLE_LABELS[role] ? ROLE_LABELS[role].color : 'var(--primary)') + ';"></i>' +
+        '<div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+            '<strong style="font-size:1.1rem;">' + escHTML(displayName) + '</strong>' +
+            levelBadgeHTML() +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span class="level-badge ' + (ROLE_LABELS[role] ? ROLE_LABELS[role].bgClass : '') + '" style="font-size:.7rem;padding:2px 8px;border-radius:4px;background:' + (ROLE_LABELS[role] ? ROLE_LABELS[role].color : '#666') + ';color:#fff;font-weight:600;">' +
+            (ROLE_LABELS[role] ? ROLE_LABELS[role].name : 'UNKNOWN') +
+            '</span>' +
+            '<span style="font-size:.78rem;color:var(--text-secondary);">' +
+            (ROLE_LABELS[role] ? ROLE_LABELS[role].description : '') +
+            '</span>' +
+          '</div>' +
+          '<span style="font-size:.75rem;color:var(--text-muted);display:block;margin-top:4px;">' +
+          (ROLE_LABELS[role] ? ROLE_LABELS[role].detail : '') +
+          '</span>' +
+        '</div>' +
       '</div></div>';
   } else {
     console.warn('[DOM] renderAdminDashboard: #adminInfoBar tidak ditemukan');
   }
   
-  // 2. Load real statistics from Nhost
+  // 2. Load real statistics from Nhost (filtered by role)
   loadAdminStats();
   
-  // 3. Render menu grid organized by category
+  // 3. Render menu grid organized by category (filtered by role)
   var grid = document.getElementById('adminMenuGrid');
   if (!grid) {
     console.warn('[DOM] renderAdminDashboard: #adminMenuGrid tidak ditemukan');
     return;
   }
   
-  // Define categories
-  var categories = [
-    { id: 'data-utama', label: 'DATA UTAMA', icon: 'fa-database', color: 'var(--primary)' },
-    { id: 'informasi', label: 'INFORMASI', icon: 'fa-info-circle', color: '#8B5CF6' },
-    { id: 'sistem', label: 'SISTEM', icon: 'fa-cogs', color: '#F59E0B' }
-  ];
+  // Define categories based on role
+  var categories = [];
+  if (role === 'admin') {
+    // ADMIN = Full Access: semua kategori
+    categories = [
+      { id: 'data-utama', label: 'DATA UTAMA', icon: 'fa-database', color: 'var(--primary)' },
+      { id: 'informasi', label: 'INFORMASI', icon: 'fa-info-circle', color: '#8B5CF6' },
+      { id: 'sistem', label: 'SISTEM', icon: 'fa-cogs', color: '#F59E0B' }
+    ];
+  } else if (role === 'operator') {
+    // OPERATOR = Terbatas: hanya data pendaftaran & sertifikat
+    categories = [
+      { id: 'data', label: 'DATA', icon: 'fa-database', color: 'var(--primary)' }
+    ];
+  }
   
   var html = '';
+  var visibleMenuCount = 0;
   
   // Render each category with its tables
   categories.forEach(function(cat) {
-    html += '<div class="admin-category">';
-    html += '  <div class="admin-category-header" style="color:' + cat.color + '">';
-    html += '    <i class="fas ' + cat.icon + '"></i>';
-    html += '    <h3>' + cat.label + '</h3>';
-    html += '  </div>';
-    html += '  <div class="admin-category-grid">';
+    var categoryHasItems = false;
+    var categoryHtml = '';
+    
+    categoryHtml += '<div class="admin-category">';
+    categoryHtml += '  <div class="admin-category-header" style="color:' + cat.color + '">';
+    categoryHtml += '    <i class="fas ' + cat.icon + '"></i>';
+    categoryHtml += '    <h3>' + cat.label + '</h3>';
+    categoryHtml += '  </div>';
+    categoryHtml += '  <div class="admin-category-grid">';
     
     // Get tables in this category
     Object.values(ADMIN_TABLES).forEach(function(tableConfig) {
-      if (tableConfig.category !== cat.id) return;
+      // Check if table belongs to this category (with fallback for non-admin roles)
+      var belongsToCategory = false;
+      if (role === 'admin') {
+        // Admin (Full Access): show all tables in their proper categories
+        belongsToCategory = tableConfig.category === cat.id;
+      } else {
+        // For operator, show only allowed modules in "data" category
+        if (cat.id === 'data') {
+          belongsToCategory = hasPermission(role, tableConfig.id, 'read');
+        }
+      }
       
-      // Check access permissions
-      var hasAccess = canAccessAdminMenu(tableConfig.id);
-      var canWriteTable = canWrite(tableConfig.id);
+      if (!belongsToCategory) return;
       
-      // Special check for multiusers (requires super_admin)
-      if (tableConfig.requireSuperAdmin && adminLevel !== 'super_admin') {
+      // Check access permissions using NEW RBAC system
+      var hasAccess = hasPermission(role, tableConfig.id, 'read');
+      var canWriteTable = hasPermission(role, tableConfig.id, 'create');
+      
+      // Special check for multiusers/user_accounts (requires admin/full access)
+      if ((tableConfig.id === 'multiusers' || tableConfig.id === 'user_accounts') && role !== 'admin') {
         hasAccess = false;
       }
       
       if (!hasAccess) return;
       
-      var writeBadge = canWriteTable 
-        ? '<span class="badge badge-success">Read & Write</span>'
-        : '<span class="badge badge-secondary">Read Only</span>';
+      categoryHasItems = true;
+      visibleMenuCount++;
       
-      html += '<div class="admin-menu-card' + (canWriteTable ? '' : ' disabled') + '" onclick="openAdminCrud(\'' + tableConfig.id + '\')">';
-      html += '  <div class="admin-menu-card-icon"><i class="fas ' + tableConfig.icon + '"></i></div>';
-      html += '  <div class="admin-menu-card-content">';
-      html += '    <h4>' + tableConfig.label + '</h4>';
-      html += '    <p>' + tableConfig.description + '</p>';
-      html += '    ' + writeBadge;
-      html += '  </div>';
-      html += '</div>';
+      var writeBadge = canWriteTable 
+        ? '<span class="badge badge-success" style="background:var(--secondary);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-check-circle" style="margin-right:3px;"></i>CRUD</span>'
+        : '<span class="badge badge-secondary" style="background:var(--text-muted);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-eye" style="margin-right:3px;"></i>Read Only</span>';
+      
+      categoryHtml += '<div class="admin-menu-card' + (canWriteTable ? '' : ' disabled') + '" onclick="openAdminCrud(\'' + tableConfig.id + '\')" style="cursor:pointer;transition:transform .2s;">';
+      categoryHtml += '  <div class="admin-menu-card-icon"><i class="fas ' + tableConfig.icon + '"></i></div>';
+      categoryHtml += '  <div class="admin-menu-card-content">';
+      categoryHtml += '    <h4>' + tableConfig.label + '</h4>';
+      categoryHtml += '    <p>' + tableConfig.description + '</p>';
+      categoryHtml += '    ' + writeBadge;
+      categoryHtml += '  </div>';
+      categoryHtml += '</div>';
     });
     
-    html += '  </div>'; // end category-grid
-    html += '</div>'; // end category
+    categoryHtml += '  </div>'; // end category-grid
+    categoryHtml += '</div>'; // end category
+    
+    // Only add category if it has items
+    if (categoryHasItems) {
+      html += categoryHtml;
+    }
   });
   
   grid.innerHTML = html;
-  console.log('[ADMIN] Dashboard rendered with', Object.keys(ADMIN_TABLES).length, 'table menus');
+  console.log('[ADMIN] Dashboard rendered with', visibleMenuCount, 'visible menu items for role:', role);
 }
 
 /**
  * Open CRUD interface for a specific table
+ * Uses RBAC permission system to control access
  */
 function openAdminCrud(type) {
   console.log('[ADMIN] Opening CRUD for:', type);
   
-  if (!canAccessAdminMenu(type)) {
-    showToast('Anda tidak memiliki akses ke menu ini.', 'error');
-    return;
+  // Use requirePermission for access control (blocks + shows error)
+  if (!requirePermission(type, 'read')) {
+    return; // Error message already shown by requirePermission
   }
   
   var tableConfig = ADMIN_TABLES[type];
@@ -4834,19 +5423,40 @@ function openAdminCrud(type) {
   var titles = {};
   Object.values(ADMIN_TABLES).forEach(function(t) { titles[t.id] = 'Kelola ' + t.label; });
   
-  var writable = canWrite(type);
+  // Check specific permissions for this module
+  var canCreateData = canCreate(type);
+  var canUpdateData = canUpdate(type);
+  var canDeleteData = canDelete(type);
+  var writable = canCreateData || canUpdateData || canDeleteData;
   var readOnly = !writable;
   
   var c = document.getElementById('adminCrudContent');
   if (!c) { console.warn('[DOM] openAdminCrud: #adminCrudContent tidak ditemukan'); return; }
   
-  var infoBar = readOnly 
-    ? '<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>' + levelLabel() + '</strong> — mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>' 
-    : '';
+  // Build info bar based on permissions
+  var role = getCurrentRole();
+  var infoBarHtml = '';
+  if (readOnly) {
+    infoBarHtml = '<div class="admin-info-bar" style="background:var(--accent-light);border-left:4px solid var(--accent);padding:12px;border-radius:8px;margin-bottom:16px;">' +
+      '<i class="fas fa-eye" style="color:var(--accent);margin-right:8px;"></i>' +
+      'Anda login sebagai <strong>' + levelLabel() + '</strong> — mode <strong>hanya lihat</strong>. ' +
+      'Tombol tambah, edit, dan hapus tidak ditampilkan.</div>';
+  } else {
+    // Show what operations are allowed
+    var allowedOps = [];
+    if (canCreateData) allowedOps.push('<span class="badge" style="background:var(--secondary);color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem;margin:0 2px;"><i class="fas fa-plus"></i> Tambah</span>');
+    if (canUpdateData) allowedOps.push('<span class="badge" style="background:#F59E0B;color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem;margin:0 2px;"><i class="fas fa-edit"></i> Edit</span>');
+    if (canDeleteData) allowedOps.push('<span class="badge" style="background:var(--danger);color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem;margin:0 2px;"><i class="fas fa-trash"></i> Hapus</span>');
+    
+    if (allowedOps.length > 0) {
+      infoBarHtml = '<div class="admin-info-bar" style="background:var(--secondary-light);border-left:4px solid var(--secondary);padding:12px;border-radius:8px;margin-bottom:16px;">' +
+        '<i class="fas ' + levelIcon() + '" style="color:var(--secondary);margin-right:8px;"></i>' +
+        '<strong>' + levelLabel() + '</strong> — Akses: ' + allowedOps.join(' ') + '</div>';
+    }
+  }
   
-  // Add Import button for admin users who are logged in
-  var isAdminLoggedIn = isAdminUser() && writable;
-  var importBtn = (isAdminLoggedIn && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','indikator'].includes(type))
+  // Add Import button only if user has create permission
+  var importBtn = (writable && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','indikator'].includes(type))
     ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\'' + type + '\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
     : '';
   
@@ -5138,11 +5748,11 @@ function loadAdminList(){
   _allAdmin=res.data||[];
   var html='';
   if(canWrite('admin'))html+='<div class="toolbar" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openAdminForm()"><i class="fas fa-plus"></i> Tambah Admin</button></div>';
-  if(!_allAdmin.length){html+='<div class="empty-state"><i class="fas fa-users-cog" style="font-size:2rem;color:var(--text-muted);"></i><p>Belum ada akun admin di sheet. Akun default (admin/admin123) aktif sebagai Super Admin.</p></div>';ct.innerHTML=html;return;}
+  if(!_allAdmin.length){html+='<div class="empty-state"><i class="fas fa-users-cog" style="font-size:2rem;color:var(--text-muted);"></i><p>Belum ada akun admin di database. Akun default (admin/admin123) aktif sebagai Admin (Full Access).</p></div>';ct.innerHTML=html;return;}
   html+='<div class="crud-table-container"><div class="crud-table-scroll"><table class="crud-table"><thead><tr><th class="no-sort" style="text-align:center;width:50px;">No</th><th>Username</th><th>Password</th><th>Level</th><th class="no-sort" style="text-align:center;">Aksi</th></tr></thead><tbody>';
   _allAdmin.forEach(function(r,i){
-    var lv=String(r.Level||'Observer').toLowerCase();
-    var cls=lv==='super_admin'?'aktif':lv==='operator'?'pending':'';
+    var lv=String(r.Level||'user').toLowerCase();
+    var cls=lv==='admin'?'aktif':lv==='operator'?'pending':'inactive';
     html+='<tr><td class="td-no">'+(i+1)+'</td><td>'+escHTML(r.Username||'-')+'</td><td>********</td><td><span class="crud-status '+cls+'">'+escHTML(r.Level||lv)+'</span></td><td style="text-align:center;">'+(canWrite('admin')?'<button class="btn btn-sm btn-warning" onclick="openAdminForm('+i+')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Admin\','+i+')"><i class="fas fa-trash"></i></button>':'')+'</td></tr>';
   });
   html+='</tbody></table></div></div>';ct.innerHTML=html;
@@ -5156,12 +5766,12 @@ function openAdminForm(idx){
     document.getElementById('admUsername').value=r.Username||'';
     document.getElementById('admPassword').value='';
     document.getElementById('admPassword').placeholder='Kosongkan jika tidak ingin mengubah';
-    var lv=String(r.Level||'observer').toLowerCase();
+    var lv=String(r.Level||'user').toLowerCase();
     document.getElementById('admLevel').value=lv;
   }else{
     document.getElementById('adminForm').reset();
     document.getElementById('admPassword').placeholder='Password (plain text)';
-    document.getElementById('admLevel').value='observer';
+    document.getElementById('admLevel').value='user';
   }
   openModal('adminFormModal');
 }
@@ -5750,9 +6360,11 @@ function exportCSV(){
   var data=getExportData();
   if(!data.length){showToast('Tidak ada data untuk diekspor.','error');return;}
   var cols=_crud.visibleCols;
-  var csv=cols.map(function(c){return '"'+c.replace(/"/g,'""')+'"';}).join(',')+'\n';
+  var csv=cols.map(function(c){return '"'+c.replace(/"/g,'""')+'"';}).join(',')+'
+';
   data.forEach(function(r){
-    csv+=cols.map(function(c){return '"'+String(r[c]||'').replace(/"/g,'""')+'"';}).join(',')+'\n';
+    csv+=cols.map(function(c){return '"'+String(r[c]||'').replace(/"/g,'""')+'"';}).join(',')+'
+';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
@@ -7167,7 +7779,10 @@ function showImportResults(success, failed, errors, total) {
   if (errors.length > 0) {
     document.getElementById('importErrorLog').style.display = 'block';
     document.getElementById('importErrorDetails').textContent = 
-      errors.map((e, i) => `${i+1}. Baris ${e.row}: ${e.error}\n   Data: ${JSON.stringify(e.data).substring(0, 100)}`).join('\n\n');
+      errors.map((e, i) => `${i+1}. Baris ${e.row}: ${e.error}
+   Data: ${JSON.stringify(e.data).substring(0, 100)}`).join('
+
+');
   } else {
     document.getElementById('importErrorLog').style.display = 'none';
   }
@@ -7271,6 +7886,88 @@ function loadCurrentModuleData() {
 }
 
 console.log('[Bulk Import] System initialized');
+
+/* ========== SESSION RESTORATION (RBAC) ==========
+ * Restore user session on page load
+ * Called automatically when DOM is ready
+ * ============================================================ */
+function restoreUserSession() {
+  console.log('[AUTH] Restoring user session...');
+  
+  // Check for existing session
+  var savedLevel = sessionStorage.getItem('pamungkas_admin_level');
+  var savedUser = sessionStorage.getItem('pamungkas_admin_user');
+  var savedRole = sessionStorage.getItem('pamungkas_current_role');
+  var savedCurrentUser = sessionStorage.getItem('pamungkas_current_user');
+  
+  if (savedLevel && savedUser) {
+    // Restore state variables
+    adminLevel = savedLevel;
+    adminUsername = savedUser;
+    currentRole = savedRole || normalizeRole(savedLevel);
+    
+    // Parse currentUser object if exists
+    if (savedCurrentUser) {
+      try {
+        currentUser = JSON.parse(savedCurrentUser);
+      } catch(e) {
+        console.warn('[AUTH] Failed to parse currentUser, creating basic object');
+        currentUser = {
+          username: savedUser,
+          nama_lengkap: savedUser,
+          role: currentRole,
+          level: currentRole
+        };
+      }
+    } else {
+      // Create basic currentUser from available data
+      currentUser = {
+        username: savedUser,
+        nama_lengkap: savedUser,
+        role: currentRole,
+        level: currentRole
+      };
+    }
+    
+    // Validate role is still valid
+    if (!isValidRole(currentRole)) {
+      console.warn('[AUTH] Invalid role in session:', currentRole, '- clearing session');
+      handleLogout();
+      return false;
+    }
+    
+    console.log('[AUTH] Session restored successfully:');
+    console.log('[AUTH] Current user:', currentUser);
+    console.log('[AUTH] Current role:', currentRole);
+    console.log('[AUTH] Permissions:', ROLE_PERMISSIONS[currentRole]);
+    
+    // Update UI components
+    updateAdminUI();
+    renderDynamicSidebar();
+    
+    return true;
+  } else {
+    console.log('[AUTH] No existing session found - user not logged in');
+    
+    // Render public sidebar (no admin menu)
+    renderDynamicSidebar();
+    
+    return false;
+  }
+}
+
+// Auto-restore session when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('[INIT] DOM Content Loaded - initializing PAMUNGKAS RBAC system...');
+  
+  // Restore user session
+  restoreUserSession();
+  
+  // Initialize sidebar
+  initSidebar();
+  
+  console.log('[INIT] PAMUNGKAS RBAC system initialized');
+});
 
 </script>
 <!-- Stat Card Popup -->
