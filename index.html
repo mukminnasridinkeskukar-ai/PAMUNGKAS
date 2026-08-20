@@ -1369,7 +1369,10 @@
             <button class="sdmk-search-clear" id="sdmkSearchClear" title="Hapus pencarian"><i class="fas fa-times"></i></button>
             <div class="sdmk-autocomplete" id="sdmkAutocomplete"></div>
           </div>
-          <button class="btn btn-primary" id="btnTambahSDMK" style="display:none;" onclick="openSDMKForm()"><i class="fas fa-plus"></i> Tambah SDMK</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-secondary" id="btnImportSDMK" onclick="openImportSDMK()" title="Import data Excel (Data ganda diperbolehkan)"><i class="fas fa-file-excel"></i> Import</button>
+            <button class="btn btn-primary" id="btnTambahSDMK" style="display:none;" onclick="openSDMKForm()"><i class="fas fa-plus"></i> Tambah SDMK</button>
+          </div>
         </div>
         <div class="card-box sdmk-card">
           <div class="sdmk-table-container">
@@ -1960,6 +1963,21 @@
     <div class="modal-header"><h3><i class="fas fa-file-excel" style="margin-right:8px;color:var(--secondary);"></i>Import Data Excel</h3><button class="modal-close" onclick="closeModal('importModal')">&times;</button></div>
     <div class="modal-body">
       <p style="margin-bottom:12px;font-size:.85rem;color:var(--text-secondary);">Sheet target: <strong id="importSheetName">-</strong></p>
+      
+      <!-- Info Box untuk SDMK -->
+      <div id="importSdmkInfo" style="display:none;background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.03));border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <i class="fas fa-check-circle" style="color:#10B981;font-size:1.1rem;"></i>
+          <strong style="color:#059669;font-size:.88rem;">Mode Import SDMK: DATA GANDA DIPERBOLEHKAN</strong>
+        </div>
+        <ul style="margin:0;padding-left:18px;font-size:.78rem;color:#047857;line-height:1.6;">
+          <li>✅ NIK/NIP boleh sama (satu orang bisa ikut banyak pelatihan)</li>
+          <li>✅ Nama boleh sama</li>
+          <li>✅ No. Sertifikat boleh sama</li>
+          <li>📝 Hanya field <strong>Nama</strong> yang wajib (minimal 1 karakter)</li>
+        </ul>
+      </div>
+      
       <div class="import-zone" id="importZone" onclick="document.getElementById('importFileInput').click()">
         <i class="fas fa-cloud-upload-alt"></i>
         <p>Klik atau seret file Excel ke sini</p>
@@ -1975,6 +1993,13 @@
           <label><input type="radio" name="importMode" value="append" checked /> Tambahkan ke data existing</label>
           <label><input type="radio" name="importMode" value="replace" /> Ganti semua data (Replace)</label>
         </div>
+        
+        <!-- Template Kolom SDMK -->
+        <div id="sdmkTemplateHint" style="display:none;margin-top:14px;background:var(--primary-light);border-radius:8px;padding:12px 14px;border:1px solid rgba(13,110,253,.2);">
+          <div style="font-size:.78rem;color:var(--primary-dark);margin-bottom:6px;"><strong>📋 Format Kolom Excel yang Didukung:</strong></div>
+          <code style="font-size:.72rem;background:#fff;padding:4px 8px;border-radius:4px;display:inline-block;">nama | nik | profesi | unit_kerja | nomor_sertifikat | judul_kegiatan | tanggal_pelaksanaan | tahun | tempat_pelaksanaan | foto</code>
+        </div>
+        
         <div class="import-preview" id="importPreviewTable"></div>
       </div>
     </div>
@@ -3678,6 +3703,7 @@ function callServer(action, data) {
 
         case 'importSDMK':
           console.log('[IMPORT] Starting SDMK import for', data.rows?.length || 0, 'records');
+          console.log('[IMPORT] ⚠️ Mode: DATA GANDA DIPERBOLEHKAN (NIK/NIP/Nama boleh sama)');
           
           if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
             reject(new Error('Tidak ada data untuk di-import'));
@@ -3692,39 +3718,63 @@ function callServer(action, data) {
             try {
               const row = data.rows[i];
               
+              // === FLEKSIBEL: NIK/NIP/Nama boleh kosong, boleh sama/duplikat ===
               const sdmkObject = {
-                nama: String(row.nama || row.Nama || row['Nama Lengkap dengan Gelar'] || '').trim(),
-                nik: String(row.nik || row.NIK || row['NIK/NIP'] || '').trim(),
-                profesi: String(row.profesi || row.Profesi || '').trim(),
-                unit_kerja: String(row.unit_kerja || row['Unit Kerja'] || '').trim(),
-                nomor_sertifikat: String(row.nomor_sertifikat || row['No. Sertifikat'] || '').trim() || null,
-                judul_kegiatan: String(row.judul_kegiatan || row['Judul Kegiatan'] || '').trim(),
-                tanggal_pelaksanaan: String(row.tanggal_pelaksanaan || row['Tgl Pelaksanaan'] || '').trim() || null,
-                tahun: row.tahun ? parseInt(row.tahun) : null,
-                tempat_pelaksanaan: String(row.tempat || row.Tempat || '').trim() || null,
-                foto: String(row.foto || row.Foto || '').trim() || null
+                // Nama - wajib tapi bisa duplikat
+                nama: String(row.nama || row.Nama || row['Nama Lengkap'] || row['Nama Lengkap dengan Gelar'] || '').trim(),
+                // NIK - opsional, boleh duplikat
+                nik: String(row.nik || row.NIK || row['NIK/NIP'] || '').trim() || null,
+                // Profesi
+                profesi: String(row.profesi || row.Profesi || row['Jenis Profesi'] || '').trim() || null,
+                // Unit Kerja
+                unit_kerja: String(row.unit_kerja || row['Unit Kerja'] || row.Unit_Kerja || '').trim() || null,
+                // Nomor Sertifikat - boleh duplikat
+                nomor_sertifikat: String(row.nomor_sertifikat || row['No. Sertifikat'] || row['Nomor Sertifikat'] || '').trim() || null,
+                // Judul Kegiatan/Pelatihan
+                judul_kegiatan: String(row.judul_kegiatan || row['Judul Kegiatan'] || row['Judul Pelatihan'] || '').trim() || null,
+                // Tanggal Pelaksanaan
+                tanggal_pelaksanaan: String(row.tanggal_pelaksanaan || row['Tgl Pelaksanaan'] || row['Tanggal Pelaksanaan'] || '').trim() || null,
+                // Tahun
+                tahun: row.tahun ? parseInt(String(row.tahun).replace(/\D/g, '')) : (row.Tahun ? parseInt(String(row.Tahun).replace(/\D/g, '')) : null),
+                // Tempat Pelaksanaan
+                tempat_pelaksanaan: String(row.tempat_pelaksanaan || row.Tempat || row['Tempat Pelaksanaan'] || '').trim() || null,
+                // Foto URL
+                foto: String(row.foto || row.Foto || row['Pas Foto'] || '').trim() || null
               };
               
-              if (!sdmkObject.nik) throw new Error('NIK kosong');
-              if (!sdmkObject.nama) throw new Error('Nama kosong');
+              // VALIDASI MINIMAL: Hanya nama yang wajib (bisa duplikat)
+              if (!sdmkObject.nama) {
+                console.warn('[IMPORT] Row', i + 1, ': Nama kosong, tetap diimport dengan nama "-"');
+                sdmkObject.nama = '-'; // Default jika kosong
+              }
               
+              // Insert ke database TANPA cek duplikat
               await graphqlRequest('InsertSDMK', GRAPHQL_QUERIES.insertSDMK, {
                 object: sdmkObject
               });
               
               sdmkSuccess++;
+              console.log('[IMPORT] ✅ Row', i + 1, 'berhasil:', sdmkObject.nama);
+              
             } catch (sdmkErr) {
               sdmkFailed++;
-              sdmkErrors.push({ row: i + 1, error: sdmkErr.message, data: data.rows[i] });
+              sdmkErrors.push({ 
+                row: i + 1, 
+                error: sdmkErr.message, 
+                data: data.rows[i],
+                note: 'Data gagal diimport (bukan karena duplikat)'
+              });
+              console.warn('[IMPORT] ❌ Row', i + 1, 'gagal:', sdmkErr.message);
             }
           }
           
           resolve({
             success: true,
-            message: `Import SDMK selesai! ${sdmkSuccess} berhasil, ${sdmkFailed} gagal.`,
+            message: `✅ Import SDMK Selesai!\n📊 Total: ${data.rows.length} baris\n✅ Berhasil: ${sdmkSuccess} data\n❌ Gagal: ${sdmkFailed} data\n\n⚠️ Catatan: Data ganda (NIK/NIP/Nama sama) DIPERBOLEHKAN`,
             successCount: sdmkSuccess,
             failedCount: sdmkFailed,
-            errors: sdmkErrors
+            errors: sdmkErrors,
+            duplicatesAllowed: true
           });
           break;
 
@@ -4172,13 +4222,19 @@ function showAdminButtons(){
   // ✅ SAFE: Null checks for all admin buttons
   var btnPengumuman = document.getElementById('btnTambahPengumuman');
   var btnSDMK = document.getElementById('btnTambahSDMK');
+  var btnImportSDMK = document.getElementById('btnImportSDMK');
   var btnMateri = document.getElementById('btnTambahMateri');
   
   if (btnPengumuman) btnPengumuman.style.display = canWrite('pengumuman') ? 'inline-flex' : 'none';
   else console.warn('[DOM] #btnTambahPengumuman tidak ditemukan');
   
-  if (btnSDMK) btnSDMK.style.display = canWrite('sdmk') ? 'inline-flex' : 'none';
+  // Tombol Tambah & Import SDMK - tampil jika bisa write
+  var sdmkWritable = canWrite('sdmk');
+  if (btnSDMK) btnSDMK.style.display = sdmkWritable ? 'inline-flex' : 'none';
   else console.warn('[DOM] #btnTambahSDMK tidak ditemukan');
+  
+  if (btnImportSDMK) btnImportSDMK.style.display = sdmkWritable ? 'inline-flex' : 'none';
+  else console.warn('[DOM] #btnImportSDMK tidak ditemukan');
   
   if (btnMateri) btnMateri.style.display = canWrite('materi') ? 'inline-flex' : 'none';
   else console.warn('[DOM] #btnTambahMateri tidak ditemukan');
@@ -5329,6 +5385,35 @@ function submitSDMK(e){
   var fail=function(e){hideLoading();showToast('Error: '+(e.message||e),'error');};
   if(idx>=0)callServer('updateSDMK',{idx:idx,data:data}).then(done).catch(fail);
   else callServer('tambahSDMK',data).then(done).catch(fail);
+}
+
+/**
+ * openImportSDMK() - Buka modal import khusus SDMK
+ * Mode: DATA GANDA DIPERBOLEHKAN (NIK/NIP/Nama boleh sama)
+ */
+function openImportSDMK() {
+  console.log('[IMPORT] Opening SDMK Import Modal - Data Ganda Diperbolehkan');
+  
+  // Set sheet type ke sdmk
+  _crud.sheetType = 'sdmk';
+  
+  // Reset state import
+  _importData = [];
+  
+  // Reset UI
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importSubmitBtn').disabled = true;
+  document.getElementById('importFileInput').value = '';
+  
+  // Tampilkan info khusus SDMK
+  var sdmkInfo = document.getElementById('importSdmkInfo');
+  var sdmkTemplate = document.getElementById('sdmkTemplateHint');
+  if (sdmkInfo) sdmkInfo.style.display = 'block';
+  if (sdmkTemplate) sdmkTemplate.style.display = 'block';
+  document.getElementById('importSheetName').textContent = 'SDMK (Data Ganda Diperbolehkan)';
+  
+  // Buka modal
+  openModal('importModal');
 }
 
 /* ========== PENDAFTARAN ========== */
@@ -8618,6 +8703,20 @@ function handleImportFile(e){
   var file=e.target.files[0];
   if(!file)return;
   if(file.size>5*1024*1024){showToast('Ukuran file maksimal 5MB.','error');return;}
+  
+  // Tampilkan info khusus jika sheetType adalah sdmk
+  var sdmkInfo = document.getElementById('importSdmkInfo');
+  var sdmkTemplate = document.getElementById('sdmkTemplateHint');
+  if (_crud.sheetType === 'sdmk') {
+    if (sdmkInfo) sdmkInfo.style.display = 'block';
+    if (sdmkTemplate) sdmkTemplate.style.display = 'block';
+    document.getElementById('importSheetName').textContent = 'SDMK (Data Ganda Diperbolehkan)';
+  } else {
+    if (sdmkInfo) sdmkInfo.style.display = 'none';
+    if (sdmkTemplate) sdmkTemplate.style.display = 'none';
+    document.getElementById('importSheetName').textContent = _crud.sheetType || '-';
+  }
+  
   var reader=new FileReader();
   reader.onload=function(ev){
     try{
@@ -8647,6 +8746,12 @@ function handleImportFile(e){
       document.getElementById('importPreviewTable').innerHTML=previewHTML;
       document.getElementById('importPreview').style.display='block';
       document.getElementById('importSubmitBtn').disabled=false;
+      
+      // Log untuk debugging
+      console.log('[IMPORT] File loaded:', file.name, '- Rows:', json.length, '- Type:', _crud.sheetType);
+      if (_crud.sheetType === 'sdmk') {
+        console.log('[IMPORT] ⚠️ SDMK Mode: Data ganda DIPERBOLEHKAN');
+      }
     }catch(err){
       showToast('Gagal membaca file: '+err.message,'error');
     }
