@@ -3064,6 +3064,78 @@ function callServer(action, data) {
           }
           break;
 
+        // === BULK IMPORT OPERATIONS ===
+        case 'bulkInsertPendaftaran':
+          console.log('[IMPORT] Starting bulk insert for', data.data?.length || 0, 'records');
+          
+          if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+            reject(new Error('Tidak ada data untuk di-import'));
+            return;
+          }
+          
+          let successCount = 0;
+          let failedCount = 0;
+          const errors = [];
+          
+          // Process each record
+          for (let i = 0; i < data.data.length; i++) {
+            try {
+              const row = data.data[i];
+              
+              // Map CSV fields to database columns
+              const pendaftaranObject = {
+                nik: String(row.nik || '').trim(),
+                nama_lengkap_dengan_gelar: String(row.nama_lengkap || row.nama || '').trim(),
+                jenis_kelamin: String(row.jenis_kelamin || row.kelamin || '').trim(),
+                tempat_dan_tanggal_lahir: String(row.tempat_lahir || '') + ', ' + String(row.tanggal_lahir || ''),
+                nip: String(row.nip || '').trim() || null,
+                jabatan: String(row.jabatan || '').trim() || null,
+                unit_kerja: String(row.unit_kerja || row.unitKerja || '').trim(),
+                profesi: String(row.profesi || '').trim(),
+                pendidikan_terakhir: String(row.pendidikan_terakhir || row.pendidikan || '').trim() || null,
+                no_telepon: String(row.no_telepon || row.telepon || '').trim() || null,
+                email: String(row.email || '').trim() || null,
+                alamat: String(row.alamat || '').trim() || null,
+                judul_kegiatan: String(row.judul_kegiatan || 'Pelatihan SDMK').trim(),
+                status: 'pending',
+                created_by: adminUsername || 'bulk_import'
+              };
+              
+              // Validate required fields
+              if (!pendaftaranObject.nik || pendaftaranObject.nik.length === 0) {
+                throw new Error('NIK wajib diisi');
+              }
+              if (!pendaftaranObject.nama_lengkap_dengan_gelar || pendaftaranObject.nama_lengkap_dengan_gelar.length === 0) {
+                throw new Error('Nama lengkap wajib diisi');
+              }
+              
+              // Insert into database
+              await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
+                object: pendaftaranObject
+              });
+              
+              successCount++;
+            } catch (recordError) {
+              failedCount++;
+              errors.push({
+                row: i + 1,
+                error: recordError.message || 'Unknown error',
+                data: data.data[i]
+              });
+              console.error('[IMPORT] Error inserting record', i + 1, ':', recordError);
+            }
+          }
+          
+          console.log('[IMPORT] Bulk insert complete:', { success: successCount, failed: failedCount });
+          resolve({ 
+            success: true, 
+            message: `Import selesai! ${successCount} berhasil, ${failedCount} gagal.`,
+            successCount: successCount,
+            failedCount: failedCount,
+            errors: errors
+          });
+          break;
+
         default:
           reject(new Error(`Action tidak dikenali: ${action}`));
       }
