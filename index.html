@@ -2441,6 +2441,57 @@ var NHOST_CONFIG = {
   storageUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/storage'
 };
 
+/* ========== SAFE STORAGE WRAPPER (Sandbox-Friendly) ========== 
+ * Mengatasi error: "Failed to read 'localStorage' from 'Window': document is sandboxed"
+ * Fallback ke memory storage jika localStorage tidak tersedia
+ */
+var _memoryStorage = {};
+var safeStorage = {
+  getItem: function(key) {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        return localStorage.getItem(key);
+      }
+    } catch (e) {
+      console.warn('[Storage] localStorage tidak tersedia, menggunakan memory fallback:', e.message);
+    }
+    return _memoryStorage[key] || null;
+  },
+  setItem: function(key, value) {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        localStorage.setItem(key, value);
+        return;
+      }
+    } catch (e) {
+      console.warn('[Storage] localStorage tidak tersedia, menyimpan di memory:', e.message);
+    }
+    _memoryStorage[key] = value;
+  },
+  removeItem: function(key) {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        localStorage.removeItem(key);
+        return;
+      }
+    } catch (e) {
+      console.warn('[Storage] localStorage tidak tersedia, menghapus dari memory:', e.message);
+    }
+    delete _memoryStorage[key];
+  },
+  clear: function() {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        localStorage.clear();
+        return;
+      }
+    } catch (e) {
+      console.warn('[Storage] localStorage tidak tersedia, membersihkan memory:', e.message);
+    }
+    _memoryStorage = {};
+  }
+};
+
 /* ========== GRAPHQL QUERY DEFINITIONS ========== */
 const GRAPHQL_QUERIES = {
   // === QUERIES ===
@@ -2461,7 +2512,7 @@ const GRAPHQL_QUERIES = {
       # Pendaftaran Data dengan SEMUA field untuk dashboard lengkap
       pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 20) {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk
-        jenis_profesi pekerjaan jenis_kelamin tempat_lahir tanggal_lahir
+        jenis_profesi pekerjaan jenis_kelamin tempat_dan_tanggal_lahir
         jabatan pendidikan_terakhir no_telepon nomor_whatsapp email_plataran_sehat
         alamat_rumah lama_bekerja_di_unit_sekarang surat_pernyataan
         judul_kegiatan status created_at updated_at
@@ -2616,7 +2667,7 @@ async function graphqlRequest(operationName, query, variables = {}) {
     headers['x-hasura-admin-secret'] = NHOST_CONFIG.adminSecret;
   }
   
-  const authToken = localStorage.getItem('nhost_token');
+  const authToken = safeStorage.getItem('nhost_token');
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
   try {
@@ -2740,8 +2791,8 @@ function callServer(action, data) {
               Pekerjaan: p.pekerjaan || '-',
               'Status Pekerjaan': p.pekerjaan || '-',
               'Jenis Kelamin': p.jenis_kelamin || '-',
-              'Tempat Lahir': p.tempat_lahir || '-',
-              'Tanggal Lahir': p.tanggal_lahir ? p.tanggal_lahir.split('T')[0] : '-',
+              'Tempat Lahir': p.tempat_dan_tanggal_lahir ? (p.tempat_dan_tanggal_lahir.split(',')[0] || '-') : '-',
+              'Tanggal Lahir': p.tempat_dan_tanggal_lahir ? ((p.tempat_dan_tanggal_lahir.split(',')[1] || '').trim() || '-') : '-',
               Jabatan: p.jabatan || '-',
               'Pendidikan Terakhir': p.pendidikan_terakhir || '-',
               'No Telepon': p.no_telepon || p.nomor_whatsapp || '-',
@@ -3607,8 +3658,8 @@ async function nhostLogin(email, password) {
     });
     const result = await response.json();
     if (result.sessionToken) {
-      localStorage.setItem('nhost_token', result.sessionToken);
-      localStorage.setItem('nhost_user', JSON.stringify(result.user));
+      safeStorage.setItem('nhost_token', result.sessionToken);
+      safeStorage.setItem('nhost_user', JSON.stringify(result.user));
       return { success: true, user: result.user };
     }
     throw new Error(result.message || 'Login gagal');
@@ -3619,18 +3670,18 @@ async function nhostLogin(email, password) {
 }
 
 function nhostLogout() {
-  localStorage.removeItem('nhost_token');
-  localStorage.removeItem('nhost_user');
+  safeStorage.removeItem('nhost_token');
+  safeStorage.removeItem('nhost_user');
   window.location.reload();
 }
 
 function getCurrentUser() {
-  const userData = localStorage.getItem('nhost_user');
+  const userData = safeStorage.getItem('nhost_user');
   return userData ? JSON.parse(userData) : null;
 }
 
 function isAuthenticated() {
-  return !!localStorage.getItem('nhost_token');
+  return !!safeStorage.getItem('nhost_token');
 }
 
 /* ========== API CONFIGURATION LOADED ABOVE ==========
@@ -5732,8 +5783,8 @@ function handleLogout(){
   sessionStorage.removeItem('pamungkas_current_role');
   
   // Also clear any Nhost auth tokens
-  localStorage.removeItem('nhost_token');
-  localStorage.removeItem('nhost_user');
+  safeStorage.removeItem('nhost_token');
+  safeStorage.removeItem('nhost_user');
   
   var topbarRight = document.getElementById('topbarRight');
   if (topbarRight) {
@@ -6597,7 +6648,7 @@ function loadPendaftaranCrudData(writable, readOnly) {
     if (_crud.allData.length > 0) {
       _crud.headers = Object.keys(_crud.allData[0]);
     } else {
-      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
+      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
     }
     
     // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
