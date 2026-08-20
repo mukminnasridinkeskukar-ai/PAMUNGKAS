@@ -3307,9 +3307,23 @@ function callServer(action, data) {
             }
           });
           
-          // Pastikan status selalu diinclude (jika ada)
-          if (data.Status !== undefined) {
-            pendaftaranUpdate.status = String(data.Status).toLowerCase();
+          // Pastikan status selalu diinclude (jika ada) - normalize ke nilai valid
+          var statusVal = data.Status || data.status || '';
+          if (statusVal) {
+            // Normalize status ke lowercase dan pastikan valid
+            statusVal = String(statusVal).toLowerCase().trim();
+            var validStatuses = ['pending', 'approved', 'rejected', 'verified'];
+            if (validStatuses.includes(statusVal)) {
+              pendaftaranUpdate.status = statusVal;
+            } else if (statusVal === 'aktif' || statusVal === 'active') {
+              pendaftaranUpdate.status = 'approved';
+            } else if (statusVal === 'ditolak') {
+              pendaftaranUpdate.status = 'rejected';
+            } else {
+              // Default ke pending jika tidak dikenali
+              pendaftaranUpdate.status = 'pending';
+            }
+            console.log('[UPDATE] Status normalized:', statusVal, '→', pendaftaranUpdate.status);
           }
           
           console.log('[UPDATE] Pendaftaran fields:', Object.keys(pendaftaranUpdate));
@@ -8451,62 +8465,104 @@ function openDynForm(idx){
   var skipCols=['ID','id','Tanggal_Dibuat','Tanggal Dibuat','Diubah_Oleh','Diubah Oleh'];
   var formCols=_crud.headers.filter(function(h){return skipCols.indexOf(h)===-1;});
 
+  // Define fixed options for specific fields (STATUS: pending, approved, rejected, verified)
+  var fixedSelectOptions = {
+    'status': ['pending', 'approved', 'rejected', 'verified'],
+    'Status': ['pending', 'approved', 'rejected', 'verified'],
+    'status_pelatihan': ['Aktif', 'Nonaktif', 'Sertifikasi Ulang'],
+    'jenis_kelamin': ['Laki-laki', 'Perempuan']
+  };
+
   formCols.forEach(function(col){
     var val=row?row[col]||'':'';
-    var full=isEdit&&row?true:false;
     var label=col.replace(/_/g,' ');
-
-    // Determine input type
-    var inputType='text';
     var hl=col.toLowerCase();
-    if(hl.indexOf('email')!==-1)inputType='email';
-    else if((hl.indexOf('tanggal')!==-1||hl.indexOf('date')!==-1||hl.indexOf('tgl')!==-1)&&hl.indexOf('tempat')===-1)inputType='date';
-    else if(hl==='nik'||hl==='nip'||hl.indexOf('nik')!==-1||hl.indexOf('nip')!==-1)inputType='text';
-    else if(hl.indexOf('telepon')!==-1||hl.indexOf('hp')!==-1||hl.indexOf('phone')!==-1||hl.indexOf('whatsapp')!==-1||hl.indexOf('kontak')!==-1)inputType='tel';
-    else if(hl.indexOf('link')!==-1||hl.indexOf('url')!==-1||hl.indexOf('foto')!==-1||hl.indexOf('surat')!==-1)inputType='url';
-    else if(hl.indexOf('jumlah')!==-1||hl.indexOf('umur')!==-1||hl.indexOf('tahun')!==-1)inputType='number';
 
-    // Check if this should be a textarea
-    var isTextarea=hl.indexOf('alamat')!==-1||hl.indexOf('keterangan')!==-1||hl.indexOf('catatan')!==-1||hl.indexOf('isi')!==-1||hl.indexOf('deskripsi')!==-1;
+    // === DETERMINE INPUT TYPE ===
+    var inputType='text';
+    var isTextarea=false;
+    var isFixedSelect=false;
+    var isAutoSelect=false;
 
-    // Check if this column has limited unique values (good for select)
-    var isSelect=false;
-    if(!isTextarea && inputType==='text'){
+    // 1. TEMPAT DAN TANGGAL LAHIR - Selalu TEXTAREA (bukan date/select)
+    if(hl.indexOf('tempat')!==-1 && (hl.indexOf('tanggal')!==-1 || hl.indexOf('lahir')!==-1 || hl.indexOf('tgl')!==-1)){
+      isTextarea=true; // Force textarea untuk tempat/tanggal lahir
+    }
+    // 2. STATUS fields - Fixed select options
+    else if(fixedSelectOptions[col] || fixedSelectOptions[hl]){
+      isFixedSelect=true;
+    }
+    // 3. Email fields
+    else if(hl.indexOf('email')!==-1){inputType='email';}
+    // 4. Date fields (EXCEPT tempat/tanggal lahir)
+    else if((hl.indexOf('tanggal')!==-1||hl.indexOf('date')!==-1||hl.indexOf('tgl')!==-1) && hl.indexOf('tempat')===-1){inputType='date';}
+    // 5. Phone/WhatsApp fields
+    else if(hl.indexOf('telepon')!==-1||hl.indexOf('hp')!==-1||hl.indexOf('phone')!==-1||hl.indexOf('whatsapp')!==-1||hl.indexOf('kontak')!==-1){inputType='tel';}
+    // 6. URL/Link/Foto/Surat fields
+    else if(hl.indexOf('link')!==-1||hl.indexOf('url')!==-1||hl.indexOf('foto')!==-1||hl.indexOf('surat')!==-1){inputType='url';}
+    // 7. Number fields
+    else if(hl.indexOf('jumlah')!==-1||hl.indexOf('umur')!==-1||hl.indexOf('tahun')!==-1){inputType='number';}
+    // 8. Textarea fields (alamat, keterangan, catatan, isi, deskripsi)
+    else if(hl.indexOf('alamat')!==-1||hl.indexOf('keterangan')!==-1||hl.indexOf('catatan')!==-1||hl.indexOf('isi')!==-1||hl.indexOf('deskripsi')!==-1){isTextarea=true;}
+    // 9. Auto-select for fields with limited unique values (max 20 options)
+    else {
       var uvals=getUniqueValues(col);
-      if(uvals.length>1 && uvals.length<=20 && uvals.length<_crud.allData.length*0.8){
-        isSelect=true;
-      }
+      if(uvals.length>1 && uvals.length<=20 && uvals.length<_crud.allData.length*0.8){isAutoSelect=true;}
     }
 
+    // === RENDER FIELD ===
     html+='<div class="form-group'+(isTextarea?' full':'')+'">';
     html+='<label>'+escHTML(label)+'</label>';
+    
     if(isTextarea){
-      html+='<textarea id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'" placeholder="'+escHTML(label)+'">'+escHTML(val)+'</textarea>';
-    } else if(isSelect){
+      // TEXTAREA - untuk alamat, keterangan, tempat/tanggal lahir
+      html+='<textarea id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'" placeholder="Masukkan '+escHTML(label)+'">'+escHTML(val)+'</textarea>';
+    }
+    else if(isFixedSelect){
+      // FIXED SELECT - status: pending, approved, rejected, verified
+      var options = fixedSelectOptions[col] || fixedSelectOptions[hl];
+      html+='<select id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'">';
+      html+='<option value="">-- Pilih '+escHTML(label)+' --</option>';
+      options.forEach(function(opt){
+        var optVal = String(opt).toLowerCase();
+        var currentVal = String(val).toLowerCase();
+        html+='<option value="'+escHTML(opt)+'"'+(currentVal===optVal?' selected':'')+'>'+escHTML(opt)+'</option>';
+      });
+      // Jika nilai existing tidak ada di options, tambahkan sebagai opsi tambahan
+      if(val && !options.some(function(o){ return String(o).toLowerCase() === String(val).toLowerCase(); })){
+        html+='<option value="'+escHTML(val)+'" selected>'+escHTML(val)+' (current)</option>';
+      }
+      html+='</select>';
+    }
+    else if(isAutoSelect){
+      // AUTO SELECT - dari unique values existing data
       html+='<select id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'">';
       html+='<option value="">-- Pilih '+escHTML(label)+' --</option>';
       getUniqueValues(col).forEach(function(opt){
         html+='<option value="'+escHTML(opt)+'"'+(val===opt?' selected':'')+'>'+escHTML(opt||'(kosong)')+'</option>';
       });
       html+='</select>';
-    } else {
-      html+='<input type="'+inputType+'" id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'" value="'+escHTML(val)+'" placeholder="'+escHTML(label)+'" />';
+    }
+    else {
+      // INPUT TEXT/NUMBER/DATE/EMAIL/TEL/URL
+      html+='<input type="'+inputType+'" id="dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_')+'" value="'+escHTML(val)+'" placeholder="Masukkan '+escHTML(label)+'" />';
     }
     html+='</div>';
   });
 
   // Audit info for edit
   if(isEdit && row){
-    var auditHTML='<div class="dyn-form-audit">';
-    if(row['Tanggal_Dibuat']||row['Tanggal Dibuat'])auditHTML+='<div><i class="fas fa-calendar-plus"></i> Dibuat: '+(row['Tanggal_Dibuat']||row['Tanggal Dibuat']||'-')+'</div>';
-    if(row['Tanggal_Diperbarui']||row['Tanggal Diperbarui'])auditHTML+='<div><i class="fas fa-calendar-check"></i> Diperbarui: '+(row['Tanggal_Diperbarui']||row['Tanggal Diperbarui']||'-')+'</div>';
-    if(row['Diubah_Oleh']||row['Diubah Oleh'])auditHTML+='<div><i class="fas fa-user-edit"></i> Diubah oleh: '+(row['Diubah_Oleh']||row['Diubah Oleh']||'-')+'</div>';
+    var auditHTML='<div class="dyn-form-audit" style="margin-top:16px;padding:12px;background:var(--bg-body);border-radius:8px;font-size:.78rem;color:var(--text-secondary);">';
+    if(row['created_at'])auditHTML+='<div style="margin-bottom:4px;"><i class="fas fa-calendar-plus" style="margin-right:6px;color:var(--primary);"></i>Dibuat: '+row['created_at']+'</div>';
+    if(row['updated_at'])auditHTML+='<div style="margin-bottom:4px;"><i class="fas fa-calendar-check" style="margin-right:6px;color:var(--secondary);"></i>Diperbarui: '+row['updated_at']+'</div>';
     auditHTML+='</div>';
     html+=auditHTML;
   }
 
   grid.innerHTML=html;
   openModal('dynFormModal');
+  
+  console.log('[DYNFORM] Form opened for', _crud.sheetType, '- Edit:', isEdit, '- Fields:', formCols.length);
 }
 
 /* Submit dynamic form */
