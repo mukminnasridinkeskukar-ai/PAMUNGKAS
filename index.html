@@ -510,7 +510,7 @@
     .sert-result h3{font-size:1.2rem;font-weight:700;margin-bottom:8px}
     .sert-result p{font-size:.88rem;color:var(--text-secondary)}
     /* ADMIN PANEL */
-    .admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+    .admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
     .admin-menu-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:24px;text-align:center;cursor:pointer;transition:var(--transition);opacity:1;pointer-events:auto}
     .admin-menu-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);border-color:var(--primary)}
     .admin-menu-card i{font-size:2rem;color:var(--primary);margin-bottom:12px}
@@ -617,21 +617,21 @@
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   
   /* ===== ADMIN DASHBOARD: CATEGORY LAYOUT ===== */
-  .admin-category{margin-bottom:24px;}
-  .admin-category-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border-color);font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
-  .admin-category-header i{font-size:1rem;}
-  .admin-category-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px;}
+  .admin-category{margin-bottom:12px;}
+  .admin-category-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border-color);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+  .admin-category-header i{font-size:.9rem;}
+  .admin-category-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px,1fr));gap:6px;}
   
   /* ===== ADMIN DASHBOARD: ENHANCED MENU CARD ===== */
-  .admin-menu-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden;}
-  .admin-menu-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg, var(--primary), var(--secondary));opacity:0;transition:opacity .25s ease;}
+  .admin-menu-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden;}
+  .admin-menu-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg, var(--primary), var(--secondary));opacity:0;transition:opacity .2s ease;}
   .admin-menu-card:hover::before{opacity:1;}
-  .admin-menu-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);border-color:var(--primary);}
-  .admin-menu-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--primary);font-size:1.2rem;transition:all .25s ease;}
+  .admin-menu-card:hover{box-shadow:var(--shadow-sm);transform:translateY(-1px);border-color:var(--primary);}
+  .admin-menu-card-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--primary);font-size:1rem;transition:all .2s ease;}
   .admin-menu-card:hover .admin-menu-card-icon{background:var(--primary);color:#fff;}
   .admin-menu-card-content{width:100%;}
-  .admin-menu-card h4{font-size:.95rem;font-weight:700;margin-bottom:4px;line-height:1.3;}
-  .admin-menu-card p{font-size:.78rem;color:var(--text-secondary);line-height:1.4;margin-bottom:8px;}
+  .admin-menu-card h4{font-size:.85rem;font-weight:600;margin-bottom:2px;line-height:1.2;}
+  .admin-menu-card p{font-size:.72rem;color:var(--text-secondary);line-height:1.3;margin-bottom:4px;}
   
   /* Badges */
   .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600;}
@@ -7914,8 +7914,8 @@ function submitDynForm(e){
 
 function doSaveCrud(idx,sheetType,data){
   showLoading('Menyimpan data...');
-  var addAction={pengumuman:'tambahPengumuman',sdmk:'tambahSDMK',pendaftaran:'tambahPendaftaran',sertifikat:'tambahSertifikat',materi:'tambahMateri'};
-  var updateAction={pengumuman:'updatePengumuman',sdmk:'updateSDMK',pendaftaran:'updatePendaftaran',sertifikat:'updateSertifikat',materi:'updateMateri'};
+  var addAction={pengumuman:'tambahPengumuman',sdmk:'tambahSDMK',pendaftaran:'tambahPendaftaran',sertifikat:'tambahSertifikat',materi:'tambahMateri',indikator:'tambahIndikator',multiusers:'tambahMultiuser'};
+  var updateAction={pengumuman:'updatePengumuman',sdmk:'updateSDMK',pendaftaran:'updatePendaftaran',sertifikat:'updateSertifikat',materi:'updateMateri',indikator:'updateIndikator',multiusers:'updateMultiuser'};
 
   var done=function(res){
     hideLoading();
@@ -7938,15 +7938,15 @@ function doSaveCrud(idx,sheetType,data){
 /* Confirm delete from CRUD table */
 function confirmDeleteCrud(idx){
   var r=_crud.allData[idx];
-  var nama=r?r['Nama Lengkap dengan Gelar']||r.Nama||r['Nama Penerima']||'':'data ini';
+  var nama=r?r['Nama Lengkap dengan Gelar']||r.Nama||r['Nama Penerima']||r.Indikator||r.Judul||r.username||'':'data ini';
   document.getElementById('confirmText').textContent='Apakah Anda yakin ingin menghapus data "'+nama+'"?';
   document.getElementById('confirmDeleteBtn').onclick=function(){
     closeModal('confirmModal');
     showLoading('Menghapus...');
-    var fnMap={pengumuman:'hapusPengumuman',sdmk:'hapusSDMK',pendaftaran:'hapusPendaftaran',sertifikat:'hapusSertifikat',materi:'hapusMateri'};
+    var fnMap={pengumuman:'hapusPengumuman',sdmk:'hapusSDMK',pendaftaran:'hapusPendaftaran',sertifikat:'hapusSertifikat',materi:'hapusMateri',indikator:'deleteIndikator',multiusers:'deleteMultiuser'};
     var fn=fnMap[_crud.sheetType];
-    if(!fn){hideLoading();showToast('Sheet tidak dikenali.','error');return;}
-    callServer(fn,{idx:idx}).then(function(res){
+    if(!fn){hideLoading();showToast('Tabel tidak dikenali: '+_crud.sheetType,'error');return;}
+    callServer(fn,{idx:idx,id:r.ID||r.id}).then(function(res){
       hideLoading();
       showToast(res.message,res.success?'success':'error');
       if(res.success){
@@ -7960,7 +7960,7 @@ function confirmDeleteCrud(idx){
 
 /* Refresh CRUD data */
 function refreshCrudData(){
-  var actionMap={pengumuman:'getPengumuman',sdmk:'getSDMK',pendaftaran:'getPendaftaran',sertifikat:'getSertifikat',materi:'getMateri'};
+  var actionMap={pengumuman:'getPengumuman',sdmk:'getSDMK',pendaftaran:'getPendaftaran',sertifikat:'getSertifikat',materi:'getMateri',indikator:'getIndikator',multiusers:'getAdmin'};
   callServer(actionMap[_crud.sheetType]).then(function(res){
     if(!res||!res.success){showToast(res?res.message:'Gagal refresh','error');return;}
     _crud.allData=res.data||[];
