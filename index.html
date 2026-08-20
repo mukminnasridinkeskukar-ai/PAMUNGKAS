@@ -737,6 +737,96 @@
 .import-zone{border:2px dashed var(--border-color);border-radius:var(--radius-md);padding:40px 20px;text-align:center;cursor:pointer;transition:all .3s;background:var(--bg-body);}
 .import-zone:hover,.import-zone.drag-over{border-color:var(--primary);background:var(--primary-light);}
 .import-zone i{font-size:2.5rem;color:var(--primary);margin-bottom:12px;}
+
+/* ===== ADMIN TAB SYSTEM (Pendaftaran) ===== */
+.admin-tabs{display:flex;gap:0;background:var(--bg-card);border-radius:var(--radius-md) var(--radius-md) 0 0;border:1px solid var(--border-color);border-bottom:none;overflow:hidden;margin-bottom:0;padding:4px 4px 0;}
+.admin-tab{flex:1;padding:14px 24px;background:transparent;border:none;font-family:inherit;font-size:.9rem;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .25s ease;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;border-bottom:3px solid transparent;}
+.admin-tab:hover{background:var(--primary-light);color:var(--primary);}
+.admin-tab.active{background:var(--bg-card);color:var(--primary);border-bottom-color:var(--primary);box-shadow:0 -2px 8px rgba(13,110,253,.08);}
+.admin-tab i{font-size:1rem;}
+.admin-tab .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:var(--primary);color:#fff;border-radius:10px;font-size:.65rem;font-weight:700;}
+
+/* Tab Content Panels */
+.tab-panel{display:none;background:var(--bg-card);border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);padding:24px;animation:tabFadeIn .3s ease;}
+.tab-panel.active{display:block;}
+@keyframes tabFadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===== INPUT MASSAL / BULK IMPORT UI ===== */
+.import-container{max-width:900px;margin:0 auto;}
+.import-section{background:var(--bg-body);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:24px;margin-bottom:20px;}
+.import-section-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-color);}
+.import-section-header i{font-size:1.3rem;color:var(--primary);}
+.import-section-header h3{font-size:1rem;font-weight:700;color:var(--text-primary);}
+.import-section-header .step-number{width:28px;height:28px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;}
+
+/* Template Download */
+.template-download-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;background:linear-gradient(135deg,var(--secondary),var(--secondary-dark));color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .25s ease;box-shadow:0 4px 12px rgba(16,185,129,.25);}
+.template-download-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,185,129,.35);}
+.template-download-btn i{font-size:1.2rem;}
+
+/* Upload Zone Enhanced */
+.upload-zone{border:2px dashed var(--border-color);border-radius:var(--radius-lg);padding:50px 30px;text-align:center;cursor:pointer;transition:all .3s ease;background:var(--bg-card);position:relative;overflow:hidden;}
+.upload-zone::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(13,110,253,.03),rgba(16,185,129,.03));opacity:0;transition:opacity .3s ease;}
+.upload-zone:hover::before,.upload-zone.drag-over::before{opacity:1;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:var(--primary-light);box-shadow:0 8px 32px rgba(13,110,253,.12);}
+.upload-zone.has-file{border-color:var(--secondary);background:var(--secondary-light);}
+.upload-zone i{font-size:3rem;color:var(--primary);margin-bottom:16px;position:relative;z-index:1;transition:transform .3s ease;}
+.upload-zone:hover i{transform:scale(1.1);}
+.upload-zone p{font-size:1rem;color:var(--text-primary);margin-bottom:8px;font-weight:500;position:relative;z-index:1;}
+.upload-zone small{font-size:.82rem;color:var(--text-muted);position:relative;z-index:1;}
+.upload-zone .file-name{display:flex;align-items:center;gap:8px;margin-top:16px;padding:12px 16px;background:var(--secondary-light);border-radius:var(--radius-sm);color:var(--secondary-dark);font-weight:600;position:relative;z-index:1;}
+.upload-zone .file-name i{font-size:1.2rem;color:var(--secondary);}
+
+/* Validation Stats Cards */
+.validation-stats{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin:20px 0;}
+.validation-stat-card{padding:16px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border-color);}
+.validation-stat-card.total{background:var(--bg-body);border-left:4px solid var(--primary);}
+.validation-stat-card.valid{background:var(--secondary-light);border-left:4px solid var(--secondary);}
+.validation-stat-card.error{background:var(--danger-light);border-left:4px solid var(--danger);}
+.validation-stat-card.duplicate{background:var(--accent-light);border-left:4px solid var(--accent);}
+.validation-stat-card .stat-number{font-size:1.75rem;font-weight:800;line-height:1;}
+.validation-stat-card .stat-label{font-size:.78rem;color:var(--text-secondary);margin-top:4px;}
+
+/* Preview Table for Import */
+.import-preview-table{overflow-x:auto;margin:20px 0;border:1px solid var(--border-color);border-radius:var(--radius-sm);max-height:400px;overflow-y:auto;}
+.import-preview-table table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.import-preview-table th{background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:5;}
+.import-preview-table td{padding:10px 12px;border-bottom:1px solid var(--border-color);vertical-align:middle;}
+.import-preview-table tr:nth-child(even){background:var(--bg-body);}
+.import-preview-table tr:hover{background:var(--primary-light);}
+.import-preview-table tr.row-valid td{background:rgba(16,185,129,.05);}
+.import-preview-table tr.row-error td{background:rgba(239,68,68,.08);}
+.import-preview-table tr.row-duplicate td{background:rgba(245,158,11,.08);}
+.import-preview-table .status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:.7rem;font-weight:600;}
+.status-badge.valid{background:var(--secondary-light);color:var(--secondary-dark);}
+.status-badge.error{background:var(--danger-light);color:var(--danger);}
+.status-badge.duplicate{background:var(--accent-light);color:var(--accent-dark);}
+
+/* Import Progress Bar */
+.import-progress-container{margin:24px 0;padding:24px;background:var(--bg-body);border-radius:var(--radius-md);border:1px solid var(--border-color);}
+.import-progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.import-progress-header h4{font-size:1rem;font-weight:700;color:var(--text-primary);}
+.import-progress-header .progress-percent{font-size:1.5rem;font-weight:800;color:var(--primary);}
+.import-progress-bar{height:12px;background:var(--border-color);border-radius:6px;overflow:hidden;margin-bottom:12px;}
+.import-progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:6px;transition:width .3s ease;position:relative;}
+.import-progress-fill::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:progressShimmer 1.5s infinite;}
+@keyframes progressShimmer{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+.import-progress-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;}
+.import-progress-stat{padding:12px;background:var(--bg-card);border-radius:var(--radius-sm);}
+.import-progress-stat .stat-value{font-size:1.25rem;font-weight:700;}
+.import-progress-stat .stat-label{font-size:.75rem;color:var(--text-secondary);}
+
+/* Import Result Summary */
+.import-result{padding:24px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);text-align:center;}
+.import-result.success{border-color:var(--secondary);background:var(--secondary-light);}
+.import-result-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.8rem;}
+.import-result.success .import-result-icon{background:var(--secondary);color:#fff;}
+.import-result h3{font-size:1.25rem;font-weight:700;margin-bottom:16px;color:var(--text-primary);}
+.import-result-stats{display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:12px;margin:20px 0;text-align:left;}
+.import-result-stat{display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg-body);border-radius:var(--radius-sm);font-size:.88rem;}
+.import-result-stat .label{color:var(--text-secondary);}
+.import-result-stat .value{font-weight:700;}
+.import-result-actions{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
 .import-zone p{color:var(--text-secondary);font-size:.9rem;}
 .import-zone small{color:var(--text-muted);font-size:.75rem;}
 .import-preview{margin-top:16px;max-height:300px;overflow:auto;border:1px solid var(--border-color);border-radius:var(--radius-sm);}
@@ -1743,62 +1833,111 @@
 // === PAMUNGKAS NHOST v7.0 - CLEAN & SECURE ===
 
 /* ========== STATE ========== */
-var adminLevel = '';  // admin, operator (dari multiusers.level)
+var adminLevel = '';  // superadmin, admin, operator (dari multiusers.role)
 var adminUsername = '';
-var currentUser = null;  // { id, username, nama_lengkap, level }
-var currentRole = '';    // normalized: admin, operator
+var currentUser = null;  // { id, username, nama_lengkap, role }
+var currentRole = '';    // normalized: superadmin, admin, operator
 var currentPage = 'dashboard';
 var _dataCache = {}; // cache data per sheet
 var _allPengumuman = [], _allSDMK = [], _allPendaftaran = [], _allSertifikat = [], _allMateri = [], _allAdmin = [];
 
+/* ========== IMPORT STATE ========== */
+var _importState = {
+  file: null,
+  fileName: '',
+  rawData: [],
+  validatedData: [],
+  errors: [],
+  duplicates: [],
+  validCount: 0,
+  errorCount: 0,
+  duplicateCount: 0,
+  isImporting: false,
+  importProgress: 0,
+  importSuccess: 0,
+  importFailed: 0,
+  expectedHeaders: ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nik', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat']
+};
+
 /* ============================================================
- * SISTEM ROLE & HAK AKSES (RBAC) - PAMUNGKAS v7.1
- * Role dari database multiusers.level: admin | operator | user
+ * SISTEM ROLE & HAK AKSES (RBAC) - PAMUNGKAS v7.2
+ * Role dari database multiusers.role: superadmin | admin | operator
  * ============================================================ */
 
 /**
  * ROLE_PERMISSIONS - Konfigurasi terpusat hak akses
  * Single source of truth untuk seluruh permission system
  * 
- * Role mapping dari DB (multiusers.level):
- * - admin     = Full Access (semua modul)
- * - operator  = Pendaftaran + Sertifikat
- * - user      = Tidak ada akses admin (hanya view publik)
+ * Role mapping dari DB (multiusers.role):
+ * - superadmin = Full Access (semua modul + bulk_import)
+ * - admin      = Pendaftaran + Sertifikat (termasuk bulk_import)
+ * - operator   = Pendaftaran saja (TANPA bulk_import)
  */
 const ROLE_PERMISSIONS = {
-  // ADMIN = Full Access (Super Admin)
-  admin: {
+  // SUPERADMIN = Full Access (semua modul + bulk import)
+  superadmin: {
     dashboard: true,
     indikator: ['read', 'create', 'update', 'delete'],
     materi: ['read', 'create', 'update', 'delete'],
     multiusers: ['read', 'create', 'update', 'delete'],
-    pendaftaran: ['read', 'create', 'update', 'delete'],
+    pendaftaran: ['read', 'create', 'update', 'delete', 'bulk_import'],
     pengumuman: ['read', 'create', 'update', 'delete'],
     sdmk: ['read', 'create', 'update', 'delete'],
     sertifikat: ['read', 'create', 'update', 'delete'],
     user_accounts: ['read', 'create', 'update', 'delete']
   },
   
-  // OPERATOR = Pendaftaran + Sertifikat only
-  operator: {
+  // ADMIN = Pendaftaran + Sertifikat (dengan bulk_import)
+  admin: {
     dashboard: true,
-    pendaftaran: ['read', 'create', 'update', 'delete'],
+    pendaftaran: ['read', 'create', 'update', 'delete', 'bulk_import'],
     sertifikat: ['read', 'create', 'update', 'delete']
   },
   
-  // USER = No admin access (regular user, read-only public pages)
-  user: {
-    dashboard: false
+  // OPERATOR = Pendaftaran saja (TANPA bulk_import)
+  operator: {
+    dashboard: true,
+    pendaftaran: ['read', 'create', 'update', 'delete']  // NO bulk_import!
   }
 };
 
 /**
  * SIDEBAR_MENU_CONFIG - Konfigurasi menu sidebar per role
  * Menu yang tidak memiliki permission TIDAK akan dirender
- * Role dari DB: admin | operator
+ * Role dari DB: superadmin | admin | operator
  */
 const SIDEBAR_MENU_CONFIG = {
-  // ADMIN = Full Access (semua menu)
+  // SUPERADMIN = Full Access (semua menu)
+  superadmin: {
+    mainMenu: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
+      { id: 'pengumuman', label: 'Pengumuman', icon: 'fa-bullhorn', page: 'pengumuman' },
+      { id: 'profil-sdmk', label: 'Profil SDMK Terlatih', icon: 'fa-user-md', page: 'profil-sdmk' },
+      { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
+      { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' },
+      { id: 'cek-materi', label: 'Cek Materi', icon: 'fa-book-open', page: 'cek-materi' },
+      { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
+    ],
+    panelAdmin: [
+      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+    ],
+    dataUtama: [
+      { id: 'indikator', label: 'Indikator', icon: 'fa-chart-line', module: 'indikator' },
+      { id: 'materi', label: 'Materi', icon: 'fa-book-open', module: 'materi' },
+      { id: 'sdmk', label: 'SDMK', icon: 'fa-user-md', module: 'sdmk' },
+      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }
+    ],
+    informasi: [
+      { id: 'pengumuman-admin', label: 'Pengumuman', icon: 'fa-bullhorn', module: 'pengumuman' },
+      { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
+    ],
+    sistem: [
+      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' },
+      { id: 'user-accounts', label: 'Akun User', icon: 'fa-user-shield', module: 'user_accounts' }
+    ]
+  },
+  
+  // ADMIN = Pendaftaran + Sertifikat only
   admin: {
     mainMenu: [
       { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
@@ -1828,65 +1967,63 @@ const SIDEBAR_MENU_CONFIG = {
     ]
   },
   
-  // OPERATOR = Pendaftaran + Sertifikat only
+  // OPERATOR = Pendaftaran saja (tanpa sertifikat, tanpa bulk_import)
   operator: {
     mainMenu: [
       { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
       { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
-      { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' },
       { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
     ],
     panelAdmin: [
       { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
     ],
     data: [
-      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' },
-      { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
+      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }
     ]
   }
 };
 
 /**
  * ROLE_LABELS - Label dan deskripsi untuk setiap role
- * Sesuai dengan nilai di multiusers.level
+ * Sesuai dengan nilai di multiusers.role
  */
 const ROLE_LABELS = {
-  admin: {
-    name: 'ADMIN',
+  superadmin: {
+    name: 'SUPERADMIN',
     description: 'Full Access',
-    detail: 'Akses penuh ke semua data dan fitur sistem.',
+    detail: 'Akses penuh ke semua data dan fitur sistem termasuk Input Massal.',
     icon: 'fa-crown',
     color: '#EF4444',
+    bgClass: 'role-superadmin'
+  },
+  admin: {
+    name: 'ADMIN',
+    description: 'Pendaftaran & Sertifikat',
+    detail: 'Mengelola pendaftaran, sertifikat, dan Input Massal.',
+    icon: 'fa-user-shield',
+    color: '#0D6EFD',
     bgClass: 'role-admin'
   },
   operator: {
     name: 'OPERATOR',
-    description: 'Pendaftaran & Sertifikat',
-    detail: 'Mengelola pendaftaran dan sertifikat pelatihan.',
-    icon: 'fa-user-shield',
-    color: '#0D6EFD',
+    description: 'Pendaftaran Only',
+    detail: 'Hanya dapat mengelola data pendaftaran (tanpa Input Massal).',
+    icon: 'fa-user-edit',
+    color: '#F59E0B',
     bgClass: 'role-operator'
-  },
-  user: {
-    name: 'USER',
-    description: 'No Admin Access',
-    detail: 'User biasa tanpa akses panel admin.',
-    icon: 'fa-user',
-    color: '#6B7280',
-    bgClass: 'role-user'
   }
 };
 
 /**
- * VALID_ROLES - Daftar role yang valid (sesuai multiusers.level di database)
+ * VALID_ROLES - Daftar role yang valid (sesuai multiusers.role di database)
  */
-const VALID_ROLES = ['admin', 'operator'];
+const VALID_ROLES = ['superadmin', 'admin', 'operator'];
 
 /**
  * hasPermission() - Helper utama untuk pengecekan hak akses
- * @param {string} role - Role user (admin, operator)
+ * @param {string} role - Role user (superadmin, admin, operator)
  * @param {string} module - Module/modul yang diakses
- * @param {string} action - Aksi yang dilakukan (read, create, update, delete)
+ * @param {string} action - Aksi yang dilakukan (read, create, update, delete, bulk_import)
  * @returns {boolean} - True jika diizinkan, false jika tidak
  */
 function hasPermission(role, module, action) {
@@ -1960,10 +2097,10 @@ function isValidRole(role) {
 
 /**
  * normalizeRole() - Normalisasi role dari database ke format standar
- * Database field: multiusers.level
- * Values: 'admin', 'operator', 'user'
- * @param {string} rawRole - Role asli dari database (multiusers.level)
- * @returns {string} Role ternormalisasi (admin, operator, atau empty)
+ * Database field: multiusers.role
+ * Values: 'superadmin', 'admin', 'operator'
+ * @param {string} rawRole - Role asli dari database (multiusers.role)
+ * @returns {string} Role ternormalisasi (superadmin, admin, operator, atau empty)
  */
 function normalizeRole(rawRole) {
   if (!rawRole) return '';
@@ -1971,31 +2108,37 @@ function normalizeRole(rawRole) {
   var role = rawRole.toString().toLowerCase().trim();
   
   // Mapping role dari database ke format standar
-  // Database multiusers.level values: admin, operator, user
+  // Database multiusers.role values: superadmin, admin, operator
   var roleMapping = {
-    // Admin variants (Full Access)
+    // Super Admin variants (Full Access + Bulk Import)
+    'superadmin': 'superadmin',
+    'super_admin': 'superadmin',
+    'super-admin': 'superadmin',
+    'root': 'superadmin',
+    
+    // Admin variants (Pendaftaran + Sertifikat + Bulk Import)
     'admin': 'admin',
     'administrator': 'admin',
-    'super_admin': 'admin',      // Legacy → admin (full access)
-    'superadmin': 'admin',       // Legacy → admin (full access)
-    'administrator_basic': 'admin',
+    'admin_full': 'admin',
     
-    // Operator variants (Pendaftaran + Sertifikat)
+    // Operator variants (Pendaftaran ONLY, no bulk_import)
     'operator': 'operator',
     'operator_basic': 'operator',
     'observer': 'operator',      // Legacy observer → operator
+    'staff': 'operator',         // Legacy staff → operator
     
-    // User/No Access
-    'user': '',                  // Regular user = no admin access
-    'staff': '',
+    // No Access / Invalid
+    'user': '',
     'verifikator': '',
-    'guest': ''
+    'guest': '',
+    'public': ''
   };
   
   var normalized = roleMapping[role];
   
   // If mapping exists and is valid, return it
   if (normalized !== undefined && (normalized === '' || isValidRole(normalized))) {
+    console.log('[RBAC] Role normalized:', rawRole, '→', normalized || '(no access)');
     return normalized;
   }
   
@@ -5401,6 +5544,7 @@ function renderAdminDashboard(){
 /**
  * Open CRUD interface for a specific table
  * Uses RBAC permission system to control access
+ * SPECIAL: For 'pendaftaran', shows TAB system (Data Pendaftaran | Input Massal)
  */
 function openAdminCrud(type) {
   console.log('[ADMIN] Opening CRUD for:', type);
@@ -5427,13 +5571,22 @@ function openAdminCrud(type) {
   var canCreateData = canCreate(type);
   var canUpdateData = canUpdate(type);
   var canDeleteData = canDelete(type);
+  var canBulkImport = hasPermission(getCurrentRole(), type, 'bulk_import');
   var writable = canCreateData || canUpdateData || canDeleteData;
   var readOnly = !writable;
   
   var c = document.getElementById('adminCrudContent');
   if (!c) { console.warn('[DOM] openAdminCrud: #adminCrudContent tidak ditemukan'); return; }
   
-  // Build info bar based on permissions
+  // ============================================================
+  // SPECIAL HANDLING: PENDAFTARAN with TAB SYSTEM
+  // ============================================================
+  if (type === 'pendaftaran') {
+    renderPendaftaranTabSystem(c, tableConfig, titles, writable, canBulkImport, readOnly);
+    return;
+  }
+  
+  // Build info bar based on permissions (for non-pendaftaran modules)
   var role = getCurrentRole();
   var infoBarHtml = '';
   if (readOnly) {
@@ -5456,7 +5609,7 @@ function openAdminCrud(type) {
   }
   
   // Add Import button only if user has create permission
-  var importBtn = (writable && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','indikator'].includes(type))
+  var importBtn = (writable && ['pengumuman','sdmk','sertifikat','materi','indikator'].includes(type))
     ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\'' + type + '\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
     : '';
   
@@ -5465,7 +5618,7 @@ function openAdminCrud(type) {
     (titles[type] || type) + '</h2>' +
     '<p>Kelola data <strong>' + tableConfig.table + '</strong> dari database Nhost.</p>' + 
     importBtn + '</div>' + 
-    infoBar + 
+    infoBarHtml + 
     '<div id="adminCrudTable"></div>';
   
   console.log('[ADMIN] Loading table:', type, '→ Action:', tableConfig.queryAction);
@@ -5740,7 +5893,603 @@ function closeAdminCrud(){
   _safeDisplay('adminDashboard', 'block');
 }
 
-/* ========== ADMIN: KELOLA AKUN ADMIN ========== */
+/* ================================================================
+ * PENDAFTARAN TAB SYSTEM - Data Pendaftaran | Input Massal
+ * ================================================================ */
+
+/**
+ * renderPendaftaranTabSystem() - Render TAB system untuk halaman Pendaftaran
+ * TAB 1: Data Pendaftaran (CRUD biasa)
+ * TAB 2: Input Massal (CSV Import) - Hanya untuk superadmin & admin
+ */
+function renderPendaftaranTabSystem(container, tableConfig, titles, writable, canBulkImport, readOnly) {
+  var role = getCurrentRole();
+  console.log('[PENDAFTARAN] Rendering Tab System for role:', role, '| bulk_import:', canBulkImport);
+  
+  // Build HTML structure with tabs
+  var html = '';
+  
+  // Page Header
+  html += '<div class="page-header">';
+  html += '<h2><i class="fas ' + tableConfig.icon + '" style="margin-right:8px;color:var(--primary);"></i>Pendaftaran</h2>';
+  html += '<p>Kelola seluruh data pendaftaran dari database Nhost.</p>';
+  html += '</div>';
+  
+  // TAB NAVIGATION
+  html += '<div class="admin-tabs" id="pendaftaranTabs">';
+  html += '  <button class="admin-tab active" data-tab="pendaftaran-data" onclick="switchPendaftaranTab(\'pendaftaran-data\')">';
+  html += '    <i class="fas fa-table"></i> Data Pendaftaran';
+  html += '  </button>';
+  
+  // Tab Input Massal - Hanya tampilkan jika role punya permission bulk_import
+  if (canBulkImport) {
+    html += '  <button class="admin-tab" data-tab="pendaftaran-import" id="tabInputMassal" onclick="switchPendaftaranTab(\'pendaftaran-import\')">';
+    html += '    <i class="fas fa-file-import"></i> Input Massal';
+    html += '  </button>';
+    console.log('[PENDAFTARAN] Input Massal tab VISIBLE for role:', role);
+  } else {
+    console.log('[PENDAFTARAN] Input Massal tab HIDDEN for role:', role);
+  }
+  
+  html += '</div>'; // end tabs
+  
+  // TAB PANEL 1: Data Pendaftaran (CRUD)
+  html += '<div class="tab-panel active" id="panel-pendaftaran-data">';
+  html += '  <div id="pendaftaranCrudContent"></div>';
+  html += '</div>';
+  
+  // TAB PANEL 2: Input Massal (CSV Import)
+  if (canBulkImport) {
+    html += '<div class="tab-panel" id="panel-pendaftaran-import">';
+    html += renderImportMassalUI();
+    html += '</div>';
+  }
+  
+  container.innerHTML = html;
+  
+  // Load data into Tab 1 (Data Pendaftaran)
+  loadPendaftaranCrudData(writable, readOnly);
+}
+
+/**
+ * switchPendaftaranTab() - Switch antara tab di Pendaftaran
+ */
+function switchPendaftaranTab(tabId) {
+  console.log('[PENDAFTARAN] Switching to tab:', tabId);
+  
+  // Update tab buttons
+  var tabs = document.querySelectorAll('#pendaftaranTabs .admin-tab');
+  tabs.forEach(function(tab) {
+    if (tab.dataset.tab === tabId) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  
+  // Update panels
+  var panels = document.querySelectorAll('.tab-panel');
+  panels.forEach(function(panel) {
+    if (panel.id === 'panel-' + tabId) {
+      panel.classList.add('active');
+    } else {
+      panel.classList.remove('active');
+    }
+  });
+  
+  // Special handling when switching to import tab
+  if (tabId === 'pendaftaran-import') {
+    resetImportState();
+  }
+}
+
+/**
+ * loadPendaftaranCrudData() - Load data Pendaftaran ke dalam Tab 1
+ */
+function loadPendaftaranCrudData(writable, readOnly) {
+  console.log('[PENDAFTARAN] Loading CRUD data...');
+  
+  var contentDiv = document.getElementById('pendaftaranCrudContent');
+  if (!contentDiv) {
+    console.warn('[DOM] #pendaftaranCrudContent tidak ditemukan');
+    return;
+  }
+  
+  _crud.sheetType = 'pendaftaran';
+  _crud.writable = writable;
+  _crud.page = 1;
+  _crud.perPage = 10;
+  _crud.sortCol = '';
+  _crud.sortDir = 'asc';
+  _crud.searchTerm = '';
+  _crud.filters = {};
+  
+  showLoading('Memuat data Pendaftaran...');
+  
+  callServer('getPendaftaran').then(function(res) {
+    hideLoading();
+    
+    if (!res || !res.success) {
+      contentDiv.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle" style="font-size:2rem;color:var(--accent);"></i><p>' + 
+        escHTML(res ? res.message : 'Gagal memuat data Pendaftaran') + '</p></div>';
+      return;
+    }
+    
+    _crud.allData = res.data || [];
+    _crud.filteredData = [..._crud.allData];
+    _allPendaftaran = res.data || [];
+    
+    if (_crud.allData.length > 0) {
+      _crud.headers = Object.keys(_crud.allData[0]);
+    } else {
+      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
+    }
+    
+    _crud.visibleCols = [..._crud.headers];
+    _crud.filterCols = detectFilterColumns('pendaftaran');
+    
+    renderPendaftaranCrudUI(contentDiv);
+    console.log('[PENDAFTARAN] Data loaded:', _crud.allData.length, 'records');
+    
+  }).catch(function(e) {
+    hideLoading();
+    console.error('[PENDAFTARAN] Error loading data:', e);
+    showToast('Gagal memuat data: ' + (e.message || e), 'error');
+    contentDiv.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle" style="font-size:2rem;color:var(--danger);"></i><p>Error: ' + 
+      escHTML(e.message || 'Unknown error') + '</p></div>';
+  });
+}
+
+/**
+ * renderPendaftaranCrudUI() - Render CRUD table khusus untuk Pendaftaran Tab 1
+ */
+function renderPendaftaranCrudUI(container) {
+  if (!_crud.allData.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox" style="font-size:2.5rem;color:var(--text-muted);"></i><p>Belum ada data Pendaftaran.</p>' +
+    (_crud.writable ? '<button class="btn btn-primary" style="margin-top:16px;" onclick="openDynForm(-1)"><i class="fas fa-plus"></i> Tambah Data</button>' : '') + '</div>';
+    return;
+  }
+
+  var filterHTML = '';
+  if (_crud.filterCols.length > 0) {
+    filterHTML = '<div class="crud-filters">';
+    _crud.filterCols.forEach(function(col) {
+      var opts = getUniqueValues(col);
+      filterHTML += '<select onchange="applyFilter(\'' + escHTML(col).replace(/'/g, "\\'") + '\',this.value)" id="filter_' + col.replace(/[^a-zA-Z0-9]/g, '_') + '">';
+      filterHTML += '<option value="">Semua ' + escHTML(col) + '</option>';
+      opts.forEach(function(v) {
+        var sel = _crud.filters[col] === v ? ' selected' : '';
+        filterHTML += '<option value="' + escHTML(v) + '"' + sel + '>' + escHTML(v || '(kosong)') + '</option>';
+      });
+      filterHTML += '</select>';
+    });
+    filterHTML += '</div>';
+  }
+
+  var html = '';
+
+  /* Toolbar */
+  html += '<div class="crud-toolbar">';
+  html += '<div class="crud-search"><i class="fas fa-search"></i><input type="text" id="crudSearchInput" placeholder="Cari berdasarkan Nama, NIK, NIP, Profesi, Unit Kerja..." value="' + escHTML(_crud.searchTerm) + '" oninput="crudSearch(this.value)" /></div>';
+  html += filterHTML;
+  html += '<div class="crud-actions">';
+  if (_crud.writable) html += '<button class="btn btn-primary" onclick="openDynForm(-1)"><i class="fas fa-plus"></i> Tambah Pendaftaran</button>';
+  html += '<button class="btn btn-secondary" onclick="refreshPendaftaranData()"><i class="fas fa-sync-alt"></i> Refresh</button>';
+  html += '<div class="col-vis-wrap"><button class="col-vis-btn" onclick="toggleColVis()"><i class="fas fa-columns"></i> Kolom</button><div class="col-vis-dropdown" id="colVisDropdown"></div></div>';
+  html += '<button class="btn btn-secondary" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</button>';
+  if (typeof XLSX !== 'undefined') html += '<button class="btn btn-secondary" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Excel</button>';
+  if (typeof jspdf !== 'undefined') html += '<button class="btn btn-secondary" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button>';
+  html += '</div></div>';
+
+  /* Table */
+  html += '<div class="crud-table-container"><div class="crud-table-scroll"><table class="crud-table"><thead><tr>';
+  html += '<th class="no-sort" style="width:50px;text-align:center;">No</th>';
+  _crud.visibleCols.forEach(function(col) {
+    var isSorted = _crud.sortCol === col;
+    var icon = isSorted ? (_crud.sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
+    html += '<th class="' + (isSorted ? 'sorted' : '') + '" onclick="crudSort(\'' + escHTML(col).replace(/'/g, "\\'") + '\')">' + escHTML(col) + ' <i class="fas ' + icon + ' sort-icon"></i></th>';
+  });
+  html += '<th class="no-sort" style="text-align:center;">Aksi</th>';
+  html += '</tr></thead><tbody id="crudTableBody"></tbody></table></div></div>';
+
+  /* Pagination */
+  html += '<div class="crud-pagination"><div class="crud-page-info">Menampilkan <strong id="crudPageStart">0</strong>-<strong id="crudPageEnd">0</strong> dari <strong id="crudTotalRows">0</strong> data</div>';
+  html += '<div class="crud-page-size"><label>Tampilkan:</label><select id="crudPageSize" onchange="crudChangePageSize(this.value)">';
+  [10, 25, 50, 100].forEach(function(n) { html += '<option value="' + n + '"' + (_crud.perPage === n ? ' selected' : '') + '>' + n + '</option>'; });
+  html += '<option value="all"' + (_crud.perPage === 99999 ? ' selected' : '') + '>Semua</option>';
+  html += '</select></div>';
+  html += '<div class="crud-page-btns" id="crudPageBtns"></div></div>';
+
+  container.innerHTML = html;
+
+  buildColVisDropdown();
+  renderCrudTable();
+
+  /* Focus search */
+  var si = document.getElementById('crudSearchInput');
+  if (si) {
+    si.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { this.value = ''; crudSearch(''); }
+    });
+  }
+}
+
+/**
+ * refreshPendaftaranData() - Refresh data Pendaftaran dari Nhost
+ */
+function refreshPendaftaranData() {
+  console.log('[PENDAFTARAN] Refreshing data from Nhost...');
+  loadPendaftaranCrudData(_crud.writable, !_crud.writable);
+}
+
+/* ================================================================
+ * INPUT MASSAL / BULK IMPORT SYSTEM FOR PENDAFTARAN
+ * ================================================================ */
+
+/**
+ * renderImportMassalUI() - Render UI untuk Input Massal (TAB 2)
+ */
+function renderImportMassalUI() {
+  var html = '';
+  html += '<div class="import-container">';
+  
+  // Section 1: Download Template
+  html += '<div class="import-section">';
+  html += '  <div class="import-section-header">';
+  html += '    <span class="step-number">1</span>';
+  html += '    <i class="fas fa-download"></i>';
+  html += '    <h3>Download Template</h3>';
+  html += '  </div>';
+  html += '  <p style="color:var(--text-secondary);margin-bottom:16px;font-size:.88rem;">Download template CSV untuk memastikan format data yang benar sebelum melakukan import.</p>';
+  html += '  <button class="template-download-btn" onclick="downloadPendaftaranTemplate()">';
+  html += '    <i class="fas fa-file-csv"></i> Download Template CSV';
+  html += '  </button>';
+  html += '</div>';
+  
+  // Section 2: Upload Data
+  html += '<div class="import-section">';
+  html += '  <div class="import-section-header">';
+  html += '    <span class="step-number">2</span>';
+  html += '    <i class="fas fa-upload"></i>';
+  html += '    <h3>Upload Data</h3>';
+  html += '  </div>';
+  html += '  <div class="upload-zone" id="uploadZone" onclick="document.getElementById(\'csvFileInput\').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">';
+  html += '    <i class="fas fa-cloud-upload-alt"></i>';
+  html += '    <p>Tarik file CSV ke sini</p>';
+  html += '    <p style="margin:0;">atau</p>';
+  html += '    <button type="button" class="btn btn-primary" style="margin-top:12px;" onclick="event.stopPropagation();document.getElementById(\'csvFileInput\').click()">';
+  html += '      <i class="fas fa-folder-open"></i> Pilih File CSV';
+  html += '    </button>';
+  html += '    <small style="display:block;margin-top:12px;">Format: .csv (maks 5MB)</small>';
+  html += '    <div class="file-name" id="selectedFileName" style="display:none;">';
+  html += '      <i class="fas fa-file-csv"></i>';
+  html += '      <span id="fileNameText"></span>';
+  html += '    </div>';
+  html += '  </div>';
+  html += '  <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVFileSelect(event)">';
+  html += '</div>';
+  
+  // Section 3: Preview & Validasi (hidden initially)
+  html += '<div class="import-section" id="validationSection" style="display:none;">';
+  html += '  <div class="import-section-header">';
+  html += '    <span class="step-number">3</span>';
+  html += '    <i class="fas fa-check-double"></i>';
+  html += '    <h3>Preview & Validasi</h3>';
+  html += '  </div>';
+  html += '  <div id="validationStatsContainer"></div>';
+  html += '  <div id="previewTableContainer" class="import-preview-table"></div>';
+  html += '  <div id="validationActions" style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;"></div>';
+  html += '</div>';
+  
+  // Section 4: Progress Import (hidden initially)
+  html += '<div class="import-section" id="progressSection" style="display:none;">';
+  html += '  <div class="import-section-header">';
+  html += '    <span class="step-number">4</span>';
+  html += '    <i class="fas fa-spinner fa-spin"></i>';
+  html += '    <h3>Proses Import</h3>';
+  html += '  </div>';
+  html += '  <div class="import-progress-container" id="importProgressContainer"></div>';
+  html += '</div>';
+  
+  // Section 5: Hasil Import (hidden initially)
+  html += '<div class="import-section" id="resultSection" style="display:none;">';
+  html += '  <div id="resultContent"></div>';
+  html += '</div>';
+  
+  html += '</div>';
+  
+  return html;
+}
+
+/**
+ * downloadPendaftaranTemplate() - Download template CSV untuk Pendaftaran
+ */
+function downloadPendaftaranTemplate() {
+  console.log('[IMPORT] Generating template CSV...');
+  
+  var headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
+  var sampleData = [
+    ['3201234567890001', 'Ahmad Fauzi', 'Laki-laki', 'Jakarta', '1990-05-15', '198705152010011001', 'Perawat Pelaksana', 'Puskesmas Central', 'Perawat', 'D3 Keperawatan', '08123456789', 'ahmad@email.com', 'Jl. Merdeka No. 1'],
+    ['3201234567890002', 'Siti Nurhaliza', 'Perempuan', 'Bandung', '1992-08-22', '199208222015032002', 'Bidan Terampil', 'Puskesmas Utara', 'Bidan', 'D3 Kebidanan', '08234567890', 'siti@email.com', 'Jl. Sudirman No. 5'],
+    ['3201234567890003', 'Budi Santoso', 'Laki-laki', 'Surabaya', '1988-12-10', '198812102012011003', 'Sanitarian', 'Puskesmas Selatan', 'Sanitarian', 'D3 Kesehatan Lingkungan', '08345678901', 'budi@email.com', 'Jl. Thamrin No. 10']
+  ];
+  
+  var csvContent = headers.join(',') + '\n';
+  sampleData.forEach(function(row) {
+    csvContent += row.map(function(cell) {
+      var cellStr = String(cell || '');
+      if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+        return '"' + cellStr.replace(/"/g, '""') + '"';
+      }
+      return cellStr;
+    }).join(',') + '\n';
+  });
+  
+  var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  var link = document.createElement('a');
+  var url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'template_pendaftaran.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast('Template CSV berhasil didownload!', 'success');
+  console.log('[IMPORT] Template downloaded successfully');
+}
+
+/**
+ * resetImportState() - Reset state import ke awal
+ */
+function resetImportState() {
+  _importState = {
+    file: null,
+    fileName: '',
+    rawData: [],
+    validatedData: [],
+    errors: [],
+    duplicates: [],
+    validCount: 0,
+    errorCount: 0,
+    duplicateCount: 0,
+    isImporting: false,
+    importProgress: 0,
+    importSuccess: 0,
+    importFailed: 0,
+    expectedHeaders: ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat']
+  };
+  
+  var validationSection = document.getElementById('validationSection');
+  var progressSection = document.getElementById('progressSection');
+  var resultSection = document.getElementById('resultSection');
+  var selectedFileName = document.getElementById('selectedFileName');
+  var uploadZone = document.getElementById('uploadZone');
+  
+  if (validationSection) validationSection.style.display = 'none';
+  if (progressSection) progressSection.style.display = 'none';
+  if (resultSection) resultSection.style.display = 'none';
+  if (selectedFileName) selectedFileName.style.display = 'none';
+  if (uploadZone) uploadZone.classList.remove('has-file');
+  
+  console.log('[IMPORT] State reset');
+}
+
+/** Drag & Drop Handlers **/
+function handleDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  var zone = document.getElementById('uploadZone');
+  if (zone) zone.classList.add('drag-over');
+}
+
+function handleDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  var zone = document.getElementById('uploadZone');
+  if (zone) zone.classList.remove('drag-over');
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  var zone = document.getElementById('uploadZone');
+  if (zone) zone.classList.remove('drag-over');
+  
+  var files = event.dataTransfer.files;
+  if (files.length > 0) {
+    processCSVFile(files[0]);
+  }
+}
+
+function handleCSVFileSelect(event) {
+  var file = event.target.files[0];
+  if (file) {
+    processCSVFile(file);
+  }
+}
+
+/**
+ * processCSVFile() - Process uploaded CSV file
+ */
+function processCSVFile(file) {
+  console.log('[IMPORT] Processing file:', file.name, 'Size:', file.size);
+  
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    showToast('Hanya file CSV yang diperbolehkan!', 'error');
+    return;
+  }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Ukuran file terlalu besar! Maksimal 5MB.', 'error');
+    return;
+  }
+  
+  _importState.file = file;
+  _importState.fileName = file.name;
+  
+  var selectedFileName = document.getElementById('selectedFileName');
+  var fileNameText = document.getElementById('fileNameText');
+  var uploadZone = document.getElementById('uploadZone');
+  
+  if (selectedFileName) selectedFileName.style.display = 'flex';
+  if (fileNameText) fileNameText.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+  if (uploadZone) uploadZone.classList.add('has-file');
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var csvData = parseCSV(e.target.result);
+      _importState.rawData = csvData;
+      console.log('[IMPORT] CSV parsed:', csvData.length, 'rows');
+      validateAndPreview(csvData);
+    } catch (err) {
+      console.error('[IMPORT] Error parsing CSV:', err);
+      showToast('Error parsing file CSV: ' + err.message, 'error');
+    }
+  };
+  reader.onerror = function() { showToast('Error membaca file!', 'error'); };
+  reader.readAsText(file);
+}
+
+/**
+ * parseCSV() - Parse CSV string ke array of objects
+ */
+function parseCSV(csvString) {
+  var lines = csvString.split('\n').filter(function(line) { return line.trim() !== ''; });
+  if (lines.length < 2) {
+    throw new Error('File CSV kosong atau hanya memiliki header!');
+  }
+  
+  var headers = parseCSVLine(lines[0]).map(function(h) { return h.trim().toLowerCase().replace(/\s+/g, '_'); });
+  console.log('[IMPORT] Headers detected:', headers);
+  
+  var missingHeaders = _importState.expectedHeaders.filter(function(h) { return !headers.includes(h); });
+  if (missingHeaders.length > 0) {
+    throw new Error('Header wajib tidak ditemukan: ' + missingHeaders.join(', '));
+  }
+  
+  var data = [];
+  for (var i = 1; i < lines.length; i++) {
+    var values = parseCSVLine(lines[i]);
+    var row = {};
+    headers.forEach(function(header, idx) {
+      row[header] = values[idx] || '';
+    });
+    row._rowNum = i;
+    data.push(row);
+  }
+  
+  return data;
+}
+
+function parseCSVLine(line) {
+  var result = [];
+  var current = '';
+  var inQuotes = false;
+  
+  for (var i = 0; i < line.length; i++) {
+    var char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  
+  return result;
+}
+
+/**
+ * validateAndPreview() - Validasi data dan tampilkan preview
+ */
+function validateAndPreview(data) {
+  console.log('[IMPORT] Validating', data.length, 'rows...');
+  
+  _importState.validatedData = [];
+  _importState.errors = [];
+  _importState.duplicates = [];
+  _importState.validCount = 0;
+  _importState.errorCount = 0;
+  _importState.duplicateCount = 0;
+  
+  var nikSet = new Set();
+  
+  data.forEach(function(row, idx) {
+    var rowErrors = [];
+    var isDuplicate = false;
+    
+    // Validate NIK
+    if (!row.nik || row.nik.trim() === '') {
+      rowErrors.push({ field: 'nik', message: 'NIK wajib diisi' });
+    } else if (!/^\d{16}$/.test(row.nik.replace(/\s/g, ''))) {
+      rowErrors.push({ field: 'nik', message: 'NIK harus 16 digit angka' });
+    } else if (nikSet.has(row.nik.replace(/\s/g, ''))) {
+      isDuplicate = true;
+      _importState.duplicateCount++;
+      _importState.duplicates.push({ rowNum: row._rowNum, data: row, reason: 'NIK duplikat' });
+    } else {
+      nikSet.add(row.nik.replace(/\s/g, ''));
+    }
+    
+    // Validate nama_lengkap
+    if (!row.nama_lengkap || row.nama_lengkap.trim() === '') {
+      rowErrors.push({ field: 'nama_lengkap', message: 'Nama lengkap wajib diisi' });
+    } else if (row.nama_lengkap.length > 200) {
+      rowErrors.push({ field: 'nama_lengkap', message: 'Nama maksimal 200 karakter' });
+    }
+    
+    // Validate jenis_kelamin
+    if (row.jenis_kelamin && !['Laki-laki', 'Perempuan', 'laki-laki', 'perempuan', 'L', 'P'].includes(row.jenis_kelamin)) {
+      rowErrors.push({ field: 'jenis_kelamin', message: 'Jenis kelamin: Laki-laki atau Perempuan' });
+    }
+    
+    // Validate tanggal_lahir
+    if (row.tanggal_lahir && !/^\d{4}-\d{2}-\d{2}$/.test(row.tanggal_lahir)) {
+      rowErrors.push({ field: 'tanggal_lahir', message: 'Format tanggal: YYYY-MM-DD' });
+    }
+    
+    // Validate email
+    if (row.email && row.email.trim() !== '') {
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(row.email)) {
+        rowErrors.push({ field: 'email', message: 'Format email tidak valid' });
+      }
+    }
+    
+    // Validate no_telepon
+    if (row.no_telepon && row.no_telepon.trim() !== '') {
+      var phoneRegex = /^[\d+\-\s()]+$/;
+      if (!phoneRegex.test(row.no_telepon) || row.no_telepon.replace(/\D/g, '').length < 10) {
+        rowErrors.push({ field: 'no_telepon', message: 'Nomor telepon minimal 10 digit' });
+      }
+    }
+    
+    // Classify row
+    if (isDuplicate) {
+      row._status = 'duplicate';
+    } else if (rowErrors.length > 0) {
+      row._status = 'error';
+      row._errors = rowErrors;
+      _importState.errorCount++;
+      _importState.errors.push({ rowNum: row._rowNum, data: row, errors: rowErrors });
+    } else {
+      row._status = 'valid';
+      _importState.validCount++;
+      _importState.validatedData.push(row);
+    }
+  });
+  
+  console.log('[IMPORT] Validation complete:', {\n    total: data.length,\n    valid: _importState.validCount,\n    error: _importState.errorCount,\n    duplicate: _importState.duplicateCount\n  });\n  \n  showValidationResults(data);\n}\n\n/**\n * showValidationResults() - Tampilkan hasil validasi\n */\nfunction showValidationResults(data) {\n  var validationSection = document.getElementById('validationSection');\n  var statsContainer = document.getElementById('validationStatsContainer');\n  var previewContainer = document.getElementById('previewTableContainer');\n  var actionsContainer = document.getElementById('validationActions');\n  \n  if (!validationSection) return;\n  \n  validationSection.style.display = 'block';\n  \n  statsContainer.innerHTML = '\n    <div class=\"validation-stats\">\n      <div class=\"validation-stat-card total\">\n        <div class=\"stat-number\">' + data.length + '</div>\n        <div class=\"stat-label\">Total Baris</div>\n      </div>\n      <div class=\"validation-stat-card valid\">\n        <div class=\"stat-number\">' + _importState.validCount + '</div>\n        <div class=\"stat-label\">✓ Valid</div>\n      </div>\n      <div class=\"validation-stat-card error\">\n        <div class=\"stat-number\">' + _importState.errorCount + '</div>\n        <div class=\"stat-label\">✗ Error</div>\n      </div>\n      <div class=\"validation-stat-card duplicate\">\n        <div class=\"stat-number\">' + _importState.duplicateCount + '</div>\n        <div class=\"stat-label\">⚠ Duplikat</div>\n      </div>\n    </div>';\n  \n  var previewData = data.slice(0, 100);\n  var tableHtml = '<table><thead><tr>';\n  tableHtml += '<th>No</th>';\n  _importState.expectedHeaders.forEach(function(h) {\n    tableHtml += '<th>' + escHTML(h.replace(/_/g, ' ').toUpperCase()) + '</th>';\n  });\n  tableHtml += '<th>Status</th>';\n  tableHtml += '</tr></thead><tbody>';\n  \n  previewData.forEach(function(row, idx) {\n    var statusClass = 'row-' + row._status;\n    var statusBadge = '';\n    \n    if (row._status === 'valid') {\n      statusBadge = '<span class=\"status-badge valid\"><i class=\"fas fa-check\"></i> VALID</span>';\n    } else if (row._status === 'error') {\n      statusBadge = '<span class=\"status-badge error\"><i class=\"fas fa-times\"></i> ERROR</span>';\n    } else if (row._status === 'duplicate') {\n      statusBadge = '<span class=\"status-badge duplicate\"><i class=\"fas fa-copy\"></i> DUPLIKAT</span>';\n    }\n    \n    tableHtml += '<tr class=\"' + statusClass + '\">';\n    tableHtml += '<td>' + (idx + 1) + '</td>';\n    _importState.expectedHeaders.forEach(function(h) {\n      tableHtml += '<td>' + escHTML(row[h] || '-') + '</td>';\n    });\n    tableHtml += '<td>' + statusBadge + '</td>';\n    tableHtml += '</tr>';\n  });\n  \n  tableHtml += '</tbody></table>';\n  \n  if (data.length > 100) {\n    tableHtml += '<p style=\"text-align:center;color:var(--text-muted);margin-top:12px;\">Menampilkan 100 dari ' + data.length + ' baris...</p>';\n  }\n  \n  previewContainer.innerHTML = tableHtml;\n  \n  actionsContainer.style.display = 'flex';\n  actionsContainer.innerHTML = '\n    <button class=\"btn btn-secondary\" onclick=\"resetImportState()\">\n      <i class=\"fas fa-times\"></i> Batal\n    </button>' +\n    (_importState.validCount > 0 \n      ? '<button class=\"btn btn-primary\" onclick=\"executeBulkImport()\">\n          <i class=\"fas fa-upload\"></i> Import ' + _importState.validCount + ' Data Valid\n        </button>'\n      : ''\n    );\n}\n\n/**\n * executeBulkImport() - Eksekusi import data valid ke database\n */\nfunction executeBulkImport() {\n  if (_importState.isImporting) {\n    showToast('Import sedang berlangsung...', 'warning');\n    return;\n  }\n  \n  if (_importState.validatedData.length === 0) {\n    showToast('Tidak ada data valid untuk di-import!', 'error');\n    return;\n  }\n  \n  console.log('[IMPORT] Starting bulk import of', _importState.validatedData.length, 'records...');\n  \n  _importState.isImporting = true;\n  _importState.importProgress = 0;\n  _importState.importSuccess = 0;\n  _importState.importFailed = 0;\n  \n  var progressSection = document.getElementById('progressSection');\n  var validationSection = document.getElementById('validationSection');\n  \n  if (validationSection) validationSection.style.display = 'none';\n  if (progressSection) progressSection.style.display = 'block';\n  \n  renderImportProgress();\n  \n  var batchSize = 10;\n  var totalRecords = _importState.validatedData.length;\n  var processedRecords = 0;\n  \n  function processBatch() {\n    var batch = _importState.validatedData.slice(processedRecords, processedRecords + batchSize);\n    \n    if (batch.length === 0) {\n      finishImport(totalRecords);\n      return;\n    }\n    \n    callServer('bulkInsertPendaftaran', { data: batch })\n      .then(function(res) {\n        processedRecords += batch.length;\n        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);\n        \n        if (res && res.success) {\n          _importState.importSuccess += batch.length;\n        } else {\n          _importState.importFailed += batch.length;\n          console.warn('[IMPORT] Batch failed:', res ? res.message : 'Unknown error');\n        }\n        \n        renderImportProgress();\n        setTimeout(processBatch, 100);\n      })\n      .catch(function(err) {\n        processedRecords += batch.length;\n        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);\n        _importState.importFailed += batch.length;\n        \n        console.error('[IMPORT] Batch error:', err);\n        renderImportProgress();\n        setTimeout(processBatch, 100);\n      });\n  }\n  \n  processBatch();\n}\n\n/**\n * renderImportProgress() - Render progress bar during import\n */\nfunction renderImportProgress() {\n  var container = document.getElementById('importProgressContainer');\n  if (!container) return;\n  \n  container.innerHTML = '\n    <div class=\"import-progress-header\">\n      <h4><i class=\"fas fa-database\"></i> Import Pendaftaran</h4>\n      <span class=\"progress-percent\">' + _importState.importProgress + '%</span>\n    </div>\n    <div class=\"import-progress-bar\">\n      <div class=\"import-progress-fill\" style=\"width:' + _importState.importProgress + '%\"></div>\n    </div>\n    <div class=\"import-progress-stats\">\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--primary);\">' + (_importState.importSuccess + _importState.importFailed) + '</div>\n        <div class=\"stat-label\">/ ' + _importState.validatedData.length + '</div>\n      </div>\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--secondary);\">' + _importState.importSuccess + '</div>\n        <div class=\"stat-label\">Berhasil</div>\n      </div>\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--danger);\">' + _importState.importFailed + '</div>\n        <div class=\"stat-label\">Gagal</div>\n      </div>\n    </div>';\n}\n\n/**\n * finishImport() - Tampilkan hasil akhir import\n */\nfunction finishImport(totalAttempted) {\n  _importState.isImporting = false;\n  \n  var progressSection = document.getElementById('progressSection');\n  var resultSection = document.getElementById('resultSection');\n  var resultContent = document.getElementById('resultContent');\n  \n  if (progressSection) progressSection.style.display = 'none';\n  if (resultSection) resultSection.style.display = 'block';\n  \n  resultContent.innerHTML = '\n    <div class=\"import-result success\">\n      <div class=\"import-result-icon\">\n        <i class=\"fas fa-check\"></i>\n      </div>\n      <h3>✓ IMPORT SELESAI</h3>\n      <div class=\"import-result-stats\">\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Total data</span>\n          <span class=\"value\">' + totalAttempted + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Berhasil</span>\n          <span class=\"value\" style=\"color:var(--secondary);\">' + _importState.importSuccess + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Gagal</span>\n          <span class=\"value\" style=\"color:var(--danger);\">' + _importState.importFailed + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Duplikat</span>\n          <span class=\"value\" style=\"color:var(--accent);\">' + _importState.duplicateCount + '</span>\n        </div>\n      </div>\n      <div class=\"import-result-actions\">\n        <button class=\"btn btn-primary\" onclick=\"backToPendaftaranData()\">\n          <i class=\"fas fa-table\"></i> Lihat Data Pendaftaran\n        </button>\n        <button class=\"btn btn-secondary\" onclick=\"downloadErrorReport()\">\n          <i class=\"fas fa-file-alt\"></i> Download Laporan Error\n        </button>\n        <button class=\"btn btn-secondary\" onclick=\"resetImportState()\">\n          <i class=\"fas fa-redo\"></i> Import Lagi\n        </button>\n      </div>\n    </div>';\n  \n  console.log('[IMPORT] Complete:', {\n    total: totalAttempted,\n    success: _importState.importSuccess,\n    failed: _importState.importFailed,\n    duplicates: _importState.duplicateCount\n  });\n  \n  showToast('Import selesai! ' + _importState.importSuccess + ' data berhasil di-import.', 'success');\n}\n\n/**\n * backToPendaftaranData() - Kembali ke tab Data Pendaftaran dan refresh\n */\nfunction backToPendaftaranData() {\n  console.log('[IMPORT] Switching back to Data Pendaftaran tab...');\n  switchPendaftaranTab('pendaftaran-data');\n  refreshPendaftaranData();\n}\n\n/**\n * downloadErrorReport() - Download laporan error dalam format CSV\n */\nfunction downloadErrorReport() {\n  if (_importState.errors.length === 0 && _importState.duplicates.length === 0) {\n    showToast('Tidak ada error untuk didownload', 'info');\n    return;\n  }\n  \n  var reportData = [];\n  \n  _importState.errors.forEach(function(item) {\n    var row = Object.assign({}, item.data, { _errorType: 'Error', _errorMessage: item.errors.map(function(e) { return e.message; }).join('; ') });\n    reportData.push(row);\n  });\n  \n  _importState.duplicates.forEach(function(item) {\n    var row = Object.assign({}, item.data, { _errorType: 'Duplikat', _errorMessage: item.reason });\n    reportData.push(row);\n  });\n  \n  var headers = _importState.expectedHeaders.concat(['Error_Type', 'Error_Message']);\n  var csvContent = headers.join(',') + '\\n';\n  \n  reportData.forEach(function(row) {\n    var values = headers.map(function(h) {\n      var val = row[h] || '';\n      if (val.includes(',') || val.includes('"')) {\n        return '\"' + val.replace(/\"/g, '\"\"') + '\"';\n      }\n      return val;\n    });\n    csvContent += values.join(',') + '\\n';\n  });\n  \n  var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });\n  var link = document.createElement('a');\n  var url = URL.createObjectURL(blob);\n  link.setAttribute('href', url);\n  link.setAttribute('download', 'laporan_error_import_' + new Date().toISOString().slice(0,10) + '.csv');\n  link.style.visibility = 'hidden';\n  document.body.appendChild(link);\n  link.click();\n  document.body.removeChild(link);\n  \n  showToast('Laporan error berhasil didownload!', 'success');\n}\n\n/**\n * formatFileSize() - Format ukuran file ke readable string\n */\nfunction formatFileSize(bytes) {\n  if (bytes === 0) return '0 Bytes';\n  var k = 1024;\n  var sizes = ['Bytes', 'KB', 'MB', 'GB'];\n  var i = Math.floor(Math.log(bytes) / Math.log(k));\n  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];\n}\n\n/* ========== ADMIN: KELOLA AKUN ADMIN ========== */
 function loadAdminList(){
   showLoading('Memuat...');callServer('getAdmin').then(function(res){hideLoading();
   var ct=document.getElementById('adminCrudTable');
