@@ -3506,15 +3506,37 @@ function callServer(action, data) {
           console.log('[UPDATE] Pendaftaran fields count:', Object.keys(pendaftaranUpdate).length);
           console.log('[UPDATE] Pendaftaran fields:', Object.keys(pendaftaranUpdate));
           
-          // ✅ VALIDASI: Pastikan object tidak kosong
-          if (Object.keys(pendaftaranUpdate).length === 0) {
-            resolve({ success: false, message: 'Tidak ada data yang diubah' });
+          // ✅ SANITASI KRITIS: Hapus semua nilai undefined/null sebelum kirim ke GraphQL
+          // Hasura akan error "unexpected variables" jika ada value undefined/null
+          var sanitizedUpdate = {};
+          Object.keys(pendaftaranUpdate).forEach(function(key) {
+            var val = pendaftaranUpdate[key];
+            if (val !== undefined && val !== null) {
+              // Pastikan string kosong juga di-skip (Hasura tidak terima "" untuk field required)
+              if (typeof val === 'string' && val.trim() === '') {
+                console.log('[UPDATE] ⚠️ SANITIZE: Removing empty string for', key);
+                return;
+              }
+              sanitizedUpdate[key] = val;
+              console.log('[UPDATE] ✅ SANITIZED:', key, '=', typeof val, val);
+            } else {
+              console.log('[UPDATE] ❌ SANITIZE: Removing null/undefined for', key);
+            }
+          });
+          
+          console.log('[UPDATE] === SANITIZED OBJECT ===');
+          console.log('[UPDATE] Sanitized update:', sanitizedUpdate);
+          console.log('[UPDATE] Sanitized keys:', Object.keys(sanitizedUpdate));
+          
+          // ✅ VALIDASI: Pastikan object tidak kosong setelah sanitasi
+          if (Object.keys(sanitizedUpdate).length === 0) {
+            resolve({ success: false, message: 'Tidak ada data yang valid untuk disimpan' });
             break;
           }
           
           await graphqlRequest('UpdatePendaftaran', GRAPHQL_QUERIES.updatePendaftaran, {
             id: pendaftaranId,
-            object: pendaftaranUpdate
+            object: sanitizedUpdate  // ✅ Gunakan sanitized object
           });
           resolve({ success: true, message: 'Data Pendaftaran berhasil diperbarui' });
           break;
@@ -8667,6 +8689,14 @@ function openDynForm(idx){
   // Determine which columns to show in form (exclude audit/internal)
   var skipCols=['ID','id','Tanggal_Dibuat','Tanggal Dibuat','Diubah_Oleh','Diubah Oleh'];
   var formCols=_crud.headers.filter(function(h){return skipCols.indexOf(h)===-1;});
+  
+  // ✅ FORCE INCLUDE: Pastikan catatan_admin selalu muncul di form (jika belum ada)
+  if (_crud.sheetType === 'pendaftaran' && formCols.indexOf('catatan_admin') === -1) {
+    formCols.push('catatan_admin');
+    console.log('[DYNFORM] Force-added catatan_admin to form');
+  }
+  
+  console.log('[DYNFORM] Form columns for', _crud.sheetType, ':', formCols);
 
   // Define fixed options for specific fields (STATUS: pending, approved, rejected, verified)
   var fixedSelectOptions = {
