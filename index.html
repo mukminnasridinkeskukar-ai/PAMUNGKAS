@@ -1856,7 +1856,7 @@ var _importState = {
   importProgress: 0,
   importSuccess: 0,
   importFailed: 0,
-  expectedHeaders: ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nik', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat']
+  expectedHeaders: ['nik', 'nama_lengkap_dengan_gelar', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah']
 };
 
 /* ============================================================
@@ -2513,8 +2513,8 @@ const GRAPHQL_QUERIES = {
       pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 20) {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk
         jenis_profesi pekerjaan jenis_kelamin tempat_dan_tanggal_lahir
-        jabatan pendidikan_terakhir no_telepon nomor_whatsapp email_plataran_sehat
-        alamat_rumah lama_bekerja_di_unit_sekarang surat_pernyataan
+        nomor_whatsapp email_plataran_sehat alamat_rumah
+        lama_bekerja_di_unit_sekarang surat_pernyataan
         judul_kegiatan status created_at updated_at
       }
       
@@ -2793,9 +2793,9 @@ function callServer(action, data) {
               'Jenis Kelamin': p.jenis_kelamin || '-',
               'Tempat Lahir': p.tempat_dan_tanggal_lahir ? (p.tempat_dan_tanggal_lahir.split(',')[0] || '-') : '-',
               'Tanggal Lahir': p.tempat_dan_tanggal_lahir ? ((p.tempat_dan_tanggal_lahir.split(',')[1] || '').trim() || '-') : '-',
-              Jabatan: p.jabatan || '-',
-              'Pendidikan Terakhir': p.pendidikan_terakhir || '-',
-              'No Telepon': p.no_telepon || p.nomor_whatsapp || '-',
+              Jabatan: p.pekerjaan || '-',
+              'Pendidikan Terakhir': p.jenis_profesi || '-',
+              'No Telepon': p.nomor_whatsapp || '-',
               WhatsApp: p.nomor_whatsapp || '-',
               Email: p.email_plataran_sehat || '-',
               Alamat: p.alamat_rumah || '-',
@@ -6648,7 +6648,7 @@ function loadPendaftaranCrudData(writable, readOnly) {
     if (_crud.allData.length > 0) {
       _crud.headers = Object.keys(_crud.allData[0]);
     } else {
-      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
+      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'pekerjaan', 'unit_kerja', 'jenis_profesi', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah'];
     }
     
     // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
@@ -6845,11 +6845,12 @@ function renderImportMassalUI() {
 function downloadPendaftaranTemplate() {
   console.log('[IMPORT] Generating template CSV...');
   
-  var headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
+  // Header sesuai schema Nhost tabel pendaftaran
+  var headers = ['nik', 'nama_lengkap_dengan_gelar', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah'];
   var sampleData = [
-    ['3201234567890001', 'Ahmad Fauzi', 'Laki-laki', 'Jakarta', '1990-05-15', '198705152010011001', 'Perawat Pelaksana', 'Puskesmas Central', 'Perawat', 'D3 Keperawatan', '08123456789', 'ahmad@email.com', 'Jl. Merdeka No. 1'],
-    ['3201234567890002', 'Siti Nurhaliza', 'Perempuan', 'Bandung', '1992-08-22', '199208222015032002', 'Bidan Terampil', 'Puskesmas Utara', 'Bidan', 'D3 Kebidanan', '08234567890', 'siti@email.com', 'Jl. Sudirman No. 5'],
-    ['3201234567890003', 'Budi Santoso', 'Laki-laki', 'Surabaya', '1988-12-10', '198812102012011003', 'Sanitarian', 'Puskesmas Selatan', 'Sanitarian', 'D3 Kesehatan Lingkungan', '08345678901', 'budi@email.com', 'Jl. Thamrin No. 10']
+    ['3201234567890001', 'Ahmad Fauzi, S.Kep', 'Laki-laki', 'Jakarta, 1990-05-15', '198705152010011001', 'Puskesmas Central', 'Perawat', 'Perawat', 'Perawat Pelaksana', '08123456789', 'ahmad@email.com', 'Jl. Merdeka No. 1'],
+    ['3201234567890002', 'Siti Nurhaliza, S.Tr.Keb', 'Perempuan', 'Bandung, 1992-08-22', '199208222015032002', 'Puskesmas Utara', 'Bidan', 'Bidan', 'Bidan Terampil', '08234567890', 'siti@email.com', 'Jl. Sudirman No. 5'],
+    ['3201234567890003', 'Budi Santoso', 'Laki-laki', 'Surabaya, 1988-12-10', '198812102012011003', 'Puskesmas Selatan', 'Sanitarian', 'Sanitarian', 'Sanitarian', '08345678901', 'budi@email.com', 'Jl. Thamrin No. 10']
   ];
   
   var csvContent = headers.join(',') + '\n';
@@ -6895,7 +6896,7 @@ function resetImportState() {
     importProgress: 0,
     importSuccess: 0,
     importFailed: 0,
-    expectedHeaders: ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat']
+    expectedHeaders: ['nik', 'nama_lengkap_dengan_gelar', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah']
   };
   
   var validationSection = document.getElementById('validationSection');
@@ -7091,24 +7092,27 @@ function validateAndPreview(data) {
       rowErrors.push({ field: 'jenis_kelamin', message: 'Jenis kelamin: Laki-laki atau Perempuan' });
     }
     
-    // Validate tanggal_lahir
-    if (row.tanggal_lahir && !/^\d{4}-\d{2}-\d{2}$/.test(row.tanggal_lahir)) {
-      rowErrors.push({ field: 'tanggal_lahir', message: 'Format tanggal: YYYY-MM-DD' });
-    }
-    
-    // Validate email
-    if (row.email && row.email.trim() !== '') {
-      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(row.email)) {
-        rowErrors.push({ field: 'email', message: 'Format email tidak valid' });
+    // Validate tempat_dan_tanggal_lahir (format: "Kota, YYYY-MM-DD")
+    if (row.tempat_dan_tanggal_lahir && row.tempat_dan_tanggal_lahir.trim() !== '') {
+      var tglPattern = /,\s*\d{4}-\d{2}-\d{2}/;
+      if (!tglPattern.test(row.tempat_dan_tanggal_lahir)) {
+        rowErrors.push({ field: 'tempat_dan_tanggal_lahir', message: 'Format: "Kota, YYYY-MM-DD" (contoh: Jakarta, 1990-05-15)' });
       }
     }
     
-    // Validate no_telepon
-    if (row.no_telepon && row.no_telepon.trim() !== '') {
+    // Validate email_plataran_sehat
+    if (row.email_plataran_sehat && row.email_plataran_sehat.trim() !== '') {
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(row.email_plataran_sehat)) {
+        rowErrors.push({ field: 'email_plataran_sehat', message: 'Format email tidak valid' });
+      }
+    }
+    
+    // Validate nomor_whatsapp
+    if (row.nomor_whatsapp && row.nomor_whatsapp.trim() !== '') {
       var phoneRegex = /^[\d+\-\s()]+$/;
-      if (!phoneRegex.test(row.no_telepon) || row.no_telepon.replace(/\D/g, '').length < 10) {
-        rowErrors.push({ field: 'no_telepon', message: 'Nomor telepon minimal 10 digit' });
+      if (!phoneRegex.test(row.nomor_whatsapp) || row.nomor_whatsapp.replace(/\D/g, '').length < 10) {
+        rowErrors.push({ field: 'nomor_whatsapp', message: 'Nomor WhatsApp minimal 10 digit' });
       }
     }
     
