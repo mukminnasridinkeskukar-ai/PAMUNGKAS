@@ -3841,6 +3841,8 @@ function callServer(action, data) {
           const emailSet = new Set();
           
           // Process each record
+          // CATATAN KRITIS: NIK BOLEH DUPLIKAT! Satu orang bisa mendaftar berkali-kali
+          // Setiap pendaftaran = record/transaksi baru dengan ID unik sendiri
           for (let i = 0; i < data.data.length; i++) {
             try {
               const row = data.data[i];
@@ -3849,20 +3851,20 @@ function callServer(action, data) {
               const nik = String(row.nik || '').trim();
               const email = String(row.email || row.email_plataran_sehat || '').trim();
               
-              // Check for duplicate NIK in this batch
-              if (nik && nikSet.has(nik)) {
-                skippedCount++;
-                errors.push({ rowNum: i + 1, error: 'NIK duplikat dalam batch ini', data: { nik } });
-                console.warn('[BULK IMPORT] Skipping duplicate NIK:', nik);
-                continue;
+              // ✅ PERUBAHAN: NIK BOLEH SAMA - tidak ada pengecekan duplikat NIK
+              // Satu peserta boleh mendaftar untuk kegiatan yang berbeda
+              // Hanya track NIK untuk logging (bukan blocking)
+              if (nik) {
+                nikSet.add(nik);  // Track only, don't block
               }
               
-              // Check for duplicate email in this batch
+              // Check for duplicate email in this batch (optional validation)
               if (email && emailSet.has(email)) {
-                skippedCount++;
-                errors.push({ rowNum: i + 1, error: 'Email duplikat dalam batch ini', data: { email } });
-                console.warn('[BULK IMPORT] Skipping duplicate email:', email);
-                continue;
+                // Email duplikat hanya warning, tidak block
+                console.warn('[BULK IMPORT] Warning: Email sudah ada dalam batch:', email);
+              }
+              if (email) {
+                emailSet.add(email);
               }
               
               // Map CSV fields to EXACT database columns (matching schema)
@@ -7670,16 +7672,14 @@ function validateAndPreview(data) {
     var rowErrors = [];
     var isDuplicate = false;
     
-    // Validate NIK
+    // Validate NIK - FORMAT SAJA, tidak cek unik!
+    // ✅ PERUBAHAN: NIK BOLEH DUPLIKAT - satu orang bisa mendaftar berkali-kali
     if (!row.nik || row.nik.trim() === '') {
       rowErrors.push({ field: 'nik', message: 'NIK wajib diisi' });
     } else if (!/^\d{16}$/.test(row.nik.replace(/\s/g, ''))) {
       rowErrors.push({ field: 'nik', message: 'NIK harus 16 digit angka' });
-    } else if (nikSet.has(row.nik.replace(/\s/g, ''))) {
-      isDuplicate = true;
-      _importState.duplicateCount++;
-      _importState.duplicates.push({ rowNum: row._rowNum, data: row, reason: 'NIK duplikat' });
     } else {
+      // Track NIK untuk statistik saja, bukan blocking
       nikSet.add(row.nik.replace(/\s/g, ''));
     }
     
@@ -8627,20 +8627,12 @@ function submitDynForm(e){
   formCols.forEach(function(col){if(data[col]&&data[col].trim())hasValue=true;});
   if(!hasValue){showToast('Minimal satu field harus diisi.','error');return;}
 
-  // Duplicate NIK/NIP check for SDMK and Pendaftaran
-  if(sheetType==='sdmk'||sheetType==='pendaftaran'){
-    var checkAction=sheetType==='sdmk'?'checkDuplicateSDMK':'checkDuplicatePendaftaran';
-    showLoading('Memeriksa duplikasi...');
-    callServer(checkAction,{NIK:data.NIK||data['NIK/NIP']||data.NIK_NIP||'',NIP:data.NIP||data['NIK/NIP']||data.NIK_NIP||'',excludeIdx:idx}).then(function(checkRes){
-      hideLoading();
-      if(checkRes&&checkRes.duplicate){
-        showToast(checkRes.message,'error');return;
-      }
-      doSaveCrud(idx,sheetType,data);
-    }).catch(function(err){hideLoading();showToast('Error: '+(err.message||err),'error');});
-    return;
-  }
-
+  // ✅ PERUBAHAN KRITIS: HAPUS CEK DUPLIKAT NIK/NIP
+  // NIK dan NIP BOLEH SAMA - satu orang boleh mendaftar berkali-kali
+  // Sistem menggunakan ID record (UUID) sebagai identifier unik, bukan NIK
+  // Setiap pendaftaran adalah transaksi baru dengan ID unik sendiri
+  // Langsung simpan tanpa pengecekan duplikasi
+  
   doSaveCrud(idx,sheetType,data);
 }
 
