@@ -677,7 +677,7 @@
 .crud-table thead th .sort-icon{margin-left:4px;font-size:.7rem;opacity:.5;}
 .crud-table thead th.sorted .sort-icon{opacity:1;color:#FFD700;}
 .crud-table thead th:first-child{border-radius:0;}
-.crud-table thead th:last-child{border-radius:0;}
+.crud-table thead th:last-child{border-radius:0;position:sticky;right:0;z-index:11;}
 .crud-table thead th.no-sort{cursor:default;}
 .crud-table thead th.no-sort:hover{background:linear-gradient(135deg,#0D6EFD,#0A58CA);}
 .crud-table tbody tr{transition:background .15s;}
@@ -688,7 +688,7 @@
 .crud-table .td-no{font-weight:600;color:var(--primary);text-align:center;min-width:45px;position:sticky;left:0;background:inherit;z-index:5;border-right:2px solid rgba(13,110,253,.15);}
 .crud-table tbody tr:nth-child(even) .td-no{background:rgba(13,110,253,.06);}
 .crud-table tbody tr:hover .td-no{background:rgba(13,110,253,.1);}
-.crud-table .td-aksi{position:sticky;left:50px;background:inherit;z-index:6;min-width:120px;text-align:center;border-right:2px solid rgba(13,110,253,.15);}
+.crud-table .td-aksi{position:sticky;right:0;background:inherit;z-index:6;min-width:120px;text-align:center;border-left:2px solid rgba(13,110,253,.15);}
 .crud-table tbody tr:nth-child(even) .td-aksi{background:rgba(13,110,253,.06);}
 .crud-table tbody tr:hover .td-aksi{background:rgba(13,110,253,.12);}
 .crud-table .td-aksi .btn{padding:5px 8px;font-size:.75rem;margin:1px;}
@@ -7534,13 +7534,6 @@ function renderCrudTable(){
     var origIdx=_crud.allData.indexOf(r);
     html+='<tr>';
     html+='<td class="td-no">'+(start+rowIdx+1)+'</td>';
-    html+='<td class="td-aksi">';
-    html+='<button class="btn btn-sm btn-primary" onclick="viewCrudRow('+origIdx+')" title="Lihat Detail"><i class="fas fa-eye"></i></button> ';
-    if(_crud.writable){
-      html+='<button class="btn btn-sm btn-warning" onclick="openDynForm('+origIdx+')" title="Edit"><i class="fas fa-edit"></i></button> ';
-      html+='<button class="btn btn-sm btn-danger" onclick="confirmDeleteCrud('+origIdx+')" title="Hapus"><i class="fas fa-trash"></i></button>';
-    }
-    html+='</td>';
     _crud.visibleCols.forEach(function(col){
       var val=r[col]||'';
       if(fotoCol && col===fotoCol && val){
@@ -7570,6 +7563,14 @@ function renderCrudTable(){
         }
       }
     });
+    /* AKSI column - moved to RIGHTMOST position */
+    html+='<td class="td-aksi">';
+    html+='<button class="btn btn-sm btn-primary" onclick="viewCrudRow('+origIdx+')" title="Lihat Detail"><i class="fas fa-eye"></i></button> ';
+    if(_crud.writable){
+      html+='<button class="btn btn-sm btn-warning" onclick="openDynForm('+origIdx+')" title="Edit"><i class="fas fa-edit"></i></button> ';
+      html+='<button class="btn btn-sm btn-danger" onclick="confirmDeleteCrud('+origIdx+')" title="Hapus"><i class="fas fa-trash"></i></button>';
+    }
+    html+='</td>';
     html+='</tr>';
   });
   tbody.innerHTML=html;
