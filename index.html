@@ -1378,6 +1378,7 @@
                 <tr>
                   <th style="width:60px;">Foto</th>
                   <th>Nama</th>
+                  <th>NIK</th>
                   <th>Profesi</th>
                   <th>Unit Kerja</th>
                   <th>No. Sertifikat</th>
@@ -1385,7 +1386,6 @@
                   <th>Tgl Pelaksanaan</th>
                   <th>Tahun</th>
                   <th>Tempat</th>
-                  <th>Status Pelatihan</th>
                   <th id="sdmkAksiTh" class="sdmk-aksi-th" style="display:none;">Aksi</th>
                 </tr>
               </thead>
@@ -1811,10 +1811,7 @@
           <div class="form-group"><label>Tgl Pelaksanaan</label><input type="text" id="sdmkTglPelaksanaan" placeholder="Tanggal pelaksanaan" /></div>
           <div class="form-group"><label>Tahun</label><input type="text" id="sdmkTahun" placeholder="Contoh: 2024" /></div>
           </div>
-          <div class="form-group"><label>Tempat</label><input type="text" id="sdmkTempat" placeholder="Tempat pelaksanaan" /></div>
-        <div class="form-group"><label>Status Pelatihan</label>
-          <select id="sdmkStatus"><option value="Aktif">Aktif</option><option value="Nonaktif">Nonaktif</option><option value="Sertifikasi Ulang">Sertifikasi Ulang</option></select>
-        </div>
+          <div class="form-group"><label>Tempat Pelaksanaan</label><input type="text" id="sdmkTempat" placeholder="Tempat pelaksanaan" /></div>
       </form>
     </div>
     <div class="modal-footer">
@@ -3149,12 +3146,20 @@ function callServer(action, data) {
           break;
 
         case 'tambahSDMK':
+          // Gunakan field names SESUAI tabel sdmk Nhost/Hasura
           await graphqlRequest('InsertSDMK', GRAPHQL_QUERIES.insertSDMK, {
-            object: { foto: data.Foto || null, nama: data.Nama || data['Nama Lengkap dengan Gelar'],
-              nik: data['NIK/NIP'] || data.NIK, profesi: data.Profesi || data['Jenis Profesi'],
-              unit_kerja: data['Unit Kerja'] || data.Unit_Kerja, nomor_sertifikat: data['No. Sertifikat'] || data.Nomor_Sertifikat,
-              judul_kegiatan: data['Judul Kegiatan'] || data['Judul Pelatihan'], tanggal_pelaksanaan: data['Tgl Pelaksanaan'] || data.Tanggal_Pelaksanaan,
-              tahun: data.Tahun ? parseInt(data.Tahun) : null, tempat_pelaksanaan: data.Tempat || data.Tempat_Pelaksanaan }
+            object: {
+              foto: data.foto || null,
+              nama: data.nama,
+              nik: data.nik,
+              profesi: data.profesi,
+              unit_kerja: data.unit_kerja,
+              nomor_sertifikat: data.nomor_sertifikat,
+              judul_kegiatan: data.judul_kegiatan,
+              tanggal_pelaksanaan: data.tanggal_pelaksanaan,
+              tahun: data.tahun ? parseInt(data.tahun) : null,
+              tempat_pelaksanaan: data.tempat_pelaksanaan
+            }
           });
           resolve({ success: true, message: 'Data SDMK berhasil ditambahkan' });
           break;
@@ -3209,15 +3214,22 @@ function callServer(action, data) {
           break;
 
         case 'updateSDMK':
-          const sdmkId = _allSDMK[data.idx]?.ID || data.idx;
+          const sdmkId = _allSDMK[data.idx]?.id || _allSDMK[data.idx]?.ID || data.idx;
+          // Gunakan field names SESUAI tabel sdmk Nhost/Hasura
           await graphqlRequest('UpdateSDMK', GRAPHQL_QUERIES.updateSDMK, {
-            id: sdmkId, object: { foto: data.Foto !== undefined ? data.Foto : undefined,
-              nama: data.Nama || data['Nama Lengkap dengan Gelar'], nik: data['NIK/NIP'] || data.NIK,
-              profesi: data.Profesi || data['Jenis Profesi'], unit_kerja: data['Unit Kerja'] || data.Unit_Kerja,
-              nomor_sertifikat: data['No. Sertifikat'] || data.Nomor_Sertifikat,
-              judul_kegiatan: data['Judul Kegiatan'] || data['Judul Pelatihan'],
-              tanggal_pelaksanaan: data['Tgl Pelaksanaan'] || data.Tanggal_Pelaksanaan,
-              tahun: data.Tahun ? parseInt(data.Tahun) : undefined, tempat_pelaksanaan: data.Tempat || data.Tempat_Pelaksanaan }
+            id: sdmkId,
+            object: {
+              foto: data.foto,
+              nama: data.nama,
+              nik: data.nik,
+              profesi: data.profesi,
+              unit_kerja: data.unit_kerja,
+              nomor_sertifikat: data.nomor_sertifikat,
+              judul_kegiatan: data.judul_kegiatan,
+              tanggal_pelaksanaan: data.tanggal_pelaksanaan,
+              tahun: data.tahun ? parseInt(data.tahun) : undefined,
+              tempat_pelaksanaan: data.tempat_pelaksanaan
+            }
           });
           resolve({ success: true, message: 'Data SDMK berhasil diperbarui' });
           break;
@@ -4863,19 +4875,20 @@ function submitPengumuman(e){e.preventDefault();var idx=parseInt(document.getEle
 }
 
 /* ========== PROFIL SDMK (Modern Redesign) ========== */
+// Field names SESUAI dengan tabel sdmk di Nhost/Hasura
 const SDMK_COLS = [
-  {key:'nama',        tryLabels:['Nama','Nama Lengkap','Nama Lengkap dengan Gelar']},
-  {key:'nik',         tryLabels:['NIK/NIP','NIK','NIP','NIK_NIP']},
-  {key:'profesi',     tryLabels:['Profesi','Jenis Profesi']},
-  {key:'unitKerja',   tryLabels:['Unit Kerja','Unit_Kerja','Unit']},
-  {key:'noSertifikat',tryLabels:['No. Sertifikat','Nomor Sertifikat','No Sertifikat','Sertifikat']},
-  {key:'judulKegiatan',tryLabels:['Judul Kegiatan','Judul Pelatihan','Pelatihan','Kegiatan']},
-  {key:'tglPelaksanaan',tryLabels:['Tgl Pelaksanaan','Tanggal Pelaksanaan','Tgl Pelaksana','Tanggal']},
-  {key:'tahun',tryLabels:['Tahun','Year','Tahun Pelatihan']},
-  {key:'tempat',      tryLabels:['Tempat','Tempat Pelaksanaan','Lokasi']},
-  {key:'statusPelatihan',tryLabels:['Status Pelatihan','Status','Status_Pelatihan']}
+  {key:'nama',           tryLabels:['nama','Nama','Nama Lengkap','Nama Lengkap dengan Gelar']},
+  {key:'nik',            tryLabels:['nik','NIK','NIP','NIK/NIP','NIK_NIP']},
+  {key:'profesi',        tryLabels:['profesi','Profesi','Jenis Profesi']},
+  {key:'unit_kerja',     tryLabels:['unit_kerja','Unit Kerja','Unit_Kerja','Unit']},
+  {key:'nomor_sertifikat',tryLabels:['nomor_sertifikat','No. Sertifikat','Nomor Sertifikat','No Sertifikat','Sertifikat']},
+  {key:'judul_kegiatan', tryLabels:['judul_kegiatan','Judul Kegiatan','Judul Pelatihan','Pelatihan','Kegiatan']},
+  {key:'tanggal_pelaksanaan',tryLabels:['tanggal_pelaksanaan','Tgl Pelaksanaan','Tanggal Pelaksanaan','Tgl Pelaksana','Tanggal']},
+  {key:'tahun',          tryLabels:['tahun','Tahun','Year','Tahun Pelatihan']},
+  {key:'tempat_pelaksanaan',tryLabels:['tempat_pelaksanaan','Tempat','Tempat Pelaksanaan','Lokasi']}
 ];
-const SENSITIVE_KEYS = ['NIK','NIP','NIK/NIP','NIK_NIP','Nik','Nip','nik','nip'];
+// Tidak ada status_pelatihan di tabel sdmk Nhost - dihapus
+const SENSITIVE_KEYS = ['nik','NIK','NIP','NIK/NIP','NIK_NIP','Nik','Nip'];
 
 const _sdmk = {
   filtered: [],
@@ -4898,7 +4911,7 @@ function _sdmkResolveCols(row) {
 
 function _sdmkGetName(row) {
   const m = _sdmkResolveCols(row);
-  return row[m.nama] || row.Nama || row['Nama Lengkap dengan Gelar'] || '';
+  return row[m.nama] || row.nama || '';
 }
 
 function extractYear(dateStr) {
@@ -5037,16 +5050,16 @@ function renderTable() {
   pageData.forEach((r, i) => {
     const origIdx = _allSDMK.indexOf(r);
     const m = _sdmkResolveCols(r);
-    const nama = escHTML(r[m.nama] || r.Nama || r['Nama Lengkap dengan Gelar'] || '-');
-    const profesi = escHTML(r[m.profesi] || '-');
-    const unit = escHTML(r[m.unitKerja] || '-');
-    const noSertifikat = escHTML(r[m.noSertifikat] || '-');
-    const kegiatan = escHTML(r[m.judulKegiatan] || '-');
-    const tglPelaksanaan = escHTML(r[m.tglPelaksanaan] || '-');
-    const tempat = escHTML(r[m.tempat] || '-');
-    const statusVal = String(r[m.statusPelatihan] || r.Status || '-');
-    const sc = statusClass(statusVal);
-    const fotoRaw = _v(r, ['Foto', 'Pas Foto', 'Pas_Foto', 'Photo', 'Link Foto', 'Foto Peserta']);
+    // Gunakan field names SESUAI tabel sdmk Nhost/Hasura
+    const nama = escHTML(r[m.nama] || r.nama || '-');
+    const profesi = escHTML(r[m.profesi] || r.profesi || '-');
+    const unit = escHTML(r[m.unit_kerja] || r.unit_kerja || '-');
+    const noSertifikat = escHTML(r[m.nomor_sertifikat] || r.nomor_sertifikat || '-');
+    const kegiatan = escHTML(r[m.judul_kegiatan] || r.judul_kegiatan || '-');
+    const tglPelaksanaan = escHTML(r[m.tanggal_pelaksanaan] || r.tanggal_pelaksanaan || '-');
+    const tempat = escHTML(r[m.tempat_pelaksanaan] || r.tempat_pelaksanaan || '-');
+    // Foto dari field 'foto' di tabel sdmk
+    const fotoRaw = r.foto || '';
     const thumb = _driveThumb(fotoRaw);
     const fullUrl = _driveFull(fotoRaw);
 
@@ -5057,15 +5070,18 @@ function renderTable() {
       html += '<td><div class="sdmk-photo"><i class="fas fa-user ph-icon"></i></div></td>';
     }
     html += '<td class="sdmk-cell-nama">' + nama + '</td>';
+    // Tambah kolom NIK
+    const nikVal = r[m.nik] || r.nik || '-';
+    html += '<td>' + escHTML(nikVal) + '</td>';
     html += '<td class="sdmk-cell-profesi">' + profesi + '</td>';
     html += '<td>' + unit + '</td>';
     html += '<td>' + noSertifikat + '</td>';
     html += '<td class="sdmk-cell-kegiatan">' + kegiatan + '</td>';
     html += '<td>' + tglPelaksanaan + '</td>';
-    const tahunRaw = r[m.tahun] || extractYear(r[m.tglPelaksanaan] || '');
+    const tahunRaw = r[m.tahun] || r.tahun || extractYear(tglPelaksanaan);
     html += '<td>' + escHTML(tahunRaw || '-') + '</td>';
     html += '<td>' + tempat + '</td>';
-    html += '<td><span class="sdmk-cell-status ' + sc + '">' + escHTML(statusVal) + '</span></td>';
+    // Status Pelatihan dihapus karena tidak ada di tabel sdmk Nhost
     if (writable) {
       html += '<td><div class="sdmk-aksi">';
       html += '<button class="btn btn-sm btn-warning" onclick="event.stopPropagation();editSDMK(' + origIdx + ')"><i class="fas fa-edit"></i></button>';
@@ -5098,7 +5114,7 @@ function renderTable() {
       }
       const safeRow = {..._allSDMK[idx]};
       SENSITIVE_KEYS.forEach(k => { delete safeRow[k]; });
-      openDetailModal('Detail SDMK: ' + (_allSDMK[idx].Nama || _allSDMK[idx]['Nama Lengkap dengan Gelar'] || ''), safeRow);
+      openDetailModal('Detail SDMK: ' + (_allSDMK[idx].nama || ''), safeRow);
     });
     fragment.appendChild(tr);
   });
@@ -5272,9 +5288,42 @@ function clearSearch() {
 // Alias for backward compatibility (admin panel uses filterSDMK in some contexts)
 function filterSDMK(){ filterData(document.getElementById('sdmkSearch').value); }
 function renderSDMKTable(data){ _sdmk.filtered = data || [..._allSDMK]; _sdmk.page = 1; renderTable(); }
-function openSDMKForm(idx){document.getElementById('sdmkEditIndex').value=idx!==undefined?idx:-1;document.getElementById('sdmkFormTitle').textContent=idx!==undefined?'Edit SDMK':'Tambah SDMK';if(idx!==undefined){var r=_allSDMK[idx];document.getElementById('sdmkNama').value=r.Nama||r['Nama Lengkap dengan Gelar']||'';document.getElementById('sdmkNIK').value=r['NIK/NIP']||r.NIK_NIP||r.NIK||'';document.getElementById('sdmkProfesi').value=r.Profesi||r['Jenis Profesi']||'';document.getElementById('sdmkUnit').value=r['Unit Kerja']||r.Unit_Kerja||r.Unit||'';document.getElementById('sdmkNoSertifikat').value=r['No. Sertifikat']||r['Nomor Sertifikat']||r['No Sertifikat']||'';document.getElementById('sdmkJudulKegiatan').value=r['Judul Kegiatan']||r['Judul Pelatihan']||'';document.getElementById('sdmkTglPelaksanaan').value=r['Tgl Pelaksanaan']||r['Tanggal Pelaksanaan']||'';document.getElementById('sdmkTahun').value=r.Tahun||r.Year||extractYear(r['Tgl Pelaksanaan']||r['Tanggal Pelaksanaan']||'')||'';document.getElementById('sdmkTempat').value=r.Tempat||r['Tempat Pelaksanaan']||'';document.getElementById('sdmkStatus').value=r['Status Pelatihan']||r.Status_Pelatihan||r.Status||'Aktif';}else{document.getElementById('sdmkForm').reset();}openModal('sdmkFormModal');}
-function editSDMK(i){openSDMKForm(i);}
-function submitSDMK(e){e.preventDefault();var idx=parseInt(document.getElementById('sdmkEditIndex').value);var data={Nama:document.getElementById('sdmkNama').value,'NIK/NIP':document.getElementById('sdmkNIK').value,Profesi:document.getElementById('sdmkProfesi').value,'Unit Kerja':document.getElementById('sdmkUnit').value,'No. Sertifikat':document.getElementById('sdmkNoSertifikat').value,'Judul Kegiatan':document.getElementById('sdmkJudulKegiatan').value,'Tgl Pelaksanaan':document.getElementById('sdmkTglPelaksanaan').value,Tahun:document.getElementById('sdmkTahun').value,Tempat:document.getElementById('sdmkTempat').value,'Status Pelatihan':document.getElementById('sdmkStatus').value};
+function openSDMKForm(idx){
+  document.getElementById('sdmkEditIndex').value = idx !== undefined ? idx : -1;
+  document.getElementById('sdmkFormTitle').textContent = idx !== undefined ? 'Edit SDMK' : 'Tambah SDMK';
+  if (idx !== undefined) {
+    var r = _allSDMK[idx];
+    // Gunakan field names SESUAI tabel sdmk Nhost/Hasura
+    document.getElementById('sdmkNama').value = r.nama || '';
+    document.getElementById('sdmkNIK').value = r.nik || '';
+    document.getElementById('sdmkProfesi').value = r.profesi || '';
+    document.getElementById('sdmkUnit').value = r.unit_kerja || '';
+    document.getElementById('sdmkNoSertifikat').value = r.nomor_sertifikat || '';
+    document.getElementById('sdmkJudulKegiatan').value = r.judul_kegiatan || '';
+    document.getElementById('sdmkTglPelaksanaan').value = r.tanggal_pelaksanaan || '';
+    document.getElementById('sdmkTahun').value = r.tahun || extractYear(r.tanggal_pelaksanaan || '') || '';
+    document.getElementById('sdmkTempat').value = r.tempat_pelaksanaan || '';
+  } else {
+    document.getElementById('sdmkForm').reset();
+  }
+  openModal('sdmkFormModal');
+}
+function editSDMK(i){ openSDMKForm(i); }
+function submitSDMK(e){
+  e.preventDefault();
+  var idx = parseInt(document.getElementById('sdmkEditIndex').value);
+  // Gunakan field names SESUAI tabel sdmk Nhost/Hasura
+  var data = {
+    nama: document.getElementById('sdmkNama').value,
+    nik: document.getElementById('sdmkNIK').value,
+    profesi: document.getElementById('sdmkProfesi').value,
+    unit_kerja: document.getElementById('sdmkUnit').value,
+    nomor_sertifikat: document.getElementById('sdmkNoSertifikat').value,
+    judul_kegiatan: document.getElementById('sdmkJudulKegiatan').value,
+    tanggal_pelaksanaan: document.getElementById('sdmkTglPelaksanaan').value,
+    tahun: document.getElementById('sdmkTahun').value,
+    tempat_pelaksanaan: document.getElementById('sdmkTempat').value
+  };
   showLoading('Menyimpan...');
   var done=function(res){hideLoading();closeModal('sdmkFormModal');showToast(res.message,res.success?'success':'error');if(res.success){_sdmk.loaded=false;loadSDMK();}};
   var fail=function(e){hideLoading();showToast('Error: '+(e.message||e),'error');};
