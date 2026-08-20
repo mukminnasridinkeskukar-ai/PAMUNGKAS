@@ -3064,7 +3064,124 @@ function callServer(action, data) {
           }
           break;
 
-        // === BULK IMPORT OPERATIONS ===
+        // === IMPORT OPERATIONS (Legacy Import Modal) ===
+        case 'importPendaftaran':
+          console.log('[IMPORT] Starting legacy import for', data.rows?.length || 0, 'records');
+          
+          if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
+            reject(new Error('Tidak ada data untuk di-import'));
+            return;
+          }
+          
+          let importSuccess = 0;
+          let importFailed = 0;
+          const importErrors = [];
+          
+          // Process each row
+          for (let i = 0; i < data.rows.length; i++) {
+            try {
+              const row = data.rows[i];
+              
+              // Map fields - handle both camelCase and original field names
+              const pendaftaranObject = {
+                nik: String(row.nik || row.NIK || row['NIK/NIP'] || '').trim(),
+                nama_lengkap_dengan_gelar: String(row.nama_lengkap || row.Nama || row['Nama Lengkap dengan Gelar'] || '').trim(),
+                jenis_kelamin: String(row.jenis_kelamin || row.kelamin || row['Jenis Kelamin'] || '').trim(),
+                tempat_dan_tanggal_lahir: [
+                  String(row.tempat_lahir || row.Tempat_Lahir || ''),
+                  String(row.tanggal_lahir || row.Tanggal_Lahir || '')
+                ].filter(Boolean).join(', ') || null,
+                nip: String(row.nip || row.NIP || '').trim() || null,
+                jabatan: String(row.jabatan || row.Jabatan || '').trim() || null,
+                unit_kerja: String(row.unit_kerja || row.unitKerja || row['Unit Kerja'] || '').trim(),
+                profesi: String(row.profesi || row.Profesi || row['Jenis Profesi'] || '').trim(),
+                pendidikan_terakhir: String(row.pendidikan_terakhir || row.pendidikan || row.Pendidikan || '').trim() || null,
+                no_telepon: String(row.no_telepon || row.telepon || row['No Telepon'] || '').trim() || null,
+                email: String(row.email || row.Email || '').trim() || null,
+                alamat_rumah: String(row.alamat || row.Alamat || row['Alamat Rumah'] || '').trim() || null,
+                judul_kegiatan: String(row.judul_kegiatan || row['Judul Kegiatan'] || 'Pelatihan SDMK').trim(),
+                status: 'pending',
+                created_by: data._user || adminUsername || 'legacy_import'
+              };
+              
+              // Validate required
+              if (!pendaftaranObject.nik) throw new Error('NIK kosong');
+              if (!pendaftaranObject.nama_lengkap_dengan_gelar) throw new Error('Nama kosong');
+              
+              // Insert to database
+              await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
+                object: pendaftaranObject
+              });
+              
+              importSuccess++;
+            } catch (rowError) {
+              importFailed++;
+              importErrors.push({ row: i + 1, error: rowError.message, data: data.rows[i] });
+            }
+          }
+          
+          resolve({
+            success: true,
+            message: `Import Pendaftaran selesai! ${importSuccess} berhasil, ${importFailed} gagal.`,
+            successCount: importSuccess,
+            failedCount: importFailed,
+            errors: importErrors
+          });
+          break;
+
+        case 'importSDMK':
+          console.log('[IMPORT] Starting SDMK import for', data.rows?.length || 0, 'records');
+          
+          if (!data.rows || !Array.isArray(data.rows) || data.rows.length === 0) {
+            reject(new Error('Tidak ada data untuk di-import'));
+            return;
+          }
+          
+          let sdmkSuccess = 0;
+          let sdmkFailed = 0;
+          const sdmkErrors = [];
+          
+          for (let i = 0; i < data.rows.length; i++) {
+            try {
+              const row = data.rows[i];
+              
+              const sdmkObject = {
+                nama: String(row.nama || row.Nama || row['Nama Lengkap dengan Gelar'] || '').trim(),
+                nik: String(row.nik || row.NIK || row['NIK/NIP'] || '').trim(),
+                profesi: String(row.profesi || row.Profesi || '').trim(),
+                unit_kerja: String(row.unit_kerja || row['Unit Kerja'] || '').trim(),
+                nomor_sertifikat: String(row.nomor_sertifikat || row['No. Sertifikat'] || '').trim() || null,
+                judul_kegiatan: String(row.judul_kegiatan || row['Judul Kegiatan'] || '').trim(),
+                tanggal_pelaksanaan: String(row.tanggal_pelaksanaan || row['Tgl Pelaksanaan'] || '').trim() || null,
+                tahun: row.tahun ? parseInt(row.tahun) : null,
+                tempat_pelaksanaan: String(row.tempat || row.Tempat || '').trim() || null,
+                foto: String(row.foto || row.Foto || '').trim() || null
+              };
+              
+              if (!sdmkObject.nik) throw new Error('NIK kosong');
+              if (!sdmkObject.nama) throw new Error('Nama kosong');
+              
+              await graphqlRequest('InsertSDMK', GRAPHQL_QUERIES.insertSDMK, {
+                object: sdmkObject
+              });
+              
+              sdmkSuccess++;
+            } catch (sdmkErr) {
+              sdmkFailed++;
+              sdmkErrors.push({ row: i + 1, error: sdmkErr.message, data: data.rows[i] });
+            }
+          }
+          
+          resolve({
+            success: true,
+            message: `Import SDMK selesai! ${sdmkSuccess} berhasil, ${sdmkFailed} gagal.`,
+            successCount: sdmkSuccess,
+            failedCount: sdmkFailed,
+            errors: sdmkErrors
+          });
+          break;
+
+        // === BULK IMPORT OPERATIONS (New Tab System) ===
         case 'bulkInsertPendaftaran':
           console.log('[IMPORT] Starting bulk insert for', data.data?.length || 0, 'records');
           
