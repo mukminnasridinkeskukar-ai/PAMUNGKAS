@@ -2932,6 +2932,28 @@ async function graphqlRequest(operationName, query, variables = {}) {
   const authToken = safeStorage.getItem('nhost_token');
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+  // ✅ DEEP DEBUG: Log semua detail request SEBELUM kirim ke Hasura
+  console.log('[GQL] === REQUEST START ===');
+  console.log('[GQL] Operation:', operationName);
+  console.log('[GQL] Variables:', JSON.stringify(variables, null, 2));
+  
+  // ✅ INSPECTION KRITIS: Cek setiap value dalam variables
+  if (variables && typeof variables === 'object') {
+    Object.keys(variables).forEach(function(key) {
+      var val = variables[key];
+      var type = typeof val;
+      console.log(`[GQL] Var "${key}":`, type, '=', 
+        type === 'object' ? JSON.stringify(val).substring(0, 100) : 
+        type === 'string' ? `"${val}"`.substring(0, 50) : val);
+      
+      // ⚠️ DETEKSI: Jika value adalah object (bukan scalar), ini bisa menyebabkan error!
+      if (type === 'object' && val !== null && !Array.isArray(val)) {
+        console.error(`[GQL] ❌ ERROR DETECTED: Variable "${key}" is OBJECT, not scalar!`);
+        console.error('[GQL] This will cause "unexpected variables" error from Hasura!');
+      }
+    });
+  }
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -2943,8 +2965,12 @@ async function graphqlRequest(operationName, query, variables = {}) {
 
     const result = await response.json();
     
+    // ✅ Log response dari Hasura
+    console.log('[GQL] Response status:', response.status);
+    
     if (result.errors) {
       console.error('GraphQL Errors:', result.errors);
+      console.error('[GQL] Full error details:', JSON.stringify(result.errors, null, 2));
       throw new Error(result.errors[0].message || 'GraphQL error');
     }
 
@@ -3517,8 +3543,16 @@ function callServer(action, data) {
                 console.log('[UPDATE] ⚠️ SANITIZE: Removing empty string for', key);
                 return;
               }
+              // ✅ KRITIS: Cek apakah value adalah object (bukan scalar)
+              // Hasura TIDAK menerima object/array untuk field scalar!
+              if (typeof val === 'object' && !Array.isArray(val)) {
+                console.error('[UPDATE] ❌ SANITIZE ERROR: Value for "' + key + '" is OBJECT, not scalar!');
+                console.error('[UPDATE] This will cause "unexpected variables" error!');
+                return; // Skip this field
+              }
               sanitizedUpdate[key] = val;
-              console.log('[UPDATE] ✅ SANITIZED:', key, '=', typeof val, val);
+              console.log('[UPDATE] ✅ SANITIZED:', key, '=', typeof val, 
+                typeof val === 'string' ? '"' + val.substring(0, 30) + '"' : val);
             } else {
               console.log('[UPDATE] ❌ SANITIZE: Removing null/undefined for', key);
             }
