@@ -502,6 +502,184 @@
     .cek-table .cek-nama{font-weight:600}
     .cek-table .cek-nomor{font-family:'Courier New',monospace;letter-spacing:.3px;font-size:.82rem}
 
+    /* ========== MATERI CARD VIEW ========== */
+    .materi-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 8px 0;
+    }
+    
+    .materi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    
+    .materi-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+      border-color: var(--primary);
+    }
+    
+    .materi-card-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+    
+    .materi-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      color: #fff;
+    }
+    
+    .materi-card-badge {
+      background: rgba(255,255,255,0.25);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .materi-card-body {
+      padding: 16px 20px;
+    }
+    
+    .materi-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .materi-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .materi-card-footer {
+      padding: 12px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-color);
+      background: rgba(0,0,0,0.02);
+    }
+    
+    .materi-no-link {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* MATERI DETAIL MODAL */
+    .materi-detail-modal {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      max-width: 560px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    }
+    
+    .materi-detail-header {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+    }
+    
+    .materi-detail-header .materi-detail-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .materi-detail-header h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+    
+    .materi-detail-cat {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .materi-detail-body {
+      padding: 24px;
+    }
+    
+    .materi-detail-body .detail-row {
+      margin-bottom: 16px;
+    }
+    
+    .materi-detail-body .detail-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .materi-detail-body label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    
+    .materi-detail-body value {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+    
+    .materi-detail-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: rgba(0,0,0,0.02);
+    }
+
     /* SERTIFIKAT RESULT */
     .sert-result{background:var(--bg-card);border:2px solid var(--secondary);border-radius:var(--radius-md);padding:28px;text-align:center}
     .sert-result.notfound{border-color:var(--danger)}
@@ -1869,12 +2047,12 @@ var _importState = {
  * Single source of truth untuk seluruh permission system
  * 
  * Role mapping dari DB (multiusers.role):
- * - superadmin = Full Access (semua modul + bulk_import)
- * - admin      = Pendaftaran + Sertifikat (termasuk bulk_import)
- * - operator   = Pendaftaran saja (TANPA bulk_import)
+ * - superadmin = Full Access (semua 7 modul + bulk_import)
+ * - admin      = Pendaftaran + SDMK (kelola data)
+ * - user       = Lihat data pendaftaran sendiri (berdasarkan NIK)
  */
 const ROLE_PERMISSIONS = {
-  // SUPERADMIN = Full Access (semua modul + bulk import)
+  // SUPERADMIN = Full Access (semua 7 modul + bulk import)
   superadmin: {
     dashboard: true,
     indikator: ['read', 'create', 'update', 'delete'],
@@ -1887,17 +2065,17 @@ const ROLE_PERMISSIONS = {
     user_accounts: ['read', 'create', 'update', 'delete']
   },
   
-  // ADMIN = Pendaftaran + Sertifikat (dengan bulk_import)
+  // ADMIN = Pendaftaran + SDMK (kelola data)
   admin: {
     dashboard: true,
     pendaftaran: ['read', 'create', 'update', 'delete', 'bulk_import'],
-    sertifikat: ['read', 'create', 'update', 'delete']
+    sdmk: ['read', 'create', 'update', 'delete']
   },
   
-  // OPERATOR = Pendaftaran saja (TANPA bulk_import)
-  operator: {
-    dashboard: true,
-    pendaftaran: ['read', 'create', 'update', 'delete']  // NO bulk_import!
+  // USER = Hanya lihat data pendaftaran sendiri (berdasarkan NIK)
+  user: {
+    dashboard: false,
+    pendaftaran: ['read']  // Hanya baca, filter by NIK
   }
 };
 
@@ -1967,19 +2145,14 @@ const SIDEBAR_MENU_CONFIG = {
     ]
   },
   
-  // OPERATOR = Pendaftaran saja (tanpa sertifikat, tanpa bulk_import)
-  operator: {
+  // USER = Hanya lihat data pendaftaran sendiri
+  user: {
     mainMenu: [
       { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
-      { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
-      { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
+      { id: 'pendaftaran', label: 'Pendaftaran Saya', icon: 'fa-clipboard-list', page: 'pendaftaran' }
     ],
-    panelAdmin: [
-      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
-    ],
-    data: [
-      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }
-    ]
+    panelAdmin: [],  // Tidak ada akses Panel Admin
+    data: []  // Tidak ada menu data
   }
 };
 
@@ -1990,34 +2163,34 @@ const SIDEBAR_MENU_CONFIG = {
 const ROLE_LABELS = {
   superadmin: {
     name: 'SUPERADMIN',
-    description: 'Full Access',
-    detail: 'Akses penuh ke semua data dan fitur sistem termasuk Input Massal.',
+    description: 'Full Access (7 Data)',
+    detail: 'Akses penuh ke semua 7 data dan fitur sistem termasuk Input Massal.',
     icon: 'fa-crown',
     color: '#EF4444',
     bgClass: 'role-superadmin'
   },
   admin: {
     name: 'ADMIN',
-    description: 'Pendaftaran & Sertifikat',
-    detail: 'Mengelola pendaftaran, sertifikat, dan Input Massal.',
+    description: 'Pendaftaran & SDMK',
+    detail: 'Mengelola data pendaftaran dan SDMK.',
     icon: 'fa-user-shield',
     color: '#0D6EFD',
     bgClass: 'role-admin'
   },
-  operator: {
-    name: 'OPERATOR',
-    description: 'Pendaftaran Only',
-    detail: 'Hanya dapat mengelola data pendaftaran (tanpa Input Massal).',
-    icon: 'fa-user-edit',
-    color: '#F59E0B',
-    bgClass: 'role-operator'
+  user: {
+    name: 'USER',
+    description: 'Data Sendiri',
+    detail: 'Hanya dapat melihat data pendaftaran sendiri berdasarkan NIK.',
+    icon: 'fa-user',
+    color: '#10B981',
+    bgClass: 'role-user'
   }
 };
 
 /**
  * VALID_ROLES - Daftar role yang valid (sesuai multiusers.role di database)
  */
-const VALID_ROLES = ['superadmin', 'admin', 'operator'];
+const VALID_ROLES = ['superadmin', 'admin', 'user'];
 
 /**
  * hasPermission() - Helper utama untuk pengecekan hak akses
@@ -2553,14 +2726,14 @@ const GRAPHQL_QUERIES = {
   `,
   
   getPendaftaran: `
-    query GetPendaftaran($limit: Int, $offset: Int, $order: [pendaftaran_order_by!]) {
-      pendaftaran(limit: $limit, offset: $offset, order_by: $order) {
+    query GetPendaftaran($limit: Int, $offset: Int, $order: [pendaftaran_order_by!], $where: pendaftaran_bool_exp) {
+      pendaftaran(limit: $limit, offset: $offset, order_by: $order, where: $where) {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
         pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
         lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
         judul_kegiatan status created_at updated_at
       }
-      pendaftaran_aggregate { aggregate { count } }
+      pendaftaran_aggregate(where: $where) { aggregate { count } }
     }
   `,
   
@@ -2867,9 +3040,19 @@ function callServer(action, data) {
           break;
 
         case 'getPendaftaran':
-          result = await graphqlRequest('GetPendaftaran', GRAPHQL_QUERIES.getPendaftaran, {
+          // Gunakan filter berdasarkan role (user hanya lihat data NIK sendiri)
+          var pendaftaranFilter = getUserDataFilter('pendaftaran');
+          var pendaftaranVars = {
             order: { created_at: 'desc_nulls_last' }
-          });
+          };
+          
+          // Jika ada filter (role user), tambahkan ke variables
+          if (pendaftaranFilter) {
+            pendaftaranVars.where = pendaftaranFilter;
+            console.log('[FILTER] Pendaftaran filter applied:', pendaftaranFilter);
+          }
+          
+          result = await graphqlRequest('GetPendaftaran', GRAPHQL_QUERIES.getPendaftaran, pendaftaranVars);
           resolve({ success: true, data: (result.pendaftaran || []).map(p => ({
             ID: p.id, Foto: p.foto, 'Nama Lengkap dengan Gelar': p.nama_lengkap_dengan_gelar,
             NIK: p.nik, NIP: p.nip, 'Unit Kerja': p.unit_kerja, 'Jenis SDMK': p.jenis_sdmk,
@@ -3040,11 +3223,65 @@ function callServer(action, data) {
           break;
 
         case 'updatePendaftaran':
-          const pendaftaranId = (_crud.allData[data.idx]?.ID) || data.idx;
-          await graphqlRequest('UpdatePendaftaran', GRAPHQL_QUERIES.updatePendaftaran, {
-            id: pendaftaranId, object: { status: data.Status?.toLowerCase() }
+          // Ambil ID dari data (bisa id atau ID)
+          const pendaftaranId = _crud.allData[data.idx]?.id || _crud.allData[data.idx]?.ID || data.idx;
+          
+          // Build object dengan SEMUA field yang valid (sesuai schema Nhost)
+          var pendaftaranUpdate = {};
+          
+          // Field yang boleh diupdate (sesuai schema Nhost)
+          var allowedFields = [
+            'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja',
+            'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin',
+            'tempat_dan_tanggal_lahir', 'email_plataran_sehat',
+            'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
+            'surat_pernyataan', 'judul_kegiatan', 'status'
+          ];
+          
+          // Mapping nama form ke nama field database
+          var fieldMapping = {
+            'Nama Lengkap dengan Gelar': 'nama_lengkap_dengan_gelar',
+            'NIK': 'nik', 'NIP': 'nip',
+            'Unit Kerja': 'unit_kerja',
+            'Jenis SDMK': 'jenis_sdmk',
+            'Jenis Profesi': 'jenis_profesi',
+            'Pekerjaan': 'pekerjaan',
+            'Jenis Kelamin': 'jenis_kelamin',
+            'Tempat dan Tanggal Lahir': 'tempat_dan_tanggal_lahir',
+            'Email': 'email_plataran_sehat',
+            'Alamat Rumah': 'alamat_rumah',
+            'Lama Bekerja': 'lama_bekerja_di_unit_sekarang',
+            'Surat Pernyataan': 'surat_pernyataan',
+            'Judul Kegiatan': 'judul_kegiatan',
+            'Status': 'status'
+          };
+          
+          // Proses setiap field dari data
+          Object.keys(data).forEach(function(key) {
+            // Skip internal fields
+            if (['_user', 'idx'].includes(key)) return;
+            
+            // Cari nama field yang sesuai
+            var dbField = fieldMapping[key] || key.toLowerCase().replace(/ /g, '_');
+            
+            // Jika field ada di daftar yang diizinkan
+            if (allowedFields.includes(dbField) && data[key] !== undefined && data[key] !== '') {
+              pendaftaranUpdate[dbField] = data[key];
+            }
           });
-          resolve({ success: true, message: 'Pendaftaran berhasil diperbarui' });
+          
+          // Pastikan status selalu diinclude (jika ada)
+          if (data.Status !== undefined) {
+            pendaftaranUpdate.status = String(data.Status).toLowerCase();
+          }
+          
+          console.log('[UPDATE] Pendaftaran fields:', Object.keys(pendaftaranUpdate));
+          
+          await graphqlRequest('UpdatePendaftaran', GRAPHQL_QUERIES.updatePendaftaran, {
+            id: pendaftaranId,
+            object: pendaftaranUpdate
+          });
+          resolve({ success: true, message: 'Data Pendaftaran berhasil diperbarui' });
           break;
 
         case 'updateAdmin':
@@ -3678,6 +3915,49 @@ function nhostLogout() {
 function getCurrentUser() {
   const userData = safeStorage.getItem('nhost_user');
   return userData ? JSON.parse(userData) : null;
+}
+
+/**
+ * getCurrentUserNIK() - Mendapatkan NIK user yang login
+ * Digunakan untuk filter data pendaftaran berdasarkan role 'user'
+ */
+function getCurrentUserNIK() {
+  // Coba dari session currentUser
+  if (currentUser && currentUser.nik) {
+    return currentUser.nik;
+  }
+  
+  // Coba dari nhost_user data
+  const nhostUser = getCurrentUser();
+  if (nhostUser && (nhostUser.nik || nhostUser.NIK)) {
+    return nhostUser.nik || nhostUser.NIK;
+  }
+  
+  // Coba dari username (jika NIK digunakan sebagai username)
+  if (adminUsername && /^\d{16}$/.test(adminUsername)) {
+    return adminUsername;
+  }
+  
+  console.warn('[AUTH] Tidak dapat menemukan NIK user');
+  return null;
+}
+
+/**
+ * getUserDataFilter() - Mengembang filter GraphQL berdasarkan role
+ * - superadmin/admin: tidak ada filter (semua data)
+ * - user: filter by nik
+ */
+function getUserDataFilter(tableType) {
+  var role = getCurrentRole();
+  
+  if (role === 'user' && tableType === 'pendaftaran') {
+    var nik = getCurrentUserNIK();
+    if (nik) {
+      return { nik: { _eq: nik } };
+    }
+  }
+  
+  return null; // Tidak ada filter
 }
 
 function isAuthenticated() {
@@ -5484,30 +5764,182 @@ function renderCekSertifikat(data){
 }
 function filterCekSertifikat(){var el=document.getElementById('searchSertNama');if(!el)return;var q=el.value.toLowerCase();var f=_allSertifikat.filter(function(r){var nama=_getSertField(r,['Nama Penerima','Nama_Penerima']).toLowerCase();return nama.indexOf(q)!==-1;});renderCekSertifikat(f);}
 
-/* ========== CEK MATERI (Public Table) ========== */
+/* ========== CEK MATERI (Public Table) - CARD VIEW ========== */
 function loadCekMateriPublic(){
   showLoading('Memuat materi...');
   callServer('getMateri').then(function(res){
     hideLoading();if(!res||!res.success){showToast(res?res.message:'Gagal memuat materi','error');return;}
-    _allMateri=res.data||[];renderCekMateri(_allMateri);
+    _allMateri=res.data||[];renderMateriCards(_allMateri);
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
 }
-function renderCekMateri(data){
-  var tb=document.getElementById('cekMatBody'),hd=document.getElementById('cekMatHead'),em=document.getElementById('cekMatEmpty');
-  hd.innerHTML='<tr><th>No</th><th>Judul Materi</th><th>Kategori</th><th>Link / File</th></tr>';
-  if(!data.length){tb.innerHTML='';em.style.display='block';return;}em.style.display='none';
-  tb.innerHTML='';
-  data.forEach(function(r,i){
-    var judul=_getSertField(r,['Judul Materi','Judul_Materi','Judul']);
-    var kategori=_getSertField(r,['Kategori']);
-    var link=_getSertField(r,['Link/File','Link','Link_File']);
-    var linkHtml=(link!=='-')?'<a href="'+escHTML(link)+'" target="_blank" class="cek-link"><i class="fas fa-external-link-alt"></i> Buka</a>':'<span class="cek-no-link">Tidak ada</span>';
-    var tr=document.createElement('tr');
-    tr.innerHTML='<td data-label="No">'+(i+1)+'</td><td data-label="Judul Materi" class="cek-nama">'+escHTML(judul)+'</td><td data-label="Kategori">'+escHTML(kategori)+'</td><td data-label="Link / File">'+linkHtml+'</td>';
-    tb.appendChild(tr);
+
+/**
+ * renderMateriCards() - Render materi dalam bentuk KARTU yang rapi
+ * Setiap kartu bisa diklik untuk melihat detail di popup
+ */
+function renderMateriCards(data){
+  var container = document.getElementById('cekMatBody');
+  var hd = document.getElementById('cekMatHead');
+  var em = document.getElementById('cekMatEmpty');
+  
+  // Sembunyikan header tabel (karena pakai card view)
+  if (hd) hd.style.display = 'none';
+  
+  if (!data.length) {
+    container.innerHTML = '';
+    if (em) em.style.display = 'block';
+    return;
+  }
+  if (em) em.style.display = 'none';
+  
+  var html = '';
+  
+  // Grid container untuk cards
+  html += '<div class="materi-card-grid">';
+  
+  data.forEach(function(r, i) {
+    var judul = _getSertField(r, ['Judul Materi', 'Judul_Materi', 'judul_materi', 'Judul']);
+    var kategori = _getSertField(r, ['Kategori', 'kategori']);
+    var link = _getSertField(r, ['Link/File', 'Link', 'link_download', 'link', 'Link_File']);
+    var deskripsi = _getSertField(r, ['Deskripsi', 'deskripsi', 'Description']) || 'Tidak ada deskripsi.';
+    
+    // Warna icon berdasarkan kategori
+    var kategoriColors = {
+      'Modul': '#3B82F6',
+      'modul': '#3B82F6',
+      'Video': '#EF4444',
+      'video': '#EF4444',
+      'E-Book': '#10B981',
+      'e-book': '#10B981',
+      'ebook': '#10B981',
+      'Presentasi': '#F59E0B',
+      'presentasi': '#F59E0B',
+      'Lainnya': '#8B5CF6',
+      'default': '#6B7280'
+    };
+    var catColor = kategoriColors[kategori] || kategoriColors['default'];
+    
+    // Cek apakah ada link
+    var hasLink = link && link !== '-';
+    
+    html += '<div class="materi-card" onclick="openMateriDetail(' + i + ')">';
+    html += '  <div class="materi-card-header" style="background: linear-gradient(135deg, ' + catColor + '22, ' + catColor + '44);">';
+    html += '    <div class="materi-card-icon">';
+    html += '      <i class="fas ' + (hasLink ? 'fa-file-download' : 'fa-file-alt') + '"></i>';
+    html += '    </div>';
+    html += '    <span class="materi-card-badge">' + escHTML(kategori || 'Umum') + '</span>';
+    html += '  </div>';
+    html += '  <div class="materi-card-body">';
+    html += '    <h3 class="materi-card-title">' + escHTML(judul) + '</h3>';
+    html += '    <p class="materi-card-desc">' + escHTML(deskripsi.substring(0, 100)) + (deskripsi.length > 100 ? '...' : '') + '</p>';
+    html += '  </div>';
+    html += '  <div class="materi-card-footer">';
+    if (hasLink) {
+      html += '    <a href="' + escHTML(link) + '" target="_blank" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">';
+      html += '      <i class="fas fa-download"></i> Unduh';
+      html += '    </a>';
+    } else {
+      html += '    <span class="materi-no-link"><i class="fas fa-lock"></i> Tidak tersedia</span>';
+    }
+    html += '    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openMateriDetail(' + i + ');">';
+    html += '      <i class="fas fa-eye"></i> Detail';
+    html += '    </button>';
+    html += '  </div>';
+    html += '</div>';
   });
+  
+  html += '</div>'; // end grid
+  
+  container.innerHTML = html;
 }
-function filterCekMateri(){var el=document.getElementById('searchMateriJudul');if(!el)return;var q=el.value.toLowerCase();var f=_allMateri.filter(function(r){var judul=_getSertField(r,['Judul Materi','Judul_Materi','Judul']).toLowerCase();return judul.indexOf(q)!==-1;});renderCekMateri(f);}
+
+/**
+ * openMateriDetail() - Buka popup detail materi
+ */
+function openMateriDetail(idx) {
+  if (!_allMateri || !_allMateri[idx]) return;
+  
+  var r = _allMateri[idx];
+  var judul = _getSertField(r, ['Judul Materi', 'Judul_Materi', 'judul_materi', 'Judul']);
+  var kategori = _getSertField(r, ['Kategori', 'kategori']);
+  var link = _getSertField(r, ['Link/File', 'Link', 'link_download', 'link', 'Link_File']);
+  var deskripsi = _getSertField(r, ['Deskripsi', 'deskripsi', 'Description']) || 'Tidak ada deskripsi.';
+  
+  var modalHtml = '';
+  modalHtml += '<div class="materi-detail-modal">';
+  modalHtml += '  <div class="materi-detail-header">';
+  modalHtml += '    <div class="materi-detail-icon"><i class="fas fa-book-open"></i></div>';
+  modalHtml += '    <div>';
+  modalHtml += '      <h2>' + escHTML(judul) + '</h2>';
+  modalHtml += '      <span class="materi-detail-cat">' + escHTML(kategori || 'Umum') + '</span>';
+  modalHtml += '    </div>';
+  modalHtml += '  </div>';
+  modalHtml += '  <div class="materi-detail-body">';
+  modalHtml += '    <div class="detail-row">';
+  modalHtml += '      <label>Judul Materi</label>';
+  modalHtml += '      <value>' + escHTML(judul) + '</value>';
+  modalHtml += '    </div>';
+  modalHtml += '    <div class="detail-row">';
+  modalHtml += '      <label>Kategori</label>';
+  modalHtml += '      <value>' + escHTML(kategori || '-') + '</value>';
+  modalHtml += '    </div>';
+  modalHtml += '    <div class="detail-row">';
+  modalHtml += '      <label>Deskripsi</label>';
+  modalHtml += '      <value>' + escHTML(deskripsi.replace(/\n/g, '<br>')) + '</value>';
+  modalHtml += '    </div>';
+  modalHtml += '    <div class="detail-row">';
+  modalHtml += '      <label>Link / File</label>';
+  modalHtml += '      <value>';
+  if (link && link !== '-') {
+    modalHtml += '        <a href="' + escHTML(link) + '" target="_blank" class="btn btn-primary btn-sm">';
+    modalHtml += '          <i class="fas fa-external-link-alt"></i> Buka / Unduh Materi';
+    modalHtml += '        </a>';
+  } else {
+    modalHtml += '        <span class="text-muted">Tidak tersedia</span>';
+  }
+  modalHtml += '      </value>';
+  modalHtml += '    </div>';
+  modalHtml += '  </div>';
+  modalHtml += '  <div class="materi-detail-footer">';
+  modalHtml += '    <button class="btn btn-secondary" onclick="closeModal(\'materiDetailModal\')">';
+  modalHtml += '      <i class="fas fa-times"></i> Tutup';
+  modalHtml += '    </button>';
+  if (link && link !== '-') {
+    modalHtml += '    <a href="' + escHTML(link) + '" target="_blank" class="btn btn-primary">';
+    modalHtml += '      <i class="fas fa-download"></i> Unduh Sekarang';
+    modalHtml += '    </a>';
+  }
+  modalHtml += '  </div>';
+  modalHtml += '</div>';
+  
+  // Buat modal dinamis jika belum ada
+  var modalContainer = document.getElementById('materiDetailModal');
+  if (!modalContainer) {
+    modalContainer = document.createElement('div');
+    modalContainer.id = 'materiDetailModal';
+    modalContainer.className = 'modal-overlay';
+    modalContainer.onclick = function(e) {
+      if (e.target === modalContainer) closeModal('materiDetailModal');
+    };
+    document.body.appendChild(modalContainer);
+  }
+  
+  modalContainer.innerHTML = modalHtml;
+  modalContainer.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function filterCekMateri(){
+  var el = document.getElementById('searchMateriJudul');
+  if (!el) return;
+  var q = el.value.toLowerCase();
+  var f = _allMateri.filter(function(r) {
+    var judul = _getSertField(r, ['Judul Materi', 'Judul_Materi', 'Judul']).toLowerCase();
+    var kategori = _getSertField(r, ['Kategori']).toLowerCase();
+    return judul.indexOf(q) !== -1 || kategori.indexOf(q) !== -1;
+  });
+  renderMateriCards(f);
+}
 function openMateriForm(idx){document.getElementById('materiEditIndex').value=idx!==undefined?idx:-1;document.getElementById('materiFormTitle').textContent=idx!==undefined?'Edit Materi':'Tambah Materi';if(idx!==undefined){var r=_allMateri[idx];document.getElementById('matJudul').value=r.Judul_Materi||r.Judul||'';document.getElementById('matKategori').value=r.Kategori||'';document.getElementById('matLink').value=r['Link/File']||r.Link||r.Link_File||'';}else{document.getElementById('materiForm').reset();}openModal('materiFormModal');}
 function editMateri(i){openMateriForm(i);}
 function submitMateri(e){e.preventDefault();var idx=parseInt(document.getElementById('materiEditIndex').value);var data={'Judul Materi':document.getElementById('matJudul').value,Kategori:document.getElementById('matKategori').value,'Link/File':document.getElementById('matLink').value};
@@ -6060,99 +6492,82 @@ function renderAdminDashboard(){
   // 2. Load real statistics from Nhost (filtered by role)
   loadAdminStats();
   
-  // 3. Render menu grid organized by category (filtered by role)
+  // 3. Render menu grid - SEMUA 7 TABEL NHOST BERURUTAN (tanpa kategori)
   var grid = document.getElementById('adminMenuGrid');
   if (!grid) {
     console.warn('[DOM] renderAdminDashboard: #adminMenuGrid tidak ditemukan');
     return;
   }
   
-  // Define categories based on role
-  var categories = [];
-  if (role === 'admin') {
-    // ADMIN = Full Access: semua kategori
-    categories = [
-      { id: 'data-utama', label: 'DATA UTAMA', icon: 'fa-database', color: 'var(--primary)' },
-      { id: 'informasi', label: 'INFORMASI', icon: 'fa-info-circle', color: '#8B5CF6' },
-      { id: 'sistem', label: 'SISTEM', icon: 'fa-cogs', color: '#F59E0B' }
-    ];
-  } else if (role === 'operator') {
-    // OPERATOR = Terbatas: hanya data pendaftaran & sertifikat
-    categories = [
-      { id: 'data', label: 'DATA', icon: 'fa-database', color: 'var(--primary)' }
-    ];
-  }
-  
   var html = '';
   var visibleMenuCount = 0;
   
-  // Render each category with its tables
-  categories.forEach(function(cat) {
-    var categoryHasItems = false;
-    var categoryHtml = '';
-    
-    categoryHtml += '<div class="admin-category">';
-    categoryHtml += '  <div class="admin-category-header" style="color:' + cat.color + '">';
-    categoryHtml += '    <i class="fas ' + cat.icon + '"></i>';
-    categoryHtml += '    <h3>' + cat.label + '</h3>';
-    categoryHtml += '  </div>';
-    categoryHtml += '  <div class="admin-category-grid">';
-    
-    // Get tables in this category
-    Object.values(ADMIN_TABLES).forEach(function(tableConfig) {
-      // Check if table belongs to this category (with fallback for non-admin roles)
-      var belongsToCategory = false;
-      if (role === 'admin') {
-        // Admin (Full Access): show all tables in their proper categories
-        belongsToCategory = tableConfig.category === cat.id;
-      } else {
-        // For operator, show only allowed modules in "data" category
-        if (cat.id === 'data') {
-          belongsToCategory = hasPermission(role, tableConfig.id, 'read');
-        }
-      }
-      
-      if (!belongsToCategory) return;
-      
-      // Check access permissions using NEW RBAC system
-      var hasAccess = hasPermission(role, tableConfig.id, 'read');
-      var canWriteTable = hasPermission(role, tableConfig.id, 'create');
-      
-      // Special check for multiusers/user_accounts (requires admin/full access)
-      if ((tableConfig.id === 'multiusers' || tableConfig.id === 'user_accounts') && role !== 'admin') {
-        hasAccess = false;
-      }
-      
-      if (!hasAccess) return;
-      
-      categoryHasItems = true;
-      visibleMenuCount++;
-      
-      var writeBadge = canWriteTable 
-        ? '<span class="badge badge-success" style="background:var(--secondary);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-check-circle" style="margin-right:3px;"></i>CRUD</span>'
-        : '<span class="badge badge-secondary" style="background:var(--text-muted);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-eye" style="margin-right:3px;"></i>Read Only</span>';
-      
-      categoryHtml += '<div class="admin-menu-card' + (canWriteTable ? '' : ' disabled') + '" onclick="openAdminCrud(\'' + tableConfig.id + '\')" style="cursor:pointer;transition:transform .2s;">';
-      categoryHtml += '  <div class="admin-menu-card-icon"><i class="fas ' + tableConfig.icon + '"></i></div>';
-      categoryHtml += '  <div class="admin-menu-card-content">';
-      categoryHtml += '    <h4>' + tableConfig.label + '</h4>';
-      categoryHtml += '    <p>' + tableConfig.description + '</p>';
-      categoryHtml += '    ' + writeBadge;
-      categoryHtml += '  </div>';
-      categoryHtml += '</div>';
-    });
-    
-    categoryHtml += '  </div>'; // end category-grid
-    categoryHtml += '</div>'; // end category
-    
-    // Only add category if it has items
-    if (categoryHasItems) {
-      html += categoryHtml;
+  // Header untuk Panel Admin
+  html += '<div class="admin-category-header" style="color:var(--primary);margin-bottom:10px;">';
+  html += '  <i class="fas fa-table"></i> <h3>SEMUA TABEL NHOST (7 Tabel)</h3>';
+  html += '</div>';
+  html += '<div class="admin-category-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px,1fr));">';
+  
+  // Urutan tabel sesuai permintaan: 7 tabel Nhost berurutan
+  var tableOrder = ['indikator', 'sdmk', 'pendaftaran', 'materi', 'pengumuman', 'sertifikat', 'multiusers'];
+  
+  tableOrder.forEach(function(tableId) {
+    var tableConfig = ADMIN_TABLES[tableId];
+    if (!tableConfig) {
+      console.warn('[ADMIN] Table config not found:', tableId);
+      return;
     }
+    
+    // Check access permissions using RBAC system
+    var hasAccess = hasPermission(role, tableConfig.id, 'read');
+    var canWriteTable = hasPermission(role, tableConfig.id, 'create');
+    
+    // Special check for multiusers (requires admin/full access)
+    if (tableConfig.id === 'multiusers' && role !== 'admin') {
+      hasAccess = false;
+    }
+    
+    // Untuk admin/superadmin, selalu berikan akses penuh
+    if (role === 'admin' || role === 'superadmin') {
+      hasAccess = true;
+      canWriteTable = true;
+    }
+    
+    if (!hasAccess) return;
+    
+    visibleMenuCount++;
+    
+    // Badge CRUD (semua tabel bisa CRUD)
+    var writeBadge = canWriteTable 
+      ? '<span class="badge badge-success" style="background:var(--secondary);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-check-circle" style="margin-right:3px;"></i>CRUD</span>'
+      : '<span class="badge badge-secondary" style="background:var(--text-muted);color:#fff;padding:3px 8px;border-radius:4px;font-size:.7rem;"><i class="fas fa-eye" style="margin-right:3px;"></i>Read Only</span>';
+    
+    // Warna icon berbeda per tabel
+    var iconColors = {
+      'indikator': 'background:#FEF3C7;color:#D97706',
+      'sdmk': 'background:#DBEAFE;color:#2563EB',
+      'pendaftaran': 'background:#DCFCE7;color:#16A34A',
+      'materi': 'background:#F3E8FF;color:#9333EA',
+      'pengumuman': 'background:#FFE4E6;color:#DC2626',
+      'sertifikat': 'background:#FFEDD5;color:#EA580C',
+      'multiusers': 'background:#E0E7FF;color:#4F46E5'
+    };
+    var iconStyle = iconColors[tableConfig.id] || 'background:var(--primary-light);color:var(--primary)';
+    
+    html += '<div class="admin-menu-card" onclick="openAdminCrud(\'' + tableConfig.id + '\')" style="cursor:pointer;transition:transform .2s;">';
+    html += '  <div class="admin-menu-card-icon" style="' + iconStyle + '"><i class="fas ' + tableConfig.icon + '"></i></div>';
+    html += '  <div class="admin-menu-card-content">';
+    html += '    <h4>' + tableConfig.label + '</h4>';
+    html += '    <p>' + tableConfig.description + '</p>';
+    html += '    ' + writeBadge;
+    html += '  </div>';
+    html += '</div>';
   });
   
+  html += '</div>'; // end grid
+  
   grid.innerHTML = html;
-  console.log('[ADMIN] Dashboard rendered with', visibleMenuCount, 'visible menu items for role:', role);
+  console.log('[ADMIN] Dashboard rendered with', visibleMenuCount, '/ 7 tables for role:', role);
 }
 
 /**
