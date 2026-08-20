@@ -103,9 +103,9 @@
     .sidebar-brand h2{font-size:1.05rem;font-weight:700;color:#fff;letter-spacing:1.5px}
     .sidebar-brand p{font-size:.65rem;color:rgba(255,255,255,.5);margin-top:2px}
     .sidebar-nav{flex:1;padding:16px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
-    .nav-label{font-size:.65rem;font-weight:600;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;padding:16px 14px 8px;white-space:nowrap;overflow:hidden;transition:var(--transition)}
+    .nav-label{font-size:.65rem;font-weight:600;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;padding:10px 12px 6px;white-space:nowrap;overflow:hidden;transition:var(--transition)}
     .sidebar.collapsed .nav-label{opacity:0;height:0;padding:0}
-    .nav-item{display:flex;align-items:center;gap:14px;padding:11px 14px;border-radius:var(--radius-sm);color:rgba(255,255,255,.7);cursor:pointer;transition:var(--transition);text-decoration:none;position:relative;white-space:nowrap}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:var(--radius-sm);color:rgba(255,255,255,.7);cursor:pointer;transition:var(--transition);text-decoration:none;position:relative;white-space:nowrap}
     .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
     .nav-item.active{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
     .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--secondary);border-radius:0 4px 4px 0}
@@ -2446,7 +2446,7 @@ const GRAPHQL_QUERIES = {
   // === QUERIES ===
   getDashboardData: `
     query GetDashboardData {
-      indikator(order_by: {id: asc}) { id indikator nilai target satuan deskripsi }
+      indikator(order_by: {id: asc}) { id indikator nilai target satuan periode }
       sdmk_aggregate { aggregate { count } }
       pendaftaran_aggregate { aggregate { count } }
       sertifikat_aggregate { aggregate { count } }
@@ -5764,7 +5764,7 @@ const ADMIN_TABLES = {
     description: 'Kelola indikator kinerja program SDM Kesehatan',
     category: 'data-utama',
     fields: ['id', 'indikator', 'nilai', 'target', 'satuan', 'periode'],
-    displayFields: ['indikator', 'nilai', 'target', 'satuan'],
+    displayFields: ['id', 'indikator', 'nilai', 'target', 'satuan', 'periode'],
     canWrite: true,
     queryAction: 'getIndikator',
     createAction: 'tambahIndikator',
@@ -5780,7 +5780,7 @@ const ADMIN_TABLES = {
     description: 'Data tenaga kesehatan terlatih',
     category: 'data-utama',
     fields: ['id', 'foto', 'nama', 'nik', 'profesi', 'unit_kerja', 'nomor_sertifikat', 'judul_kegiatan', 'tanggal_pelaksanaan', 'tahun', 'tempat_pelaksanaan'],
-    displayFields: ['nama', 'nik', 'profesi', 'unit_kerja', 'judul_kegiatan'],
+    displayFields: ['nama', 'nik', 'profesi', 'unit_kerja', 'nomor_sertifikat', 'judul_kegiatan', 'tahun'],
     canWrite: true,
     queryAction: 'getSDMK',
     createAction: 'tambahSDMK',
@@ -5795,8 +5795,8 @@ const ADMIN_TABLES = {
     icon: 'fa-clipboard-list',
     description: 'Data pendaftaran pelatihan',
     category: 'data-utama',
-    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_profesi', 'email_plataran_sehat', 'judul_kegiatan', 'status'],
-    displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_profesi', 'status'],
+    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'email_plataran_sehat', 'judul_kegiatan', 'status'],
+    displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'status'],
     canWrite: true,
     queryAction: 'getPendaftaran',
     createAction: 'tambahPendaftaran',
@@ -5811,8 +5811,8 @@ const ADMIN_TABLES = {
     icon: 'fa-book-open',
     description: 'Materi dan bahan pelatihan',
     category: 'data-utama',
-    fields: ['id', 'judul_materi', 'kategori', 'link_download', 'deskripsi', 'created_at'],
-    displayFields: ['judul_materi', 'kategori', 'deskripsi'],
+    fields: ['id', 'judul_materi', 'kategori', 'link_download', 'deskripsi', 'created_at', 'updated_at'],
+    displayFields: ['id', 'judul_materi', 'kategori', 'link_download', 'deskripsi', 'created_at', 'updated_at'],
     canWrite: true,
     queryAction: 'getMateri',
     createAction: 'tambahMateri',
@@ -5828,8 +5828,8 @@ const ADMIN_TABLES = {
     icon: 'fa-bullhorn',
     description: 'Informasi dan pengumuman resmi',
     category: 'informasi',
-    fields: ['id', 'judul', 'isi_pengumuman', 'tanggal', 'status', 'created_at'],
-    displayFields: ['judul', 'tanggal', 'status'],
+    fields: ['id', 'judul', 'isi_pengumuman', 'tanggal', 'status', 'created_at', 'created_by'],
+    displayFields: ['id', 'judul', 'isi_pengumuman', 'tanggal', 'status', 'created_at', 'created_by'],
     canWrite: true,
     queryAction: 'getPengumuman',
     createAction: 'tambahPengumuman',
@@ -5844,8 +5844,8 @@ const ADMIN_TABLES = {
     icon: 'fa-certificate',
     description: 'Data sertifikat pelatihan',
     category: 'informasi',
-    fields: ['id', 'nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit', 'link_sertifikat'],
-    displayFields: ['nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit'],
+    fields: ['id', 'nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit', 'link_sertifikat', 'created_at'],
+    displayFields: ['id', 'nomor_sertifikat', 'nama_penerima', 'judul_pelatihan', 'tanggal_terbit', 'link_sertifikat', 'created_at'],
     canWrite: true,
     queryAction: 'getSertifikat',
     createAction: 'tambahSertifikat',
@@ -5861,8 +5861,8 @@ const ADMIN_TABLES = {
     icon: 'fa-users-cog',
     description: 'Manajemen pengguna dan akun admin',
     category: 'sistem',
-    fields: ['id', 'username', 'level', 'status', 'created_at'],
-    displayFields: ['username', 'level', 'status'],
+    fields: ['id', 'username', 'display_name', 'level', 'status', 'last_login', 'created_at'],
+    displayFields: ['id', 'username', 'display_name', 'level', 'status', 'last_login', 'created_at'],
     canWrite: true, // Only admin (full access) should write
     queryAction: 'getAdmin', // Uses getAdmin which maps to getMultiusers
     createAction: 'tambahMultiuser',
@@ -6236,7 +6236,19 @@ function openAdminCrud(type) {
       _crud.headers = tableConfig.fields || [];
     }
     
-    _crud.visibleCols = [..._crud.headers];
+    // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
+    var availableFields = _crud.headers;
+    if (tableConfig.displayFields && tableConfig.displayFields.length > 0) {
+      _crud.visibleCols = tableConfig.displayFields.filter(function(f) {
+        return availableFields.indexOf(f) !== -1;
+      });
+      // Jika setelah filter kosong, fallback ke semua headers
+      if (_crud.visibleCols.length === 0) {
+        _crud.visibleCols = [...availableFields];
+      }
+    } else {
+      _crud.visibleCols = [...availableFields];
+    }
     _crud.filterCols = detectFilterColumns(type);
     
     renderCrudTable();
@@ -6588,7 +6600,19 @@ function loadPendaftaranCrudData(writable, readOnly) {
       _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nip', 'jabatan', 'unit_kerja', 'profesi', 'pendidikan_terakhir', 'no_telepon', 'email', 'alamat'];
     }
     
-    _crud.visibleCols = [..._crud.headers];
+    // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
+    var pendaftaranConfig = ADMIN_TABLES.pendaftaran;
+    var availPendFields = _crud.headers;
+    if (pendaftaranConfig && pendaftaranConfig.displayFields && pendaftaranConfig.displayFields.length > 0) {
+      _crud.visibleCols = pendaftaranConfig.displayFields.filter(function(f) {
+        return availPendFields.indexOf(f) !== -1;
+      });
+      if (_crud.visibleCols.length === 0) {
+        _crud.visibleCols = [...availPendFields];
+      }
+    } else {
+      _crud.visibleCols = [...availPendFields];
+    }
     _crud.filterCols = detectFilterColumns('pendaftaran');
     
     renderPendaftaranCrudUI(contentDiv);
@@ -7486,7 +7510,15 @@ function openAdminCrud(type){
     } else {
       _crud.headers=[];
     }
-    _crud.visibleCols=[..._crud.headers];
+    // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
+    var tableConfig2=ADMIN_TABLES[type];
+    var availFields=_crud.headers;
+    if(tableConfig2&&tableConfig2.displayFields&&tableConfig2.displayFields.length>0){
+      _crud.visibleCols=tableConfig2.displayFields.filter(function(f){return availFields.indexOf(f)!==-1;});
+      if(_crud.visibleCols.length===0)_crud.visibleCols=[...availFields];
+    } else {
+      _crud.visibleCols=[...availFields];
+    }
     _crud.filterCols=detectFilterColumns(type);
     buildCrudUI();
     if(type==='sdmk'&&_crud.allData.length>0){var rh='<div class="sdmk-rekap-section" id="adminSdmkRekapSection" style="display:none;margin-bottom:20px;padding:0 4px;"><div class="sdmk-rekap-header"><div class="sdmk-rekap-header-icon"><i class="fas fa-chart-bar"></i></div><div><h3>REKAP DATA SDMK TERLATIH SESUAI KOMPETENSI</h3><p>Jumlah SDMK terlatih berdasarkan tahun pelaksanaan pelatihan</p></div></div><div class="sdmk-rekap-grid" id="adminSdmkRekapGrid"></div><div class="sdmk-rekap-total" id="adminSdmkRekapTotal" style="display:none;"><span>Total SDMK Terlatih</span><strong id="adminSdmkRekapTotalCount">0</strong></div></div>';var ce=document.getElementById('adminCrudTable');if(ce){ce.insertAdjacentHTML('afterbegin',rh);renderSDMKRekap(_crud.allData,'adminSdmkRekapSection');}}
