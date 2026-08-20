@@ -2094,6 +2094,12 @@ const ROLE_PERMISSIONS = {
     sdmk: ['read', 'create', 'update', 'delete']
   },
   
+  // OPERATOR = Pendaftaran ONLY (kelola data pendaftaran, tanpa bulk import)
+  operator: {
+    dashboard: true,
+    pendaftaran: ['read', 'create', 'update', 'delete']  // No bulk_import for operator
+  },
+  
   // USER = Hanya lihat data pendaftaran sendiri (berdasarkan NIK)
   user: {
     dashboard: false,
@@ -2167,6 +2173,23 @@ const SIDEBAR_MENU_CONFIG = {
     ]
   },
   
+  // OPERATOR = Pendaftaran ONLY (terbatas)
+  operator: {
+    mainMenu: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large', page: 'dashboard' },
+      { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', page: 'pendaftaran' },
+      { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' }
+    ],
+    panelAdmin: [
+      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+    ],
+    dataUtama: [
+      { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }
+    ],
+    informasi: [],  // Tidak ada akses menu informasi
+    sistem: []      // Tidak ada akses menu sistem
+  },
+  
   // USER = Hanya lihat data pendaftaran sendiri
   user: {
     mainMenu: [
@@ -2199,6 +2222,14 @@ const ROLE_LABELS = {
     color: '#0D6EFD',
     bgClass: 'role-admin'
   },
+  operator: {
+    name: 'OPERATOR',
+    description: 'Pendaftaran Only',
+    detail: 'Mengelola data pendaftaran (CRUD tanpa import massal).',
+    icon: 'fa-user-cog',
+    color: '#F59E0B',
+    bgClass: 'role-operator'
+  },
   user: {
     name: 'USER',
     description: 'Data Sendiri',
@@ -2211,8 +2242,9 @@ const ROLE_LABELS = {
 
 /**
  * VALID_ROLES - Daftar role yang valid (sesuai multiusers.role di database)
+ * Role: superadmin (full access), admin (pendaftaran+sdmk), operator (pendaftaran only), user (read-only)
  */
-const VALID_ROLES = ['superadmin', 'admin', 'user'];
+const VALID_ROLES = ['superadmin', 'admin', 'operator', 'user'];
 
 /**
  * hasPermission() - Helper utama untuk pengecekan hak akses
@@ -6670,15 +6702,23 @@ function renderAdminDashboard(){
     var hasAccess = hasPermission(role, tableConfig.id, 'read');
     var canWriteTable = hasPermission(role, tableConfig.id, 'create');
     
-    // Special check for multiusers (requires admin/full access)
-    if (tableConfig.id === 'multiusers' && role !== 'admin') {
+    // Special check for multiusers (requires superadmin access)
+    if (tableConfig.id === 'multiusers' && role !== 'superadmin') {
       hasAccess = false;
     }
     
-    // Untuk admin/superadmin, selalu berikan akses penuh
-    if (role === 'admin' || role === 'superadmin') {
-      hasAccess = true;
-      canWriteTable = true;
+    // Untuk admin/superadmin/operator, berikan akses sesuai permission
+    if (role === 'admin' || role === 'superadmin' || role === 'operator') {
+      // Override hasAccess based on actual permissions for operator
+      if (role === 'operator') {
+        // Operator hanya mendapat akses jika explicitly diizinkan
+        hasAccess = hasPermission(role, tableConfig.id, 'read');
+        canWriteTable = hasPermission(role, tableConfig.id, 'create');
+      } else {
+        // Admin & superadmin selalu full access
+        hasAccess = true;
+        canWriteTable = true;
+      }
     }
     
     if (!hasAccess) return;
