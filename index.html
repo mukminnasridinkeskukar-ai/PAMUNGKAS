@@ -2819,7 +2819,7 @@ const GRAPHQL_QUERIES = {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
         pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
         lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
-        judul_kegiatan status created_at updated_at
+        judul_kegiatan status created_at updated_at catatan_admin
       }
       pendaftaran_aggregate(where: $where) { aggregate { count } }
     }
@@ -2869,6 +2869,7 @@ const GRAPHQL_QUERIES = {
       pendaftaran(where: {nik: {_eq: $nik}}) {
         id nama_lengkap_dengan_gelar nik nip unit_kerja jenis_profesi
         email_plataran_sehat judul_kegiatan status created_at
+        catatan_admin
       }
     }
   `,
@@ -3342,8 +3343,14 @@ function callServer(action, data) {
           // Ambil ID dari data (bisa id atau ID)
           const pendaftaranId = _crud.allData[data.idx]?.id || _crud.allData[data.idx]?.ID || data.idx;
           
+          console.log('[UPDATE] === PENDAFTARAN UPDATE START ===');
+          console.log('[UPDATE] idx:', data.idx);
+          console.log('[UPDATE] pendaftaranId:', pendaftaranId);
+          console.log('[UPDATE] Raw data:', JSON.stringify(data));
+          console.log('[UPDATE] Raw data keys:', Object.keys(data));
+          console.log('[UPDATE] _crud.allData[idx]:', _crud.allData[data.idx]);
+          
           // Build object dengan SEMUA field yang valid (sesuai schema Nhost/Hasura)
-          // ✅ PERBAIKAN: Hanya include field yang benar-benar ada di database
           var pendaftaranUpdate = {};
           
           // Field yang boleh diupdate (HARUS SESUAI SCHEMA DATABASE EXACT!)
@@ -3353,11 +3360,14 @@ function callServer(action, data) {
             'tempat_dan_tanggal_lahir', 'email_plataran_sehat',
             'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
             'surat_pernyataan', 'judul_kegiatan', 'status',
-            'catatan_admin'  // ✅ TAMBAHAN: Kolom catatan admin
+            'catatan_admin'
           ];
           
-          // Mapping nama form ke nama field database (EXACT MATCH)
+          // ✅ PERBAIKAN KRITIS: Support BOTH display names AND DB column names
+          // Form mengirim data dengan key sesuai _crud.headers (DB column names)
+          // Tapi bisa juga dapat display names dari sumber lain
           var fieldMapping = {
+            // Display names → DB column names
             'Nama Lengkap dengan Gelar': 'nama_lengkap_dengan_gelar',
             'NIK': 'nik', 'NIP': 'nip',
             'Unit Kerja': 'unit_kerja',
@@ -3376,50 +3386,88 @@ function callServer(action, data) {
             'Judul Kegiatan': 'judul_kegiatan',
             'Status': 'status',
             'Catatan Admin': 'catatan_admin',
-            'Catatan': 'catatan_admin'
+            'Catatan': 'catatan_admin',
+            // DB column names → DB column names (direct pass-through untuk key yang sudah benar)
+            'nama_lengkap_dengan_gelar': 'nama_lengkap_dengan_gelar',
+            'nik': 'nik',
+            'nip': 'nip',
+            'unit_kerja': 'unit_kerja',
+            'jenis_sdmk': 'jenis_sdmk',
+            'jenis_profesi': 'jenis_profesi',
+            'pekerjaan': 'pekerjaan',
+            'jenis_kelamin': 'jenis_kelamin',
+            'tempat_dan_tanggal_lahir': 'tempat_dan_tanggal_lahir',
+            'email_plataran_sehat': 'email_plataran_sehat',
+            'alamat_rumah': 'alamat_rumah',
+            'lama_bekerja_di_unit_sekarang': 'lama_bekerja_di_unit_sekarang',
+            'surat_pernyataan': 'surat_pernyataan',
+            'judul_kegiatan': 'judul_kegiatan',
+            'status': 'status',
+            'catatan_admin': 'catatan_admin'
           };
           
-          console.log('[UPDATE] Raw data keys:', Object.keys(data));
+          // Internal fields yang harus di-skip
+          var skipFields = ['_user', 'idx', 'ID', 'id', 'created_at', 'updated_at', 
+                           'Diubah Oleh', 'Tanggal Ubah Status', 'Tanggal Perbaikan',
+                           'Catatan Status', 'foto'];
           
           // Proses setiap field dari data
           Object.keys(data).forEach(function(key) {
-            // Skip internal fields dan fields yang tidak relevan
-            if (['_user', 'idx', 'ID', 'id', 'created_at', 'updated_at', 
-                'Diubah Oleh', 'Tanggal Ubah Status', 'Tanggal Perbaikan',
-                'Catatan Status'].includes(key)) return;
+            // Skip internal fields
+            if (skipFields.includes(key)) {
+              console.log('[UPDATE] SKIP internal field:', key);
+              return;
+            }
             
-            // Cari nama field yang sesuai
+            // Cari nama field yang sesusi (prioritaskan mapping)
             var dbField = fieldMapping[key];
             
-            // Jika tidak ada di mapping, coba konversi otomatis
+            // Jika tidak ada di mapping, coba konversi otomatis (lowercase + underscore)
             if (!dbField) {
               dbField = key.toLowerCase()
                 .replace(/ /g, '_')
                 .replace(/\//g, '_')
                 .replace(/[^a-z0-9_]/g, '');
+              console.log('[UPDATE] Auto-convert key:', key, '→', dbField);
+            } else {
+              console.log('[UPDATE] Mapped key:', key, '→', dbField);
             }
             
-            // ✅ KRITIS: Hanya tambahkan jika field BENAR-BENAR ada di allowedFields
-            if (allowedFields.includes(dbField) && data[key] !== undefined && data[key] !== '') {
-              // Pastikan value adalah string (bukan object/array)
+            // ✅ Hanya tambahkan jika field ada di allowedFields
+            if (allowedFields.includes(dbField)) {
               var value = data[key];
+              
+              // Debug value
+              console.log('[UPDATE] Processing:', key, '→', dbField, '= ', value, '(type:', typeof value, ')');
+              
+              // Normalisasi value
+              if (value === null || value === undefined) {
+                console.log('[UPDATE] SKIP null/undefined value for:', dbField);
+                return; // Skip null/undefined
+              }
+              
               if (typeof value === 'string') {
                 value = value.trim();
               } else if (typeof value !== 'number' && typeof value !== 'boolean') {
-                value = String(value || '').trim();
+                value = String(value).trim();
               }
               
-              // Hanya tambahkan jika value valid
-              if (value !== '' && value !== null && value !== undefined) {
+              // ✅ KRITIS: Include value meskipun empty string (untuk clear field)
+              // Kecuali jika value benar-benar kosong setelah trim
+              if (value !== '') {
                 pendaftaranUpdate[dbField] = value;
+                console.log('[UPDATE] ✅ ADDED:', dbField, '=', value);
+              } else {
+                console.log('[UPDATE] ⚠️ SKIP empty value for:', dbField);
               }
+            } else {
+              console.log('[UPDATE] ❌ NOT in allowedFields:', dbField, '(from key:', key, ')');
             }
           });
           
-          // Pastikan status selalu diinclude (jika ada) - normalize ke nilai valid
+          // ✅ Handle STATUS - normalize ke nilai valid Hasura
           var statusVal = data.Status || data.status || '';
           if (statusVal) {
-            // Normalize status ke lowercase dan pastikan valid
             statusVal = String(statusVal).toLowerCase().trim();
             var validStatuses = ['pending', 'approved', 'rejected', 'verified'];
             if (validStatuses.includes(statusVal)) {
@@ -3433,19 +3481,21 @@ function callServer(action, data) {
             } else if (statusVal === 'proses verifikasi') {
               pendaftaranUpdate.status = 'verified';
             } else {
-              // Default ke pending jika tidak dikenali
               pendaftaranUpdate.status = 'pending';
             }
-            console.log('[UPDATE] Status normalized:', statusVal, '→', pendaftaranUpdate.status);
+            console.log('[UPDATE] Status normalized →', pendaftaranUpdate.status);
           }
           
-          // ✅ Handle catatan_admin khusus (textarea/paragraf)
+          // ✅ Handle CATATAN_ADMIN - khusus handle untuk memastikan ter-capture
           var catatanVal = data['Catatan Admin'] || data.catatan_admin || data.Catatan || '';
-          if (catatanVal) {
+          if (catatanVal && String(catatanVal).trim()) {
             pendaftaranUpdate.catatan_admin = String(catatanVal).trim();
+            console.log('[UPDATE] Catatan Admin →', pendaftaranUpdate.catatan_admin);
           }
           
+          console.log('[UPDATE] === FINAL RESULT ===');
           console.log('[UPDATE] Final pendaftaranUpdate:', pendaftaranUpdate);
+          console.log('[UPDATE] Pendaftaran fields count:', Object.keys(pendaftaranUpdate).length);
           console.log('[UPDATE] Pendaftaran fields:', Object.keys(pendaftaranUpdate));
           
           // ✅ VALIDASI: Pastikan object tidak kosong
