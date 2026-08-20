@@ -3340,15 +3340,23 @@ function callServer(action, data) {
           break;
 
         case 'updatePendaftaran':
-          // Ambil ID dari data (bisa id atau ID)
-          const pendaftaranId = _crud.allData[data.idx]?.id || _crud.allData[data.idx]?.ID || data.idx;
+          // ✅ PERBAIKAN KRITIS: Extract nested data object
+          // doSaveCrud mengirim {idx: idx, data: formData}
+          // Handler harus extract data.data untuk mendapatkan field-field sebenarnya
+          var actualIdx = data.idx !== undefined ? data.idx : data;
+          var formData = data.data || data;  // Extract nested data if exists
           
           console.log('[UPDATE] === PENDAFTARAN UPDATE START ===');
-          console.log('[UPDATE] idx:', data.idx);
+          console.log('[UPDATE] actualIdx:', actualIdx);
+          console.log('[UPDATE] Has nested data:', !!data.data);
+          console.log('[UPDATE] Raw parameter:', JSON.stringify(data).substring(0, 200));
+          console.log('[UPDATE] Form data keys:', Object.keys(formData));
+          
+          // Ambil ID dari data (bisa id atau ID)
+          const pendaftaranId = _crud.allData[actualIdx]?.id || _crud.allData[actualIdx]?.ID || actualIdx;
+          
           console.log('[UPDATE] pendaftaranId:', pendaftaranId);
-          console.log('[UPDATE] Raw data:', JSON.stringify(data));
-          console.log('[UPDATE] Raw data keys:', Object.keys(data));
-          console.log('[UPDATE] _crud.allData[idx]:', _crud.allData[data.idx]);
+          console.log('[UPDATE] _crud.allData[idx]:', _crud.allData[actualIdx]);
           
           // Build object dengan SEMUA field yang valid (sesuai schema Nhost/Hasura)
           var pendaftaranUpdate = {};
@@ -3411,8 +3419,8 @@ function callServer(action, data) {
                            'Diubah Oleh', 'Tanggal Ubah Status', 'Tanggal Perbaikan',
                            'Catatan Status', 'foto'];
           
-          // Proses setiap field dari data
-          Object.keys(data).forEach(function(key) {
+          // Proses setiap field dari formData (bukan 'data' yang berisi wrapper object)
+          Object.keys(formData).forEach(function(key) {
             // Skip internal fields
             if (skipFields.includes(key)) {
               console.log('[UPDATE] SKIP internal field:', key);
@@ -3435,7 +3443,7 @@ function callServer(action, data) {
             
             // ✅ Hanya tambahkan jika field ada di allowedFields
             if (allowedFields.includes(dbField)) {
-              var value = data[key];
+              var value = formData[key];  // ✅ GUNAKAN formData, bukan data
               
               // Debug value
               console.log('[UPDATE] Processing:', key, '→', dbField, '= ', value, '(type:', typeof value, ')');
@@ -3465,8 +3473,8 @@ function callServer(action, data) {
             }
           });
           
-          // ✅ Handle STATUS - normalize ke nilai valid Hasura
-          var statusVal = data.Status || data.status || '';
+          // ✅ Handle STATUS - normalize ke nilai valid Hasura (gunakan formData)
+          var statusVal = formData.Status || formData.status || '';
           if (statusVal) {
             statusVal = String(statusVal).toLowerCase().trim();
             var validStatuses = ['pending', 'approved', 'rejected', 'verified'];
@@ -3486,8 +3494,8 @@ function callServer(action, data) {
             console.log('[UPDATE] Status normalized →', pendaftaranUpdate.status);
           }
           
-          // ✅ Handle CATATAN_ADMIN - khusus handle untuk memastikan ter-capture
-          var catatanVal = data['Catatan Admin'] || data.catatan_admin || data.Catatan || '';
+          // ✅ Handle CATATAN_ADMIN - khusus handle untuk memastikan ter-capture (gunakan formData)
+          var catatanVal = formData['Catatan Admin'] || formData.catatan_admin || formData.Catatan || '';
           if (catatanVal && String(catatanVal).trim()) {
             pendaftaranUpdate.catatan_admin = String(catatanVal).trim();
             console.log('[UPDATE] Catatan Admin →', pendaftaranUpdate.catatan_admin);
@@ -7401,8 +7409,14 @@ function loadPendaftaranCrudData(writable, readOnly) {
     
     if (_crud.allData.length > 0) {
       _crud.headers = Object.keys(_crud.allData[0]);
+      // ✅ PASTIKAN catatan_admin selalu ada di headers (jika belum ada dari database)
+      if (_crud.headers.indexOf('catatan_admin') === -1) {
+        _crud.headers.push('catatan_admin');
+        console.log('[PENDAFTARAN] Added catatan_admin to headers (not in DB response)');
+      }
     } else {
-      _crud.headers = ['nik', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'pekerjaan', 'unit_kerja', 'jenis_profesi', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah'];
+      // ✅ Fallback headers - include catatan_admin
+      _crud.headers = ['nik', 'nama_lengkap_dengan_gelar', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nip', 'pekerjaan', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'nomor_whatsapp', 'email_plataran_sehat', 'alamat_rumah', 'lama_bekerja_di_unit_sekarang', 'surat_pernyataan', 'judul_kegiatan', 'status', 'catatan_admin'];
     }
     
     // Gunakan displayFields dari config (maks 7 kolom), filter hanya yang ada di data
