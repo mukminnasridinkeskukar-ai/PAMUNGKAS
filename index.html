@@ -2446,18 +2446,39 @@ const GRAPHQL_QUERIES = {
   // === QUERIES ===
   getDashboardData: `
     query GetDashboardData {
-      indikator(order_by: {id: asc}) { id indikator nilai target satuan }
+      indikator(order_by: {id: asc}) { id indikator nilai target satuan deskripsi }
       sdmk_aggregate { aggregate { count } }
       pendaftaran_aggregate { aggregate { count } }
       sertifikat_aggregate { aggregate { count } }
       pengumuman(where: {status: {_eq: "published"}}) { id judul isi_pengumuman tanggal status created_at created_by }
-      sdmk(order_by: {created_at: desc_nulls_last}, limit: 10) { 
-        id nama nik profesi unit_kerja nomor_sertifikat judul_kegiatan 
-        tanggal_pelaksanaan tahun tempat_pelaksanaan foto created_at 
+      
+      # SDMK Data dengan field lengkap
+      sdmk(order_by: {created_at: desc_nulls_last}, limit: 50) { 
+        id foto nama nik profesi unit_kerja nomor_sertifikat judul_kegiatan 
+        tanggal_pelaksanaan tahun tempat_pelaksanaan created_at updated_at
       }
-      pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 10) {
-        id nama_lengkap_dengan_gelar nik nip unit_kerja jenis_profesi 
-        email_plataran_sehat judul_kegiatan status created_at
+      
+      # Pendaftaran Data dengan SEMUA field untuk dashboard lengkap
+      pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 20) {
+        id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk
+        jenis_profesi pekerjaan jenis_kelamin tempat_lahir tanggal_lahir
+        jabatan pendidikan_terakhir no_telepon nomor_whatsapp email_plataran_sehat
+        alamat_rumah lama_bekerja_di_unit_sekarang surat_pernyataan
+        judul_kegiatan status created_at updated_at
+      }
+      
+      # Aggregate untuk statistik detail berdasarkan profesi SDMK
+      sdmk_profesi_aggregate: sdmk_aggregate {
+        aggregate {
+          count
+        }
+      }
+      
+      # Aggregate untuk statistik detail berdasarkan pekerjaan pendaftaran  
+      pendaftaran_pekerjaan_aggregate: pendaftaran_aggregate {
+        aggregate {
+          count
+        }
       }
     }
   `,
@@ -2633,19 +2654,139 @@ function callServer(action, data) {
       switch(action) {
         case 'getDashboardData':
           result = await graphqlRequest('GetDashboardData', GRAPHQL_QUERIES.getDashboardData);
+          
+          // Extract base counts
+          var sdmkData = result.sdmk || [];
+          var pendaftaranData = result.pendaftaran || [];
+          var pengumumanData = result.pengumuman || [];
+          
+          // Calculate detailed statistics from SDMK data
+          var dokterCount = 0, perawatCount = 0, bidanCount = 0, nakesLainCount = 0;
+          sdmkData.forEach(function(s) {
+            var prof = (s.profesi || '').toLowerCase();
+            if (prof.indexOf('dokter') !== -1 || prof.indexOf('dr.') !== -1 || prof.indexOf('dr ') !== -1) {
+              dokterCount++;
+            } else if (prof.indexOf('perawat') !== -1) {
+              perawatCount++;
+            } else if (prof.indexOf('bidan') !== -1) {
+              bidanCount++;
+            } else {
+              nakesLainCount++;
+            }
+          });
+          
+          // Calculate detailed statistics from Pendaftaran data
+          var pnsCount = 0, pppkCount = 0, nonAsnCount = 0;
+          var lakiCount = 0, perempuanCount = 0;
+          pendaftaranData.forEach(function(p) {
+            var pekerjaan = (p.pekerjaan || '').toLowerCase();
+            if (pekerjaan.indexOf('pns') !== -1) {
+              pnsCount++;
+            } else if (pekerjaan.indexOf('pppk') !== -1) {
+              pppkCount++;
+            } else if (p.pekerjaan) {
+              nonAsnCount++;
+            }
+            
+            var jk = (p.jenis_kelamin || '').toLowerCase();
+            if (jk === 'laki-laki' || jk === 'l') {
+              lakiCount++;
+            } else if (jk === 'perempuan' || jk === 'p') {
+              perempuanCount++;
+            }
+          });
+          
+          // Map SDMK data to expected format
+          var mappedSdmk = sdmkData.map(function(s) {
+            return {
+              ID: s.id,
+              Foto: s.foto,
+              'Nama Lengkap dengan Gelar': s.nama,
+              Nama: s.nama,
+              'NIK/NIP': s.nik,
+              NIK: s.nik,
+              Profesi: s.profesi,
+              'Jenis Profesi': s.profesi,
+              'Unit Kerja': s.unit_kerja,
+              Unit_Kerja: s.unit_kerja,
+              Unit: s.unit_kerja,
+              'No. Sertifikat': s.nomor_sertifikat,
+              Nomor_Sertifikat: s.nomor_sertifikat,
+              'Judul Kegiatan': s.judul_kegiatan,
+              'Tgl Pelaksanaan': s.tanggal_pelaksanaan,
+              Tahun: String(s.tahun || ''),
+              Tempat: s.tempat_pelaksanaan,
+              'Status Pelatihan': 'Lulus',
+              Pekerjaan: '-'
+            };
+          });
+          
+          // Map Pendaftaran data to expected format with ALL fields
+          var mappedPendaftaran = pendaftaranData.map(function(p) {
+            return {
+              ID: p.id,
+              Foto: p.foto,
+              'Nama Lengkap dengan Gelar': p.nama_lengkap_dengan_gelar || '-',
+              Nama: p.nama_lengkap_dengan_gelar || '-',
+              NIK: p.nik || '',
+              NIP: p.nip || '',
+              'NIK/NIP': p.nik || p.nip || '',
+              'Unit Kerja': p.unit_kerja || '-',
+              Unit_Kerja: p.unit_kerja || '-',
+              Unit: p.unit_kerja || '-',
+              'Jenis SDMK': p.jenis_sdmk || '-',
+              'Jenis Profesi': p.jenis_profesi || '-',
+              Profesi: p.jenis_profesi || '-',
+              Pekerjaan: p.pekerjaan || '-',
+              'Status Pekerjaan': p.pekerjaan || '-',
+              'Jenis Kelamin': p.jenis_kelamin || '-',
+              'Tempat Lahir': p.tempat_lahir || '-',
+              'Tanggal Lahir': p.tanggal_lahir ? p.tanggal_lahir.split('T')[0] : '-',
+              Jabatan: p.jabatan || '-',
+              'Pendidikan Terakhir': p.pendidikan_terakhir || '-',
+              'No Telepon': p.no_telepon || p.nomor_whatsapp || '-',
+              WhatsApp: p.nomor_whatsapp || '-',
+              Email: p.email_plataran_sehat || '-',
+              Alamat: p.alamat_rumah || '-',
+              'Judul Kegiatan': p.judul_kegiatan || '-',
+              Status: p.status || 'pending',
+              created_at: p.created_at
+            };
+          });
+          
           resolve({
             success: true,
             data: {
-              indikator: result.indikator || [],
+              indikator: (result.indikator || []).map(function(ind) {
+                return {
+                  id: ind.id,
+                  label: ind.indikator,
+                  value: ind.nilai,
+                  target: ind.target,
+                  unit: ind.satuan,
+                  desc: ind.deskripsi,
+                  source: 'Nhost'
+                };
+              }),
               summary: {
                 totalSDMK: result.sdmk_aggregate?.aggregate?.count || 0,
                 totalPendaftar: result.pendaftaran_aggregate?.aggregate?.count || 0,
                 totalSertifikat: result.sertifikat_aggregate?.aggregate?.count || 0,
-                totalPengumuman: result.pengumuman?.length || 0
+                totalPengumuman: pengumumanData.length,
+                // Detailed statistics for stat cards
+                dokter: dokterCount,
+                perawat: perawatCount,
+                bidan: bidanCount,
+                nakesLainnya: nakesLainCount,
+                pns: pnsCount,
+                pppk: pppkCount,
+                nonAsn: nonAsnCount,
+                laki: lakiCount,
+                perempuan: perempuanCount
               },
-              allSdmk: result.sdmk || [],
-              allPendaftaran: result.pendaftaran || [],
-              recentRegistrations: result.pendaftaran || []
+              allSdmk: mappedSdmk,
+              allPendaftaran: mappedPendaftaran,
+              recentRegistrations: mappedPendaftaran.slice(0, 10)
             }
           });
           break;
@@ -3957,21 +4098,39 @@ function openStatPopup(card){
     html+='</tbody></table>';
     if(rows.length>200) html+='<div style="padding:10px 14px;text-align:center;color:var(--text-muted);font-size:.8rem;">Menampilkan 200 dari '+rows.length+' data</div>';
     
-    // Add data source information
+    // Add data source information with timestamp
     var sourceLabel = '';
     var sourceTable = '';
-    if(src==='sdmk'||src==='sdmk-exclude'){sourceLabel='Data SDMK (Tenaga Kesehatan)';sourceTable='Tabel: sdmk';}
-    else if(src==='pendaftaran'||src==='pendaftaran-exclude'){sourceLabel='Data Pendaftaran Pelatihan';sourceTable='Tabel: pendaftaran';}
-    else if(src==='sertifikat'){sourceLabel='Data Sertifikat';sourceTable='Tabel: sertifikat';}
-    else if(src==='pengumuman'){sourceLabel='Data Pengumuman';sourceTable='Tabel: pengumuman';}
-    else{sourceLabel='Data Dashboard';sourceTable='Nhost PostgreSQL';}  // ✅ Updated from "Google Sheet"
+    var sourceDesc = '';
+    if(src==='sdmk'||src==='sdmk-exclude'){
+      sourceLabel='Data SDMK (Tenaga Kesehatan Terlatih)';
+      sourceTable='Tabel: sdmk';
+      sourceDesc='Database tenaga kesehatan yang telah mengikuti pelatihan';
+    }
+    else if(src==='pendaftaran'||src==='pendaftaran-exclude'){
+      sourceLabel='Data Pendaftaran Pelatihan';
+      sourceTable='Tabel: pendaftaran';
+      sourceDesc='Data pendaftar pelatihan SDMK dari Nhost/Hasura';
+    }
+    else if(src==='sertifikat'){sourceLabel='Data Sertifikat';sourceTable='Tabel: sertifikat';sourceDesc='Sertifikat pelatihan yang telah diterbitkan';}
+    else if(src==='pengumuman'){sourceLabel='Data Pengumuman';sourceTable='Tabel: pengumuman';sourceDesc='Pengumuman resmi sistem';}
+    else{sourceLabel='Data Dashboard';sourceTable='Nhost PostgreSQL via Hasura GraphQL';sourceDesc='Data real-time dari database Nhost';}
     
-    html+='<div style="margin-top:14px;padding:12px 14px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;display:flex;align-items:center;gap:10px;">';
-    html+='<i class="fas fa-database" style="color:#0D6EFD;font-size:1rem;"></i>';
-    html+='<div>';
-    html+='<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">Sumber Data</div>';
-    html+='<div style="font-size:0.82rem;color:var(--text-primary);font-weight:600;">'+sourceLabel+' <span style="font-weight:400;color:var(--text-secondary);">('+sourceTable+')</span></div>';
-    html+='</div></div>';
+    var now = new Date();
+    var timeStr = now.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    
+    html+='<div style="margin-top:14px;padding:14px 16px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;">';
+    html+='<div style="display:flex;align-items:flex-start;gap:12px;">';
+    html+='<i class="fas fa-database" style="color:#0D6EFD;font-size:1.2rem;margin-top:2px;"></i>';
+    html+='<div style="flex:1;">';
+    html+='<div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">📊 Sumber Data</div>';
+    html+='<div style="font-size:0.9rem;color:var(--text-primary);font-weight:700;">'+sourceLabel+'</div>';
+    html+='<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px;"><i class="fas fa-table" style="margin-right:4px;"></i>'+sourceTable+'</div>';
+    if(sourceDesc){
+      html+='<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;font-style:italic;">'+sourceDesc+'</div>';
+    }
+    html+='<div style="font-size:0.72rem;color:#059669;margin-top:6px;"><i class="fas fa-sync-alt" style="margin-right:4px;"></i>Diperbarui: '+timeStr+'</div>';
+    html+='</div></div></div>';
     
     body.innerHTML=html;
   }
@@ -4051,11 +4210,31 @@ function showAllInPopup(src){
     html += '<div style="padding:10px 14px;text-align:center;color:var(--text-muted);font-size:0.8rem;">Menampilkan 200 dari ' + data.length + ' data</div>';
   }
   
-  var srcLabel = src.indexOf('sdmk')!==-1 ? 'SDMK' : 'Pendaftaran';
-  html += '<div style="margin-top:14px;padding:12px 14px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;">';
-  html += '<i class="fas fa-database" style="color:#0D6EFD;margin-right:8px;"></i>';
-  html += '<span style="font-size:0.82rem;"><strong>Sumber:</strong> Nhost - Tabel: ' + srcLabel + '</span>';  // ✅ Updated from "Google Sheet - Sheet:"
-  html += '</div>';
+  // Enhanced source info with timestamp
+  var srcLabel = '', srcTable = '', srcDesc = '';
+  if(src.indexOf('sdmk')!==-1){
+    srcLabel='Data SDMK (Tenaga Kesehatan Terlatih)';
+    srcTable='Tabel: sdmk';
+    srcDesc='Database tenaga kesehatan yang telah mengikuti pelatihan';
+  } else {
+    srcLabel='Data Pendaftaran Pelatihan';
+    srcTable='Tabel: pendaftaran';
+    srcDesc='Data pendaftar pelatihan SDMK dari Nhost/Hasura';
+  }
+  
+  var now = new Date();
+  var timeStr = now.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+  
+  html += '<div style="margin-top:14px;padding:14px 16px;background:#F0F9FF;border-left:4px solid #0D6EFD;border-radius:0 8px 8px 0;">';
+  html += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+  html += '<i class="fas fa-database" style="color:#0D6EFD;font-size:1.2rem;margin-top:2px;"></i>';
+  html += '<div style="flex:1;">';
+  html += '<div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">📊 Sumber Data</div>';
+  html += '<div style="font-size:0.9rem;color:var(--text-primary);font-weight:700;">'+srcLabel+'</div>';
+  html += '<div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px;"><i class="fas fa-table" style="margin-right:4px;"></i>'+srcTable+'</div>';
+  html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;font-style:italic;">'+srcDesc+'</div>';
+  html += '<div style="font-size:0.72rem;color:#059669;margin-top:6px;"><i class="fas fa-sync-alt" style="margin-right:4px;"></i>Diperbarui: '+timeStr+'</div>';
+  html += '</div></div></div>';
   
   body.innerHTML = html;
 }
