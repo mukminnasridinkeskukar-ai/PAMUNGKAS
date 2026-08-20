@@ -6489,7 +6489,330 @@ function validateAndPreview(data) {
     }
   });
   
-  console.log('[IMPORT] Validation complete:', {\n    total: data.length,\n    valid: _importState.validCount,\n    error: _importState.errorCount,\n    duplicate: _importState.duplicateCount\n  });\n  \n  showValidationResults(data);\n}\n\n/**\n * showValidationResults() - Tampilkan hasil validasi\n */\nfunction showValidationResults(data) {\n  var validationSection = document.getElementById('validationSection');\n  var statsContainer = document.getElementById('validationStatsContainer');\n  var previewContainer = document.getElementById('previewTableContainer');\n  var actionsContainer = document.getElementById('validationActions');\n  \n  if (!validationSection) return;\n  \n  validationSection.style.display = 'block';\n  \n  statsContainer.innerHTML = '\n    <div class=\"validation-stats\">\n      <div class=\"validation-stat-card total\">\n        <div class=\"stat-number\">' + data.length + '</div>\n        <div class=\"stat-label\">Total Baris</div>\n      </div>\n      <div class=\"validation-stat-card valid\">\n        <div class=\"stat-number\">' + _importState.validCount + '</div>\n        <div class=\"stat-label\">✓ Valid</div>\n      </div>\n      <div class=\"validation-stat-card error\">\n        <div class=\"stat-number\">' + _importState.errorCount + '</div>\n        <div class=\"stat-label\">✗ Error</div>\n      </div>\n      <div class=\"validation-stat-card duplicate\">\n        <div class=\"stat-number\">' + _importState.duplicateCount + '</div>\n        <div class=\"stat-label\">⚠ Duplikat</div>\n      </div>\n    </div>';\n  \n  var previewData = data.slice(0, 100);\n  var tableHtml = '<table><thead><tr>';\n  tableHtml += '<th>No</th>';\n  _importState.expectedHeaders.forEach(function(h) {\n    tableHtml += '<th>' + escHTML(h.replace(/_/g, ' ').toUpperCase()) + '</th>';\n  });\n  tableHtml += '<th>Status</th>';\n  tableHtml += '</tr></thead><tbody>';\n  \n  previewData.forEach(function(row, idx) {\n    var statusClass = 'row-' + row._status;\n    var statusBadge = '';\n    \n    if (row._status === 'valid') {\n      statusBadge = '<span class=\"status-badge valid\"><i class=\"fas fa-check\"></i> VALID</span>';\n    } else if (row._status === 'error') {\n      statusBadge = '<span class=\"status-badge error\"><i class=\"fas fa-times\"></i> ERROR</span>';\n    } else if (row._status === 'duplicate') {\n      statusBadge = '<span class=\"status-badge duplicate\"><i class=\"fas fa-copy\"></i> DUPLIKAT</span>';\n    }\n    \n    tableHtml += '<tr class=\"' + statusClass + '\">';\n    tableHtml += '<td>' + (idx + 1) + '</td>';\n    _importState.expectedHeaders.forEach(function(h) {\n      tableHtml += '<td>' + escHTML(row[h] || '-') + '</td>';\n    });\n    tableHtml += '<td>' + statusBadge + '</td>';\n    tableHtml += '</tr>';\n  });\n  \n  tableHtml += '</tbody></table>';\n  \n  if (data.length > 100) {\n    tableHtml += '<p style=\"text-align:center;color:var(--text-muted);margin-top:12px;\">Menampilkan 100 dari ' + data.length + ' baris...</p>';\n  }\n  \n  previewContainer.innerHTML = tableHtml;\n  \n  actionsContainer.style.display = 'flex';\n  actionsContainer.innerHTML = '\n    <button class=\"btn btn-secondary\" onclick=\"resetImportState()\">\n      <i class=\"fas fa-times\"></i> Batal\n    </button>' +\n    (_importState.validCount > 0 \n      ? '<button class=\"btn btn-primary\" onclick=\"executeBulkImport()\">\n          <i class=\"fas fa-upload\"></i> Import ' + _importState.validCount + ' Data Valid\n        </button>'\n      : ''\n    );\n}\n\n/**\n * executeBulkImport() - Eksekusi import data valid ke database\n */\nfunction executeBulkImport() {\n  if (_importState.isImporting) {\n    showToast('Import sedang berlangsung...', 'warning');\n    return;\n  }\n  \n  if (_importState.validatedData.length === 0) {\n    showToast('Tidak ada data valid untuk di-import!', 'error');\n    return;\n  }\n  \n  console.log('[IMPORT] Starting bulk import of', _importState.validatedData.length, 'records...');\n  \n  _importState.isImporting = true;\n  _importState.importProgress = 0;\n  _importState.importSuccess = 0;\n  _importState.importFailed = 0;\n  \n  var progressSection = document.getElementById('progressSection');\n  var validationSection = document.getElementById('validationSection');\n  \n  if (validationSection) validationSection.style.display = 'none';\n  if (progressSection) progressSection.style.display = 'block';\n  \n  renderImportProgress();\n  \n  var batchSize = 10;\n  var totalRecords = _importState.validatedData.length;\n  var processedRecords = 0;\n  \n  function processBatch() {\n    var batch = _importState.validatedData.slice(processedRecords, processedRecords + batchSize);\n    \n    if (batch.length === 0) {\n      finishImport(totalRecords);\n      return;\n    }\n    \n    callServer('bulkInsertPendaftaran', { data: batch })\n      .then(function(res) {\n        processedRecords += batch.length;\n        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);\n        \n        if (res && res.success) {\n          _importState.importSuccess += batch.length;\n        } else {\n          _importState.importFailed += batch.length;\n          console.warn('[IMPORT] Batch failed:', res ? res.message : 'Unknown error');\n        }\n        \n        renderImportProgress();\n        setTimeout(processBatch, 100);\n      })\n      .catch(function(err) {\n        processedRecords += batch.length;\n        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);\n        _importState.importFailed += batch.length;\n        \n        console.error('[IMPORT] Batch error:', err);\n        renderImportProgress();\n        setTimeout(processBatch, 100);\n      });\n  }\n  \n  processBatch();\n}\n\n/**\n * renderImportProgress() - Render progress bar during import\n */\nfunction renderImportProgress() {\n  var container = document.getElementById('importProgressContainer');\n  if (!container) return;\n  \n  container.innerHTML = '\n    <div class=\"import-progress-header\">\n      <h4><i class=\"fas fa-database\"></i> Import Pendaftaran</h4>\n      <span class=\"progress-percent\">' + _importState.importProgress + '%</span>\n    </div>\n    <div class=\"import-progress-bar\">\n      <div class=\"import-progress-fill\" style=\"width:' + _importState.importProgress + '%\"></div>\n    </div>\n    <div class=\"import-progress-stats\">\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--primary);\">' + (_importState.importSuccess + _importState.importFailed) + '</div>\n        <div class=\"stat-label\">/ ' + _importState.validatedData.length + '</div>\n      </div>\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--secondary);\">' + _importState.importSuccess + '</div>\n        <div class=\"stat-label\">Berhasil</div>\n      </div>\n      <div class=\"import-progress-stat\">\n        <div class=\"stat-value\" style=\"color:var(--danger);\">' + _importState.importFailed + '</div>\n        <div class=\"stat-label\">Gagal</div>\n      </div>\n    </div>';\n}\n\n/**\n * finishImport() - Tampilkan hasil akhir import\n */\nfunction finishImport(totalAttempted) {\n  _importState.isImporting = false;\n  \n  var progressSection = document.getElementById('progressSection');\n  var resultSection = document.getElementById('resultSection');\n  var resultContent = document.getElementById('resultContent');\n  \n  if (progressSection) progressSection.style.display = 'none';\n  if (resultSection) resultSection.style.display = 'block';\n  \n  resultContent.innerHTML = '\n    <div class=\"import-result success\">\n      <div class=\"import-result-icon\">\n        <i class=\"fas fa-check\"></i>\n      </div>\n      <h3>✓ IMPORT SELESAI</h3>\n      <div class=\"import-result-stats\">\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Total data</span>\n          <span class=\"value\">' + totalAttempted + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Berhasil</span>\n          <span class=\"value\" style=\"color:var(--secondary);\">' + _importState.importSuccess + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Gagal</span>\n          <span class=\"value\" style=\"color:var(--danger);\">' + _importState.importFailed + '</span>\n        </div>\n        <div class=\"import-result-stat\">\n          <span class=\"label\">Duplikat</span>\n          <span class=\"value\" style=\"color:var(--accent);\">' + _importState.duplicateCount + '</span>\n        </div>\n      </div>\n      <div class=\"import-result-actions\">\n        <button class=\"btn btn-primary\" onclick=\"backToPendaftaranData()\">\n          <i class=\"fas fa-table\"></i> Lihat Data Pendaftaran\n        </button>\n        <button class=\"btn btn-secondary\" onclick=\"downloadErrorReport()\">\n          <i class=\"fas fa-file-alt\"></i> Download Laporan Error\n        </button>\n        <button class=\"btn btn-secondary\" onclick=\"resetImportState()\">\n          <i class=\"fas fa-redo\"></i> Import Lagi\n        </button>\n      </div>\n    </div>';\n  \n  console.log('[IMPORT] Complete:', {\n    total: totalAttempted,\n    success: _importState.importSuccess,\n    failed: _importState.importFailed,\n    duplicates: _importState.duplicateCount\n  });\n  \n  showToast('Import selesai! ' + _importState.importSuccess + ' data berhasil di-import.', 'success');\n}\n\n/**\n * backToPendaftaranData() - Kembali ke tab Data Pendaftaran dan refresh\n */\nfunction backToPendaftaranData() {\n  console.log('[IMPORT] Switching back to Data Pendaftaran tab...');\n  switchPendaftaranTab('pendaftaran-data');\n  refreshPendaftaranData();\n}\n\n/**\n * downloadErrorReport() - Download laporan error dalam format CSV\n */\nfunction downloadErrorReport() {\n  if (_importState.errors.length === 0 && _importState.duplicates.length === 0) {\n    showToast('Tidak ada error untuk didownload', 'info');\n    return;\n  }\n  \n  var reportData = [];\n  \n  _importState.errors.forEach(function(item) {\n    var row = Object.assign({}, item.data, { _errorType: 'Error', _errorMessage: item.errors.map(function(e) { return e.message; }).join('; ') });\n    reportData.push(row);\n  });\n  \n  _importState.duplicates.forEach(function(item) {\n    var row = Object.assign({}, item.data, { _errorType: 'Duplikat', _errorMessage: item.reason });\n    reportData.push(row);\n  });\n  \n  var headers = _importState.expectedHeaders.concat(['Error_Type', 'Error_Message']);\n  var csvContent = headers.join(',') + '\\n';\n  \n  reportData.forEach(function(row) {\n    var values = headers.map(function(h) {\n      var val = row[h] || '';\n      if (val.includes(',') || val.includes('"')) {\n        return '\"' + val.replace(/\"/g, '\"\"') + '\"';\n      }\n      return val;\n    });\n    csvContent += values.join(',') + '\\n';\n  });\n  \n  var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });\n  var link = document.createElement('a');\n  var url = URL.createObjectURL(blob);\n  link.setAttribute('href', url);\n  link.setAttribute('download', 'laporan_error_import_' + new Date().toISOString().slice(0,10) + '.csv');\n  link.style.visibility = 'hidden';\n  document.body.appendChild(link);\n  link.click();\n  document.body.removeChild(link);\n  \n  showToast('Laporan error berhasil didownload!', 'success');\n}\n\n/**\n * formatFileSize() - Format ukuran file ke readable string\n */\nfunction formatFileSize(bytes) {\n  if (bytes === 0) return '0 Bytes';\n  var k = 1024;\n  var sizes = ['Bytes', 'KB', 'MB', 'GB'];\n  var i = Math.floor(Math.log(bytes) / Math.log(k));\n  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];\n}\n\n/* ========== ADMIN: KELOLA AKUN ADMIN ========== */
+  console.log('[IMPORT] Validation complete:', {
+    total: data.length,
+    valid: _importState.validCount,
+    error: _importState.errorCount,
+    duplicate: _importState.duplicateCount
+  });
+  
+  showValidationResults(data);
+}
+
+/**
+ * showValidationResults() - Tampilkan hasil validasi
+ */
+function showValidationResults(data) {
+  var validationSection = document.getElementById('validationSection');
+  var statsContainer = document.getElementById('validationStatsContainer');
+  var previewContainer = document.getElementById('previewTableContainer');
+  var actionsContainer = document.getElementById('validationActions');
+  
+  if (!validationSection) return;
+  
+  validationSection.style.display = 'block';
+  
+  statsContainer.innerHTML = 
+    '<div class="validation-stats">' +
+      '<div class="validation-stat-card total">' +
+        '<div class="stat-number">' + data.length + '</div>' +
+        '<div class="stat-label">Total Baris</div>' +
+      '</div>' +
+      '<div class="validation-stat-card valid">' +
+        '<div class="stat-number">' + _importState.validCount + '</div>' +
+        '<div class="stat-label">Valid</div>' +
+      '</div>' +
+      '<div class="validation-stat-card error">' +
+        '<div class="stat-number">' + _importState.errorCount + '</div>' +
+        '<div class="stat-label">Error</div>' +
+      '</div>' +
+      '<div class="validation-stat-card duplicate">' +
+        '<div class="stat-number">' + _importState.duplicateCount + '</div>' +
+        '<div class="stat-label">Duplikat</div>' +
+      '</div>' +
+    '</div>';
+  
+  var previewData = data.slice(0, 100);
+  var tableHtml = '<table><thead><tr>';
+  tableHtml += '<th>No</th>';
+  _importState.expectedHeaders.forEach(function(h) {
+    tableHtml += '<th>' + escHTML(h.replace(/_/g, ' ').toUpperCase()) + '</th>';
+  });
+  tableHtml += '<th>Status</th>';
+  tableHtml += '</tr></thead><tbody>';
+  
+  previewData.forEach(function(row, idx) {
+    var statusClass = 'row-' + row._status;
+    var statusBadge = '';
+    
+    if (row._status === 'valid') {
+      statusBadge = '<span class="status-badge valid"><i class="fas fa-check"></i> VALID</span>';
+    } else if (row._status === 'error') {
+      statusBadge = '<span class="status-badge error"><i class="fas fa-times"></i> ERROR</span>';
+    } else if (row._status === 'duplicate') {
+      statusBadge = '<span class="status-badge duplicate"><i class="fas fa-copy"></i> DUPLIKAT</span>';
+    }
+    
+    tableHtml += '<tr class="' + statusClass + '">';
+    tableHtml += '<td>' + (idx + 1) + '</td>';
+    _importState.expectedHeaders.forEach(function(h) {
+      tableHtml += '<td>' + escHTML(row[h] || '-') + '</td>';
+    });
+    tableHtml += '<td>' + statusBadge + '</td>';
+    tableHtml += '</tr>';
+  });
+  
+  tableHtml += '</tbody></table>';
+  
+  if (data.length > 100) {
+    tableHtml += '<p style="text-align:center;color:var(--text-muted);margin-top:12px;">Menampilkan 100 dari ' + data.length + ' baris...</p>';
+  }
+  
+  previewContainer.innerHTML = tableHtml;
+  
+  actionsContainer.style.display = 'flex';
+  actionsContainer.innerHTML = 
+    '<button class="btn btn-secondary" onclick="resetImportState()">' +
+      '<i class="fas fa-times"></i> Batal' +
+    '</button>' +
+    (_importState.validCount > 0 
+      ? '<button class="btn btn-primary" onclick="executeBulkImport()">' +
+          '<i class="fas fa-upload"></i> Import ' + _importState.validCount + ' Data Valid' +
+        '</button>'
+      : ''
+    );
+}
+
+/**
+ * executeBulkImport() - Eksekusi import data valid ke database
+ */
+function executeBulkImport() {
+  if (_importState.isImporting) {
+    showToast('Import sedang berlangsung...', 'warning');
+    return;
+  }
+  
+  if (_importState.validatedData.length === 0) {
+    showToast('Tidak ada data valid untuk di-import!', 'error');
+    return;
+  }
+  
+  console.log('[IMPORT] Starting bulk import of', _importState.validatedData.length, 'records...');
+  
+  _importState.isImporting = true;
+  _importState.importProgress = 0;
+  _importState.importSuccess = 0;
+  _importState.importFailed = 0;
+  
+  var progressSection = document.getElementById('progressSection');
+  var validationSection = document.getElementById('validationSection');
+  
+  if (validationSection) validationSection.style.display = 'none';
+  if (progressSection) progressSection.style.display = 'block';
+  
+  renderImportProgress();
+  
+  var batchSize = 10;
+  var totalRecords = _importState.validatedData.length;
+  var processedRecords = 0;
+  
+  function processBatch() {
+    var batch = _importState.validatedData.slice(processedRecords, processedRecords + batchSize);
+    
+    if (batch.length === 0) {
+      finishImport(totalRecords);
+      return;
+    }
+    
+    callServer('bulkInsertPendaftaran', { data: batch })
+      .then(function(res) {
+        processedRecords += batch.length;
+        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);
+        
+        if (res && res.success) {
+          _importState.importSuccess += batch.length;
+        } else {
+          _importState.importFailed += batch.length;
+          console.warn('[IMPORT] Batch failed:', res ? res.message : 'Unknown error');
+        }
+        
+        renderImportProgress();
+        setTimeout(processBatch, 100);
+      })
+      .catch(function(err) {
+        processedRecords += batch.length;
+        _importState.importProgress = Math.round((processedRecords / totalRecords) * 100);
+        _importState.importFailed += batch.length;
+        
+        console.error('[IMPORT] Batch error:', err);
+        renderImportProgress();
+        setTimeout(processBatch, 100);
+      });
+  }
+  
+  processBatch();
+}
+
+/**
+ * renderImportProgress() - Render progress bar during import
+ */
+function renderImportProgress() {
+  var container = document.getElementById('importProgressContainer');
+  if (!container) return;
+  
+  container.innerHTML = 
+    '<div class="import-progress-header">' +
+      '<h4><i class="fas fa-database"></i> Import Pendaftaran</h4>' +
+      '<span class="progress-percent">' + _importState.importProgress + '%</span>' +
+    '</div>' +
+    '<div class="import-progress-bar">' +
+      '<div class="import-progress-fill" style="width:' + _importState.importProgress + '%"></div>' +
+    '</div>' +
+    '<div class="import-progress-stats">' +
+      '<div class="import-progress-stat">' +
+        '<div class="stat-value" style="color:var(--primary);">' + (_importState.importSuccess + _importState.importFailed) + '</div>' +
+        '<div class="stat-label">/ ' + _importState.validatedData.length + '</div>' +
+      '</div>' +
+      '<div class="import-progress-stat">' +
+        '<div class="stat-value" style="color:var(--secondary);">' + _importState.importSuccess + '</div>' +
+        '<div class="stat-label">Berhasil</div>' +
+      '</div>' +
+      '<div class="import-progress-stat">' +
+        '<div class="stat-value" style="color:var(--danger);">' + _importState.importFailed + '</div>' +
+        '<div class="stat-label">Gagal</div>' +
+      '</div>' +
+    '</div>';
+}
+
+/**
+ * finishImport() - Tampilkan hasil akhir import
+ */
+function finishImport(totalAttempted) {
+  _importState.isImporting = false;
+  
+  var progressSection = document.getElementById('progressSection');
+  var resultSection = document.getElementById('resultSection');
+  var resultContent = document.getElementById('resultContent');
+  
+  if (progressSection) progressSection.style.display = 'none';
+  if (resultSection) resultSection.style.display = 'block';
+  
+  resultContent.innerHTML = 
+    '<div class="import-result success">' +
+      '<div class="import-result-icon">' +
+        '<i class="fas fa-check"></i>' +
+      '</div>' +
+      '<h3>IMPORT SELESAI</h3>' +
+      '<div class="import-result-stats">' +
+        '<div class="import-result-stat">' +
+          '<span class="label">Total data</span>' +
+          '<span class="value">' + totalAttempted + '</span>' +
+        '</div>' +
+        '<div class="import-result-stat">' +
+          '<span class="label">Berhasil</span>' +
+          '<span class="value" style="color:var(--secondary);">' + _importState.importSuccess + '</span>' +
+        '</div>' +
+        '<div class="import-result-stat">' +
+          '<span class="label">Gagal</span>' +
+          '<span class="value" style="color:var(--danger);">' + _importState.importFailed + '</span>' +
+        '</div>' +
+        '<div class="import-result-stat">' +
+          '<span class="label">Duplikat</span>' +
+          '<span class="value" style="color:var(--accent);">' + _importState.duplicateCount + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="import-result-actions">' +
+        '<button class="btn btn-primary" onclick="backToPendaftaranData()">' +
+          '<i class="fas fa-table"></i> Lihat Data Pendaftaran' +
+        '</button>' +
+        '<button class="btn btn-secondary" onclick="downloadErrorReport()">' +
+          '<i class="fas fa-file-alt"></i> Download Laporan Error' +
+        '</button>' +
+        '<button class="btn btn-secondary" onclick="resetImportState()">' +
+          '<i class="fas fa-redo"></i> Import Lagi' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  
+  console.log('[IMPORT] Complete:', {
+    total: totalAttempted,
+    success: _importState.importSuccess,
+    failed: _importState.importFailed,
+    duplicates: _importState.duplicateCount
+  });
+  
+  showToast('Import selesai! ' + _importState.importSuccess + ' data berhasil di-import.', 'success');
+}
+
+/**
+ * backToPendaftaranData() - Kembali ke tab Data Pendaftaran dan refresh
+ */
+function backToPendaftaranData() {
+  console.log('[IMPORT] Switching back to Data Pendaftaran tab...');
+  switchPendaftaranTab('pendaftaran-data');
+  refreshPendaftaranData();
+}
+
+/**
+ * downloadErrorReport() - Download laporan error dalam format CSV
+ */
+function downloadErrorReport() {
+  if (_importState.errors.length === 0 && _importState.duplicates.length === 0) {
+    showToast('Tidak ada error untuk didownload', 'info');
+    return;
+  }
+  
+  var reportData = [];
+  
+  _importState.errors.forEach(function(item) {
+    var row = Object.assign({}, item.data, { _errorType: 'Error', _errorMessage: item.errors.map(function(e) { return e.message; }).join('; ') });
+    reportData.push(row);
+  });
+  
+  _importState.duplicates.forEach(function(item) {
+    var row = Object.assign({}, item.data, { _errorType: 'Duplikat', _errorMessage: item.reason });
+    reportData.push(row);
+  });
+  
+  var headers = _importState.expectedHeaders.concat(['Error_Type', 'Error_Message']);
+  var csvContent = headers.join(',') + '\n';
+  
+  reportData.forEach(function(row) {
+    var values = headers.map(function(h) {
+      var val = row[h] || '';
+      if (val.includes(',') || val.includes('"')) {
+        return '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    });
+    csvContent += values.join(',') + '\n';
+  });
+  
+  var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  var link = document.createElement('a');
+  var url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'laporan_error_import_' + new Date().toISOString().slice(0,10) + '.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast('Laporan error berhasil didownload!', 'success');
+}
+
+/**
+ * formatFileSize() - Format ukuran file ke readable string
+ */
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  var k = 1024;
+  var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/* ========== ADMIN: KELOLA AKUN ADMIN ========== */
 function loadAdminList(){
   showLoading('Memuat...');callServer('getAdmin').then(function(res){hideLoading();
   var ct=document.getElementById('adminCrudTable');
@@ -7109,11 +7432,9 @@ function exportCSV(){
   var data=getExportData();
   if(!data.length){showToast('Tidak ada data untuk diekspor.','error');return;}
   var cols=_crud.visibleCols;
-  var csv=cols.map(function(c){return '"'+c.replace(/"/g,'""')+'"';}).join(',')+'
-';
+  var csv=cols.map(function(c){return '"'+c.replace(/"/g,'""')+'"';}).join(',')+'\n';
   data.forEach(function(r){
-    csv+=cols.map(function(c){return '"'+String(r[c]||'').replace(/"/g,'""')+'"';}).join(',')+'
-';
+    csv+=cols.map(function(c){return '"'+String(r[c]||'').replace(/"/g,'""')+'"';}).join(',')+'\n';
   });
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
@@ -8528,10 +8849,7 @@ function showImportResults(success, failed, errors, total) {
   if (errors.length > 0) {
     document.getElementById('importErrorLog').style.display = 'block';
     document.getElementById('importErrorDetails').textContent = 
-      errors.map((e, i) => `${i+1}. Baris ${e.row}: ${e.error}
-   Data: ${JSON.stringify(e.data).substring(0, 100)}`).join('
-
-');
+      errors.map((e, i) => `${i+1}. Baris ${e.row}: ${e.error}\n   Data: ${JSON.stringify(e.data).substring(0, 100)}`).join('\n');
   } else {
     document.getElementById('importErrorLog').style.display = 'none';
   }
