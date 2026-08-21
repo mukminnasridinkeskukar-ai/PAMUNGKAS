@@ -3545,14 +3545,22 @@ function callServer(action, data) {
           console.log('  - formData.Catatan:', formData.Catatan);
           console.log('  - Final catatanVal:', catatanVal);
           
-          if (catatanVal !== undefined && catatanVal !== null && String(catatanVal).trim()) {
-            pendaftaranUpdate.catatan_admin = String(catatanVal).trim();
+          // ✅ PERBAIKAN: Handle catatan_admin dengan lebih robust
+          // Selalu coba kirim catatan_admin jika ada nilainya (termasuk string kosong untuk clear)
+          var catatanFieldExists = formData.hasOwnProperty('catatan_admin') || 
+                                   formData.hasOwnProperty('Catatan Admin') || 
+                                   formData.hasOwnProperty('Catatan');
+          var catatanStrVal = String(catatanVal || '').trim();
+          
+          if (catatanStrVal) {
+            // Ada nilai → kirim ke database
+            pendaftaranUpdate.catatan_admin = catatanStrVal;
             console.log('[UPDATE] ✅ Catatan Admin ADDED →', pendaftaranUpdate.catatan_admin);
-          } else if (catatanVal === '' && formData.hasOwnProperty('catatan_admin') || formData.hasOwnProperty('Catatan Admin')) {
-            // Jika field ada tapi kosong, tetap kirim (untuk clear catatan)
-            console.log('[UPDATE] ℹ️ Catatan Admin is empty but field exists - will not send empty value');
+          } else if (catatanFieldExists) {
+            // Field ada tapi kosong/hanya whitespace → log info saja (tidak perlu kirim kosong)
+            console.log('[UPDATE] ℹ️ Catatan Admin field exists but empty/whitespace-only');
           } else {
-            console.log('[UPDATE] ⚠️ Catatan Admin NOT FOUND in formData or empty');
+            console.log('[UPDATE] ⚠️ Catatan Admin NOT FOUND in formData');
           }
           
           console.log('[UPDATE] === FINAL RESULT ===');
@@ -6180,7 +6188,7 @@ function editPendaftaran(i){
   document.getElementById('detailModal').querySelector('.modal-footer').innerHTML=
     '<button class="btn btn-secondary" onclick="closeModal(\'detailModal\');loadPendaftaran();">Batal</button>'+
     '<button class="btn btn-warning" onclick="openStatusWorkflowModal('+i+')" title="Buka Workflow Detail"><i class="fas fa-exchange-alt"></i> Workflow</button>'+
-    '<button class="btn btn-primary" onclick="saveEditPendaftaranWithWorkflow('+i+')"><i class="fas fa-save"></i> Simpan</button>';
+    '<button class="btn btn-primary" onclick="saveEditPendaftaran('+i+')"><i class="fas fa-save"></i> Simpan</button>';
   openModal('detailModal');
 }
 function saveEditPendaftaran(i){
