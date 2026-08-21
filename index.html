@@ -4476,26 +4476,36 @@ function escHTML(s){var d=document.createElement('div');d.textContent=s;return d
 function getStatusLabel(s){
   s = String(s || '').trim();
   var map = {
+    // Menunggu
     'pending': 'Menunggu',
     'menunggu': 'Menunggu',
+    // Proses Verifikasi
     'verifikasi': 'Proses Verifikasi',
     'proses verifikasi': 'Proses Verifikasi',
+    'verified': 'Proses Verifikasi',
+    // Perbaikan
     'perbaikan': 'Perbaikan',
     'revisi': 'Perbaikan',
     'perbaikan data': 'Perbaikan',
+    // Disetujui
     'disetujui': 'Disetujui',
     'diterima': 'Disetujui',
     'aktif': 'Disetujui',
+    'approved': 'Disetujui',
+    // Ditolak ✅ TAMBAHAN: Handle 'rejected' dari Hasura
     'ditolak': 'Ditolak',
-    'nonaktif': 'Ditolak'
+    'nonaktif': 'Ditolak',
+    'rejected': 'Ditolak',
+    'declined': 'Ditolak'
   };
   return map[s.toLowerCase()] || s;
 }
 
 function statusClass(s){
   s = String(s || '').toLowerCase().trim();
-  if(s === 'aktif' || s === 'diterima' || s === 'lulus' || s === 'verified' || s === 'disetujui') return 'disetujui';
-  if(s === 'nonaktif' || s === 'ditolak') return 'ditolak';
+  if(s === 'aktif' || s === 'diterima' || s === 'lulus' || s === 'verified' || s === 'disetujui' || s === 'approved') return 'disetujui';
+  // ✅ PERBAIKAN: Tambah 'rejected' dan 'declined'
+  if(s === 'nonaktif' || s === 'ditolak' || s === 'rejected' || s === 'declined') return 'ditolak';
   if(s === 'menunggu' || s === 'pending') return 'menunggu';
   if(s === 'proses verifikasi' || s === 'verifikasi') return 'proses-verifikasi';
   if(s === 'perbaikan' || s === 'revisi' || s === 'perbaikan data') return 'perbaikan';
@@ -9367,7 +9377,17 @@ function renderCekRegResult(ct,r,idx){
   h+='<div class="cek-reg-data">';
   h+='<div class="reg-profile-name">'+escHTML(nama)+'</div>';
   h+='<div class="reg-profile-unit"><i class="fas fa-hospital"></i> '+escHTML(unit)+'</div>';
-  h+='<div class="reg-status-badge '+scClass+'">'+escHTML(statusVal)+'</div>';
+  
+  // ✅ DEBUG: Log status untuk troubleshooting
+  var normalizedStatus = getStatusLabel(statusVal);
+  console.log('[CEK-REG] Status debugging:');
+  console.log('  - Original statusVal:', JSON.stringify(statusVal));
+  console.log('  - Normalized status:', JSON.stringify(normalizedStatus));
+  console.log('  - Is Ditolak/Perbaikan:', normalizedStatus === 'Ditolak' || normalizedStatus === 'Perbaikan');
+  
+  // Gunakan normalizedStatus untuk badge agar konsisten
+  var displayStatus = normalizedStatus !== statusVal ? normalizedStatus : statusVal;
+  h+='<div class="reg-status-badge '+scClass+'">'+escHTML(displayStatus)+'</div>';
 
   h+='<div class="reg-fields" style="margin-top:20px;">';
 
@@ -9432,7 +9452,8 @@ function renderCekRegResult(ct,r,idx){
   h+='</div>'; // end reg-fields
 
   /* ✅ PERBAIKAN: Tombol untuk status "Perbaikan" DAN "Ditolak" */
-  var normalizedStatus = getStatusLabel(statusVal);
+  // normalizedStatus sudah dideklarasikan di atas (line ~9382)
+  console.log('[CEK-REG] Showing button check:', normalizedStatus, '→ Ditolak/Perbaikan?', normalizedStatus === 'Ditolak' || normalizedStatus === 'Perbaikan');
   if(normalizedStatus === 'Perbaikan' || normalizedStatus === 'Ditolak'){
     h+='<div class="cek-reg-actions">';
     if(normalizedStatus === 'Ditolak'){
