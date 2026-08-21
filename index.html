@@ -1255,6 +1255,13 @@
     .pf-field input:focus,.pf-field textarea:focus{border-color:#0D6EFD;box-shadow:0 0 0 3px rgba(13,110,253,.1)}
     .perbaikan-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid #E2E8F0}
     
+    /* ✅ STYLING KHUSUS UNTUK STATUS DITOLAK */
+    .perbaikan-notice{animation:pulse-warning 2s infinite}
+    @keyframes pulse-warning{0%,100%{opacity:1}50%{opacity:.7}}
+    .perbaikan-form-container.rejected-mode{border-color:#FECACA;border-width:2px;box-shadow:0 4px 20px rgba(220,38,38,.1)}
+    .perbaikan-form-container.rejected-mode .pf-field input:focus,
+    .perbaikan-form-container.rejected-mode .pf-field textarea:focus{border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+    
     /* ========== TABLE WORKFLOW ACTIONS ========== */
     .workflow-actions{display:flex;gap:6px;flex-wrap:wrap}
     @media(max-width:768px){.pf-grid{grid-template-columns:1fr}.workflow-modal-box{width:95%;max-height:90vh}.konfirmasi-modal-box{width:95%}}
@@ -9369,11 +9376,20 @@ function renderCekRegResult(ct,r,idx){
 
   h+='</div>'; // end reg-fields
 
-  /* Perbaikan button - HANYA untuk status "Perbaikan" */
+  /* ✅ PERBAIKAN: Tombol untuk status "Perbaikan" DAN "Ditolak" */
   var normalizedStatus = getStatusLabel(statusVal);
-  if(normalizedStatus === 'Perbaikan'){
+  if(normalizedStatus === 'Perbaikan' || normalizedStatus === 'Ditolak'){
     h+='<div class="cek-reg-actions">';
-    h+='<button class="btn btn-warning" onclick="openPerbaikanForm('+idx+')"><i class="fas fa-wrench"></i> Perbaiki Data</button>';
+    if(normalizedStatus === 'Ditolak'){
+      /* Tombol khusus untuk status Ditolak - warna merah/oranye */
+      h+='<div class="perbaikan-notice" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;margin-bottom:14px;text-align:center;">';
+      h+='<i class="fas fa-exclamation-triangle" style="color:#DC2626;margin-right:6px;"></i><span style="color:#991B1B;font-size:.88rem;font-weight:500;">Data Anda <strong>DITOLAK</strong>. Silakan perbaiki data yang belum benar dan kirim ulang.</span>';
+      h+='</div>';
+      h+='<button class="btn btn-danger" onclick="openPerbaikanForm('+idx+',\'rejected\')" style="background:linear-gradient(135deg,#DC2626,#EF4444);border:none;padding:10px 20px;font-size:.92rem;"><i class="fas fa-redo"></i> Perbaiki & Kirim Ulang Data</button>';
+    } else {
+      /* Tombol standar untuk status Perbaikan */
+      h+='<button class="btn btn-warning" onclick="openPerbaikanForm('+idx+',\'perbaikan\')"><i class="fas fa-wrench"></i> Perbaiki Data</button>';
+    }
     h+='</div>';
   }
 
@@ -9667,9 +9683,11 @@ function submitWorkflowStatus(){
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
 }
 
-/* ========== OPEN PERBAIKAN FORM (Only for "Perbaikan" status) ========== */
-function openPerbaikanForm(idx){
+/* ========== OPEN PERBAIKAN FORM (Untuk status "Perbaikan" DAN "Ditolak") ========== */
+function openPerbaikanForm(idx, sourceStatus){
   var r = null;
+  var perbaikanSource = sourceStatus || 'perbaikan'; // default: perbaikan
+  window._perbaikanSource = perbaikanSource; // simpan untuk digunakan saat save
   
   // Prioritas 1: Gunakan _cekRegData jika sudah terisi (dari Cek Pendaftaran)
   if(_cekRegData && Object.keys(_cekRegData).length > 0){
@@ -9684,18 +9702,15 @@ function openPerbaikanForm(idx){
   if(!r || Object.keys(r).length === 0){showToast('Data tidak ditemukan.','error');return;}
   
   var currentStatus = getStatusLabel(r.Status || 'Menunggu');
-  if(currentStatus !== 'Perbaikan'){showToast('Tombol perbaikan hanya tersedia untuk status "Perbaikan".','warning');return;}
+  // ✅ IZINKAN kedua status: Perbaikan DAN Ditolak
+  if(currentStatus !== 'Perbaikan' && currentStatus !== 'Ditolak'){
+    showToast('Tombol perbaikan hanya tersedia untuk status "Perbaikan" atau "Ditolak".','warning');return;
+  }
   
   // Simpan data dan index
   _cekRegData = r;
   _cekRegOrigIdx = idx;
   
-  var wrap = document.getElementById('cekRegResult');
-  if(!wrap) return;
-  var currentStatus = getStatusLabel(r.Status || 'Menunggu');
-  if(currentStatus !== 'Perbaikan'){showToast('Tombol perbaikan hanya tersedia untuk status "Perbaikan".','warning');return;}
-  _cekRegData = r;
-  _cekRegOrigIdx = idx;
   var wrap = document.getElementById('cekRegResult');
   if(!wrap) return;
   var fields = [
@@ -9716,8 +9731,16 @@ function openPerbaikanForm(idx){
     {keys:['Judul Kegiatan','Judul Pelatihan'],label:'Judul Kegiatan',type:'text'}
   ];
   var h = '<div class="perbaikan-form-container" id="perbaikanFormContainer">';
-  h += '<div class="perbaikan-header"><h4><i class="fas fa-wrench"></i> Formulir Perbaikan Data</h4>';
-  h += '<p style="font-size:.82rem;color:var(--text-secondary);margin-top:4px;">Perbaiki data yang salah. Kosongkan field jika tidak ada perubahan.</p></div>';
+  
+  // ✅ Header berbeda untuk Ditolak vs Perbaikan
+  if(perbaikanSource === 'rejected'){
+    h += '<div class="perbaikan-header" style="background:linear-gradient(135deg,#FEF2F2,#FEE2E2);border-left:4px solid #DC2626;padding:16px;border-radius:8px;margin-bottom:20px;">';
+    h += '<h4 style="color:#991B1B;margin:0 0 8px 0;"><i class="fas fa-redo" style="margin-right:8px;"></i>Formulir Perbaikan Data (Ditolak)</h4>';
+    h += '<p style="font-size:.85rem;color:#DC2626;margin:0;font-weight:500;">⚠️ Data Anda <strong>DITOLAK</strong>. Silakan perbaiki data yang belum benar di bawah ini. Semua field sudah terisi dengan data Anda sebelumnya - ubah hanya yang salah.</p></div>';
+  } else {
+    h += '<div class="perbaikan-header"><h4><i class="fas fa-wrench"></i> Formulir Perbaikan Data</h4>';
+    h += '<p style="font-size:.82rem;color:var(--text-secondary);margin-top:4px;">Perbaiki data yang salah. Kosongkan field jika tidak ada perubahan.</p></div>';
+  }
   h += '<div class="pf-grid">';
   fields.forEach(function(f){
     var val = _cekRegV(r,f.keys)||'';
@@ -9729,10 +9752,20 @@ function openPerbaikanForm(idx){
   h += '</div>';
   h += '<div class="perbaikan-actions">';
   h += '<button class="btn btn-secondary" onclick="cancelPerbaikanForm()"><i class="fas fa-times"></i> Batal</button>';
-  h += '<button class="btn btn-primary" onclick="prepareSubmitPerbaikan()"><i class="fas fa-paper-plane"></i> Kirim Perbaikan</button>';
+  // ✅ Tombol berbeda untuk Ditolak vs Perbaikan
+  if(perbaikanSource === 'rejected'){
+    h += '<button class="btn btn-danger" onclick="prepareSubmitPerbaikan()" style="background:linear-gradient(135deg,#DC2626,#EF4444);border:none;padding:12px 24px;font-size:.95rem;font-weight:600;"><i class="fas fa-check-circle"></i> Simpan & Kirim Ulang</button>';
+  } else {
+    h += '<button class="btn btn-primary" onclick="prepareSubmitPerbaikan()"><i class="fas fa-paper-plane"></i> Kirim Perbaikan</button>';
+  }
   h += '</div></div>';
   wrap.innerHTML = h;
   wrap.classList.add('active');
+  // ✅ Tambah class khusus untuk styling Ditolak
+  if(perbaikanSource === 'rejected'){
+    var container = document.getElementById('perbaikanFormContainer');
+    if(container) container.classList.add('rejected-mode');
+  }
   wrap.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -9824,14 +9857,35 @@ function setujuKonfirmasiPerbaikan(){
 /* ========== EXECUTE SAVE PERBAIKAN ========== */
 function executeSavePerbaikan(){
   if(!_cekRegData || _cekRegOrigIdx < 0 || !window._pendingPerbaikanData){showToast('Data tidak valid.','error');return;}
-  var data = {_user:adminUsername||'pendaftaran_perbaikan',Status:'Proses Verifikasi','Tanggal Perbaikan':new Date().toLocaleString('id-ID')};
+  
+  // ✅ Tentukan status berdasarkan sumber perbaikan
+  var isFromRejected = (window._perbaikanSource === 'rejected');
+  var newStatus = isFromRejected ? 'pending' : 'Proses Verifikasi'; // Ditolak → pending, Perbaikan → Proses Verifikasi
+  
+  var data = {
+    _user: adminUsername || 'pendaftaran_perbaikan',
+    Status: newStatus,
+    'Tanggal Perbaikan': new Date().toLocaleString('id-ID')
+  };
+  // Tambah catatan admin jika dari status Ditolak
+  if(isFromRejected){
+    data.catatan_admin = 'Data diperbaikan setelah ditolak (' + new Date().toLocaleString('id-ID') + ')';
+  }
+  
   window._pendingPerbaikanData.forEach(function(d){data[d.fieldKey]=d.newValue;});
-  showLoading('Menyimpan perbaikan...');
+  
+  showLoading(isFromRejected ? 'Mengirim ulang data...' : 'Menyimpan perbaikan...');
   callServer('updatePendaftaran',{idx:_cekRegOrigIdx,data:data}).then(function(res){
     hideLoading();
     window._pendingPerbaikanData = null;
+    window._perbaikanSource = null; // reset
     if(res.success){
-      showToast('Perbaikan data berhasil disimpan! Status kembali ke "Proses Verifikasi".','success');
+      // ✅ Pesan sukses berbeda untuk Ditolak vs Perbaikan
+      if(isFromRejected){
+        showToast('✅ Data berhasil diperbaikan dan dikirim ulang! Status sekarang: "Menunggu Verifikasi".','success');
+      } else {
+        showToast('Perbaikan data berhasil disimpan! Status kembali ke "Proses Verifikasi".','success');
+      }
       cancelPerbaikanForm();
       var q = document.getElementById('cekRegInput');
       if(q) q.value = '';
