@@ -3537,10 +3537,22 @@ function callServer(action, data) {
           }
           
           // ✅ Handle CATATAN_ADMIN - khusus handle untuk memastikan ter-capture (gunakan formData)
-          var catatanVal = formData['Catatan Admin'] || formData.catatan_admin || formData.Catatan || '';
-          if (catatanVal && String(catatanVal).trim()) {
+          // Cek semua kemungkinan key name untuk catatan_admin
+          var catatanVal = formData['Catatan Admin'] || formData.catatan_admin || formData.Catatan || formData['catatan_admin'] || '';
+          console.log('[UPDATE] 🔍 DEBUG catatan_admin sources:');
+          console.log('  - formData["Catatan Admin"]:', formData['Catatan Admin']);
+          console.log('  - formData.catatan_admin:', formData.catatan_admin);
+          console.log('  - formData.Catatan:', formData.Catatan);
+          console.log('  - Final catatanVal:', catatanVal);
+          
+          if (catatanVal !== undefined && catatanVal !== null && String(catatanVal).trim()) {
             pendaftaranUpdate.catatan_admin = String(catatanVal).trim();
-            console.log('[UPDATE] Catatan Admin →', pendaftaranUpdate.catatan_admin);
+            console.log('[UPDATE] ✅ Catatan Admin ADDED →', pendaftaranUpdate.catatan_admin);
+          } else if (catatanVal === '' && formData.hasOwnProperty('catatan_admin') || formData.hasOwnProperty('Catatan Admin')) {
+            // Jika field ada tapi kosong, tetap kirim (untuk clear catatan)
+            console.log('[UPDATE] ℹ️ Catatan Admin is empty but field exists - will not send empty value');
+          } else {
+            console.log('[UPDATE] ⚠️ Catatan Admin NOT FOUND in formData or empty');
           }
           
           console.log('[UPDATE] === FINAL RESULT ===');
@@ -6113,10 +6125,25 @@ function editPendaftaran(i){
   
   // Data Fields
   b+='<div class="detail-grid">';
+  
+  // ✅ Track apakah catatan sudah ditambahkan (untuk avoid duplicate)
+  var catatanAdminAdded = false;
+  
   Object.keys(r).forEach(function(k){
     if(k==='ID') return;
     var v=escHTML(r[k]||'');
     if(k==='Status' || k==='Catatan Status' || k==='Diubah Oleh' || k==='Tanggal Ubah Status' || k==='Tanggal Perbaikan') return;
+    
+    // ✅ Handle catatan_admin secara khusus (textarea dengan styling menonjol)
+    if(k==='catatan_admin' || k==='Catatan Admin'){
+      b+='<div class="detail-item full" style="background:#FFF7ED;border:2px solid #FDBA74;border-radius:8px;padding:12px;margin:10px 0;">';
+      b+='<label style="color:#92400E;font-weight:700;display:block;margin-bottom:6px;"><i class="fas fa-sticky-note" style="margin-right:6px;color:#F59E0B;"></i>Catatan Admin</label>';
+      b+='<textarea id="editReg_catatan_admin" rows="4" style="padding:10px 12px;border:1.5px solid #FDBA74;border-radius:6px;font-family:inherit;font-size:.9rem;width:100%;resize:vertical;background:#FFFBEB;color:#78350F;" placeholder="Tambahkan catatan admin...">'+v+'</textarea>';
+      b+='</div>';
+      catatanAdminAdded = true;
+      return; // Skip processing lanjutan
+    }
+    
     if(k==='Surat Pernyataan' && v && v!=='-'){
       b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><div style="display:flex;gap:8px;align-items:center;"><input type="url" value="'+v+'" id="editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_')+'" style="flex:1;height:38px;padding:0 10px;border:1.5px solid var(--border-color);border-radius:6px;font-family:inherit;font-size:.85rem;" /><a href="'+v+'" target="_blank" class="btn btn-sm btn-primary" style="flex-shrink:0;"><i class="fas fa-external-link-alt"></i></a></div></div>';
     }
@@ -6127,6 +6154,15 @@ function editPendaftaran(i){
       b+='<div class="detail-item"><label>'+escHTML(k.replace(/_/g,' '))+'</label><input type="text" value="'+v+'" id="editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_')+'" style="height:38px;padding:0 10px;border:1.5px solid var(--border-color);border-radius:6px;font-family:inherit;font-size:.85rem;" /></div>';
     }
   });
+  
+  // ✅ Jika catatan_admin belum ditambahkan (tidak ada di r), tambahkan manual
+  if(!catatanAdminAdded){
+    b+='<div class="detail-item full" style="background:#FFF7ED;border:2px solid #FDBA74;border-radius:8px;padding:12px;margin:10px 0;">';
+    b+='<label style="color:#92400E;font-weight:700;display:block;margin-bottom:6px;"><i class="fas fa-sticky-note" style="margin-right:6px;color:#F59E0B;"></i>Catatan Admin</label>';
+    b+='<textarea id="editReg_catatan_admin" rows="4" style="padding:10px 12px;border:1.5px solid #FDBA74;border-radius:6px;font-family:inherit;font-size:.9rem;width:100%;resize:vertical;background:#FFFBEB;color:#78350F;" placeholder="Tambahkan catatan admin..."></textarea>';
+    b+='</div>';
+  }
+  
   b+='</div>';
   
   document.getElementById('detailModalTitle').textContent='Edit Pendaftar: '+(r['Nama Lengkap dengan Gelar']||r.Nama||'');
@@ -6138,7 +6174,20 @@ function editPendaftaran(i){
   openModal('detailModal');
 }
 function saveEditPendaftaran(i){
-  var r=_allPendaftaran[i],data={};Object.keys(r).forEach(function(k){var el=document.getElementById('editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_'));if(el)data[k]=el.value;});
+  var r=_allPendaftaran[i],data={};
+  // Collect all fields from the edit form
+  Object.keys(r).forEach(function(k){var el=document.getElementById('editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_'));if(el)data[k]=el.value;});
+  
+  // ✅ PERBAIKAN KRITIS: Pastikan catatan_admin selalu dikumpulkan (meskipun tidak ada di r)
+  var catatanEl=document.getElementById('editReg_catatan_admin');
+  if(catatanEl){
+    data.catatan_admin=catatanEl.value;
+    console.log('[saveEdit] ✅ catatan_admin collected:', data.catatan_admin);
+  } else {
+    console.log('[saveEdit] ⚠️ catatan_admin element not found');
+  }
+  
+  console.log('[saveEdit] Data keys:', Object.keys(data));
   showLoading('Menyimpan...');callServer('updatePendaftaran',{idx:i,data:data}).then(function(res){hideLoading();closeModal('detailModal');showToast(res.message,res.success?'success':'error');if(res.success)loadPendaftaran();resetDetailFooter();}).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
 }
 function resetDetailFooter(){document.getElementById('detailModal').querySelector('.modal-footer').innerHTML='<button class="btn btn-secondary" onclick="closeModal(\'detailModal\')">Tutup</button>';}
@@ -8857,6 +8906,12 @@ function submitDynForm(e){
   // Collect values from form fields
   var skipCols=['ID','id','Tanggal_Dibuat','Tanggal Dibuat','Diubah_Oleh','Diubah Oleh'];
   var formCols=_crud.headers.filter(function(h){return skipCols.indexOf(h)===-1;});
+  
+  // ✅ PERBAIKAN KRITIS: Force-include catatan_admin saat submit (sama seperti openDynForm)
+  if (sheetType === 'pendaftaran' && formCols.indexOf('catatan_admin') === -1) {
+    formCols.push('catatan_admin');
+    console.log('[SUBMIT] Force-added catatan_admin to formCols for data collection');
+  }
 
   formCols.forEach(function(col){
     var fieldId='dynf_'+col.replace(/[^a-zA-Z0-9]/g,'_');
