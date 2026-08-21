@@ -2876,32 +2876,32 @@ const GRAPHQL_QUERIES = {
 
   // === MUTATIONS ===
   insertPengumuman: `mutation InsertPengumuman($object: pengumuman_insert_input!) { insert_pengumuman_one(object: $object) { id } }`,
-  updatePengumuman: `mutation UpdatePengumuman($id: uuid!, $object: pengumuman_set_input!) { update_pengumuman_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updatePengumuman: `mutation UpdatePengumuman($id: uuid!, $object: pengumuman_set_input!) { update_pengumuman_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deletePengumuman: `mutation DeletePengumuman($id: uuid!) { delete_pengumuman_by_pk(id: $id) { id } }`,
   
   insertSDMK: `mutation InsertSDMK($object: sdmk_insert_input!) { insert_sdmk_one(object: $object) { id } }`,
-  updateSDMK: `mutation UpdateSDMK($id: uuid!, $object: sdmk_set_input!) { update_sdmk_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updateSDMK: `mutation UpdateSDMK($id: uuid!, $object: sdmk_set_input!) { update_sdmk_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deleteSDMK: `mutation DeleteSDMK($id: uuid!) { delete_sdmk_by_pk(id: $id) { id } }`,
   
   insertPendaftaran: `mutation InsertPendaftaran($object: pendaftaran_insert_input!) { insert_pendaftaran_one(object: $object) { id } }`,
-  updatePendaftaran: `mutation UpdatePendaftaran($id: uuid!, $object: pendaftaran_set_input!) { update_pendaftaran_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updatePendaftaran: `mutation UpdatePendaftaran($id: uuid!, $object: pendaftaran_set_input!) { update_pendaftaran_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deletePendaftaran: `mutation DeletePendaftaran($id: uuid!) { delete_pendaftaran_by_pk(id: $id) { id } }`,
   
   insertSertifikat: `mutation InsertSertifikat($object: sertifikat_insert_input!) { insert_sertifikat_one(object: $object) { id } }`,
-  updateSertifikat: `mutation UpdateSertifikat($id: uuid!, $object: sertifikat_set_input!) { update_sertifikat_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updateSertifikat: `mutation UpdateSertifikat($id: uuid!, $object: sertifikat_set_input!) { update_sertifikat_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deleteSertifikat: `mutation DeleteSertifikat($id: uuid!) { delete_sertifikat_by_pk(id: $id) { id } }`,
   
   insertMateri: `mutation InsertMateri($object: materi_insert_input!) { insert_materi_one(object: $object) { id } }`,
-  updateMateri: `mutation UpdateMateri($id: uuid!, $object: materi_set_input!) { update_materi_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updateMateri: `mutation UpdateMateri($id: uuid!, $object: materi_set_input!) { update_materi_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deleteMateri: `mutation DeleteMateri($id: uuid!) { delete_materi_by_pk(id: $id) { id } }`,
   
   insertMultiuser: `mutation InsertMultiuser($object: multiusers_insert_input!) { insert_multiusers_one(object: $object) { id } }`,
-  updateMultiuser: `mutation UpdateMultiuser($id: uuid!, $object: multiusers_set_input!) { update_multiusers_by_pk(pk_columns: {id: $id}, _set: object) { id } }`,
+  updateMultiuser: `mutation UpdateMultiuser($id: uuid!, $object: multiusers_set_input!) { update_multiusers_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deleteMultiuser: `mutation DeleteMultiuser($id: uuid!) { delete_multiusers_by_pk(id: $id) { id } }`,
   
   // === INDIKATOR MUTATIONS (Previously Missing!) ===
   insertIndikator: `mutation InsertIndikator($object: indikator_insert_input!) { insert_indikator_one(object: $object) { id indikator nilai target satuan } }`,
-  updateIndikator: `mutation UpdateIndikator($id: uuid!, $object: indikator_set_input!) { update_indikator_by_pk(pk_columns: {id: $id}, _set: object) { id indikator nilai target satuan } }`,
+  updateIndikator: `mutation UpdateIndikator($id: uuid!, $object: indikator_set_input!) { update_indikator_by_pk(pk_columns: {id: $id}, _set: $object) { id indikator nilai target satuan } }`,
   deleteIndikator: `mutation DeleteIndikator($id: uuid!) { delete_indikator_by_pk(id: $id) { id } }`,
   
   // Special query for authentication (returns password field)
