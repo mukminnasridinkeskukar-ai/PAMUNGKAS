@@ -2943,13 +2943,22 @@ async function graphqlRequest(operationName, query, variables = {}) {
       var val = variables[key];
       var type = typeof val;
       console.log(`[GQL] Var "${key}":`, type, '=', 
-        type === 'object' ? JSON.stringify(val).substring(0, 100) : 
+        type === 'object' ? JSON.stringify(val).substring(0, 150) : 
         type === 'string' ? `"${val}"`.substring(0, 50) : val);
       
-      // ⚠️ DETEKSI: Jika value adalah object (bukan scalar), ini bisa menyebabkan error!
+      // ✅ PERBAIKAN: Variable $object MEMANG harus bertipe object (input type)
+      // Jangan anggap sebagai error! Hanya log untuk debugging
       if (type === 'object' && val !== null && !Array.isArray(val)) {
-        console.error(`[GQL] ❌ ERROR DETECTED: Variable "${key}" is OBJECT, not scalar!`);
-        console.error('[GQL] This will cause "unexpected variables" error from Hasura!');
+        console.log(`[GQL] ℹ️ Variable "${key}" is object (this is OK for input types)`);
+        // Cek apakah ada nilai undefined/null DI DALAM object
+        if (val) {
+          Object.keys(val).forEach(function(innerKey) {
+            var innerVal = val[innerKey];
+            if (innerVal === undefined) {
+              console.warn(`[GQL] ⚠️ Inner field "${innerKey}" is UNDEFINED!`);
+            }
+          });
+        }
       }
     });
   }
@@ -3543,12 +3552,11 @@ function callServer(action, data) {
                 console.log('[UPDATE] ⚠️ SANITIZE: Removing empty string for', key);
                 return;
               }
-              // ✅ KRITIS: Cek apakah value adalah object (bukan scalar)
-              // Hasura TIDAK menerima object/array untuk field scalar!
+              // ✅ Cek apakah value adalah object (bukan scalar) - SKIP jika iya
+              // Dalam pendaftaran_update, semua values harus scalar (string/number/boolean)
               if (typeof val === 'object' && !Array.isArray(val)) {
-                console.error('[UPDATE] ❌ SANITIZE ERROR: Value for "' + key + '" is OBJECT, not scalar!');
-                console.error('[UPDATE] This will cause "unexpected variables" error!');
-                return; // Skip this field
+                console.warn('[UPDATE] ⚠️ Skipping object value for:', key, '(values must be scalar)');
+                return; 
               }
               sanitizedUpdate[key] = val;
               console.log('[UPDATE] ✅ SANITIZED:', key, '=', typeof val, 
@@ -3559,7 +3567,7 @@ function callServer(action, data) {
           });
           
           console.log('[UPDATE] === SANITIZED OBJECT ===');
-          console.log('[UPDATE] Sanitized update:', sanitizedUpdate);
+          console.log('[UPDATE] Sanitized update:', JSON.stringify(sanitizedUpdate, null, 2));
           console.log('[UPDATE] Sanitized keys:', Object.keys(sanitizedUpdate));
           
           // ✅ VALIDASI: Pastikan object tidak kosong setelah sanitasi
