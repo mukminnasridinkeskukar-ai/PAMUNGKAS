@@ -6865,7 +6865,7 @@ function renderMateriCards(data){
   data.forEach(function(r, i) {
     var judul = _getSertField(r, ['Judul Materi', 'Judul_Materi', 'judul_materi', 'Judul']);
     var kategori = _getSertField(r, ['Kategori', 'kategori']);
-    var link = _getSertField(r, ['Link/File', 'Link', 'link_download', 'link', 'Link_File']);
+    var link = _getSertField(r, ['Link Download', 'link_download', 'Link/File', 'Link', 'link', 'Link_File']);
     var deskripsi = _getSertField(r, ['Deskripsi', 'deskripsi', 'Description']) || 'Tidak ada deskripsi.';
     
     // Get color for this card (cycle through colors)
@@ -6919,7 +6919,7 @@ function openMateriDetail(idx) {
   var r = _allMateri[idx];
   var judul = _getSertField(r, ['Judul Materi', 'Judul_Materi', 'judul_materi', 'Judul']);
   var kategori = _getSertField(r, ['Kategori', 'kategori']);
-  var link = _getSertField(r, ['Link/File', 'Link', 'link_download', 'link', 'Link_File']);
+  var link = _getSertField(r, ['Link Download', 'link_download', 'Link/File', 'Link', 'link', 'Link_File']);
   var deskripsi = _getSertField(r, ['Deskripsi', 'deskripsi', 'Description']) || 'Tidak ada deskripsi.';
   
   // Color palette matching the card colors
@@ -7051,7 +7051,7 @@ function filterCekMateri(){
   });
   renderMateriCards(f);
 }
-function openMateriForm(idx){document.getElementById('materiEditIndex').value=idx!==undefined?idx:-1;document.getElementById('materiFormTitle').textContent=idx!==undefined?'Edit Materi':'Tambah Materi';if(idx!==undefined){var r=_allMateri[idx];document.getElementById('matJudul').value=r.Judul_Materi||r.Judul||'';document.getElementById('matKategori').value=r.Kategori||'';document.getElementById('matLink').value=r['Link/File']||r.Link||r.Link_File||'';}else{document.getElementById('materiForm').reset();}openModal('materiFormModal');}
+function openMateriForm(idx){document.getElementById('materiEditIndex').value=idx!==undefined?idx:-1;document.getElementById('materiFormTitle').textContent=idx!==undefined?'Edit Materi':'Tambah Materi';if(idx!==undefined){var r=_allMateri[idx];document.getElementById('matJudul').value=r.Judul_Materi||r.Judul||'';document.getElementById('matKategori').value=r.Kategori||'';document.getElementById('matLink').value=r['Link Download']||r.link_download||r['Link/File']||r.Link||r.Link_File||'';}else{document.getElementById('materiForm').reset();}openModal('materiFormModal');}
 function editMateri(i){openMateriForm(i);}
 function submitMateri(e){e.preventDefault();var idx=parseInt(document.getElementById('materiEditIndex').value);var data={'Judul Materi':document.getElementById('matJudul').value,Kategori:document.getElementById('matKategori').value,'Link/File':document.getElementById('matLink').value};
   showLoading('Menyimpan...');
