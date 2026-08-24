@@ -3431,9 +3431,10 @@ const GRAPHQL_QUERIES = {
   cekPendaftaran: `
     query CekPendaftaran($nik: String!) {
       pendaftaran(where: {nik: {_eq: $nik}}) {
-        id nama_lengkap_dengan_gelar nik nip unit_kerja jenis_profesi
-        email_plataran_sehat judul_kegiatan status created_at
-        catatan_admin
+        id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
+        pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
+        lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
+        judul_kegiatan status created_at updated_at catatan_admin
       }
     }
   `,
@@ -3746,9 +3747,12 @@ function callServer(action, data) {
             NIK: p.nik, NIP: p.nip, 'Unit Kerja': p.unit_kerja, 'Jenis SDMK': p.jenis_sdmk,
             'Jenis Profesi': p.jenis_profesi, Pekerjaan: p.pekerjaan, 'Jenis Kelamin': p.jenis_kelamin,
             'Tempat dan Tanggal Lahir': p.tempat_dan_tanggal_lahir, Email: p.email_plataran_sehat,
-            'Lama Bekerja': p.lama_bekerja_di_unit_sekarang, WhatsApp: p.nomor_whatsapp,
+            'Lama Bekerja di Unit Sekarang': p.lama_bekerja_di_unit_sekarang, WhatsApp: p.nomor_whatsapp,
             'Alamat Rumah': p.alamat_rumah, 'Surat Pernyataan': p.surat_pernyataan,
-            'Judul Kegiatan': p.judul_kegiatan, Status: p.status
+            'Judul Kegiatan': p.judul_kegiatan, Status: p.status,
+            'Tanggal Pendaftaran': p.created_at ? p.created_at.split('T')[0] : '',
+            'Tanggal Update': p.updated_at ? p.updated_at.split('T')[0] : '',
+            'Catatan Admin': p.catatan_admin || ''
           })) });
           break;
 
@@ -3771,6 +3775,40 @@ function callServer(action, data) {
             ID: m.id, 'Judul Materi': m.judul_materi, Kategori: m.kategori,
             'Link Download': m.link_download, Deskripsi: m.deskripsi
           })) });
+          break;
+
+        case 'cekPendaftaran':
+          // Query berdasarkan NIK untuk Cek Pendaftaran
+          var cekNik = data.nik || data.NIK || data.nik || '';
+          if (!cekNik) { reject(new Error('NIK diperlukan untuk pencarian pendaftaran')); return; }
+          
+          result = await graphqlRequest('CekPendaftaran', GRAPHQL_QUERIES.cekPendaftaran, { nik: cekNik });
+          resolve({ 
+            success: true, 
+            data: (result.pendaftaran || []).map(p => ({
+              ID: p.id,
+              Foto: p.foto,
+              'Nama Lengkap dengan Gelar': p.nama_lengkap_dengan_gelar,
+              NIK: p.nik,
+              NIP: p.nip,
+              'Unit Kerja': p.unit_kerja,
+              'Jenis SDMK': p.jenis_sdmk,
+              'Jenis Profesi': p.jenis_profesi,
+              'Status Pekerjaan': p.pekerjaan,
+              'Jenis Kelamin': p.jenis_kelamin,
+              'Tempat dan Tanggal Lahir': p.tempat_dan_tanggal_lahir,
+              'Email Plataran Sehat': p.email_plataran_sehat,
+              'Lama Bekerja di Unit Sekarang': p.lama_bekerja_di_unit_sekarang,
+              'No. WhatsApp / Telepon': p.nomor_whatsapp,
+              'Alamat Rumah': p.alamat_rumah,
+              'Surat Pernyataan': p.surat_pernyataan,
+              'Judul Kegiatan': p.judul_kegiatan,
+              Status: p.status,
+              'Tanggal Pendaftaran': p.created_at ? p.created_at.split('T')[0] : '',
+              'Tanggal Update': p.updated_at ? p.updated_at.split('T')[0] : '',
+              'Catatan Admin': p.catatan_admin || ''
+            }))
+          });
           break;
 
         case 'getAdmin':
@@ -9896,31 +9934,27 @@ function searchCekPendaftaran(){
   ct.innerHTML='<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary);"></i><p style="margin-top:10px;color:var(--text-muted);">Mencari data...</p></div>';
   ct.classList.add('active');
 
-  callServer('getPendaftaran').then(function(res){
+  // ✅ PERBAIKAN: Gunakan query cekPendaftaran yang lebih lengkap
+  callServer('cekPendaftaran', { nik: q }).then(function(res){
     if(!res||!res.success){
       ct.innerHTML='<div class="cek-reg-notfound"><i class="fas fa-exclamation-triangle"></i><p>'+(res?res.message:'Gagal memuat data')+'</p></div>';return;
     }
     var all=res.data||[];
-    var ql=q.toLowerCase();
-    var found=[];
-    for(var i=0;i<all.length;i++){
-      var r=all[i];
-      var nik=String(r['NIK']||r['NIK/NIP']||r.NIK_NIP||r['NIK (Nomor Induk Kependudukan)']||'').trim().toLowerCase();
-      var nip=String(r['NIP']||r['NIK/NIP']||r.NIK_NIP||r['NIP (Nomor Induk Pegawai)']||'').trim().toLowerCase();
-      if(nik===ql||nip===ql||nik.indexOf(ql)!==-1||nip.indexOf(ql)!==-1){
-        found.push({data:r,idx:i});
-      }
-    }
-    if(!found.length){
+    
+    // Data sudah difilter by NIK dari server, jadi langsung tampilkan
+    if(!all.length){
       ct.innerHTML='<div class="cek-reg-notfound"><i class="fas fa-user-slash"></i><p>Data pendaftaran dengan NIK/NIP <strong>'+escHTML(q)+'</strong> tidak ditemukan.</p></div>';return;
     }
-    _cekRegMultiData=found;
-    if(found.length===1){
-      _cekRegData=found[0].data;
-      _cekRegOrigIdx=found[0].idx;
-      renderCekRegResult(ct,_cekRegData,_cekRegOrigIdx);
-    }else{
-      renderCekRegMultiResult(ct,found,q);
+    
+    // Jika hanya ada 1 hasil, tampilkan langsung
+    if(all.length === 1) {
+      _cekRegData = all[0];
+      _cekRegOrigIdx = 0;
+      renderCekRegResult(ct, _cekRegData, _cekRegOrigIdx);
+    } else {
+      // Multiple results (seseorang bisa mendaftar beberapa kegiatan)
+      _cekRegMultiData = all.map(function(data, idx) { return {data: data, idx: idx}; });
+      renderCekRegMultiResult(ct, _cekRegMultiData, q);
     }
   }).catch(function(e){
     ct.innerHTML='<div class="cek-reg-notfound"><i class="fas fa-wifi"></i><p>Error: '+(e.message||e)+'</p></div>';
