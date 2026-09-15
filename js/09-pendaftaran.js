@@ -28,25 +28,115 @@ function _driveToThumb(url){
   if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';
   return null;
 }
-function previewRegFoto(){
-  var url=document.getElementById('regFoto').value.trim();
-  var box=document.getElementById('regFotoPreview');
-  if(!url){box.classList.remove('has-image');box.innerHTML='<i class="fas fa-camera"></i><span>Preview Foto</span>';return;}
-  var thumb=_driveToThumb(url);
-  if(thumb){
-    box.innerHTML='<img src="'+thumb+'" alt="Preview" onerror="this.parentElement.classList.remove(\'has-image\');this.parentElement.innerHTML=\'<i class=\\\'fas fa-camera\\\'></i><span>Gagal memuat</span>\';" />';
-    box.classList.add('has-image');
-  } else {
-    box.classList.remove('has-image');box.innerHTML='<i class="fas fa-exclamation-triangle" style="color:var(--danger);"></i><span style="color:var(--danger);">Link tidak valid</span>';
+/* ========== NHOST STORAGE (Upload File & Akses Terproteksi) ========== */
+var _authFileCache = {}; // url storage -> objectURL (hindari fetch berulang)
+function _isStorageUrl(url){ return typeof url === 'string' && url.indexOf('/v1/files/') !== -1; }
+/** Upload file ke Nhost Storage → Promise<{url,name,size,mimeType}> */
+function uploadPamungkasFile(file){
+  return new Promise(function(resolve,reject){
+    if(!file){reject(new Error('File tidak ada'));return;}
+    var fd=new FormData();
+    fd.append('file[]',file,file.name);
+    fetch(NHOST_CONFIG.storageUrl+'/v1/files',{
+      method:'POST',
+      headers:{'x-hasura-admin-secret':NHOST_CONFIG.adminSecret},
+      body:fd
+    }).then(function(r){
+      return r.json().then(function(j){return {ok:r.ok,body:j};});
+    }).then(function(res){
+      if(!res.ok || !res.body || !res.body.processedFiles || !res.body.processedFiles.length){
+        var msg=(res.body && res.body.error && (res.body.error.message||res.body.error)) || 'Upload ke penyimpanan gagal';
+        reject(new Error(typeof msg==='string'?msg:JSON.stringify(msg)));
+        return;
+      }
+      var f=res.body.processedFiles[0];
+      resolve({url:NHOST_CONFIG.storageUrl+'/v1/files/'+f.id, name:f.name, size:f.size, mimeType:f.mimeType});
+    }).catch(function(e){reject(e);});
+  });
+}
+/** Fetch file storage yang terproteksi admin-secret → blob objectURL (cache). Link eksternal (Drive dll) dibalikkan apa adanya. */
+function fetchAuthFileBlobUrl(url){
+  if(!url)return Promise.reject(new Error('URL kosong'));
+  if(_authFileCache[url])return Promise.resolve(_authFileCache[url]);
+  if(!_isStorageUrl(url))return Promise.resolve(url);
+  return fetch(url,{headers:{'x-hasura-admin-secret':NHOST_CONFIG.adminSecret}})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+    .then(function(b){var u=URL.createObjectURL(b);_authFileCache[url]=u;return u;});
+}
+/** Buka file: link eksternal langsung; file storage via fetch auth → tab baru */
+function openAuthFile(url){
+  if(!url||url==='-'){showToast('Link file tidak tersedia.','error');return;}
+  if(!_isStorageUrl(url)){window.open(url,'_blank');return;}
+  showLoading('Membuka file...');
+  fetchAuthFileBlobUrl(url).then(function(u){hideLoading();window.open(u,'_blank');})
+    .catch(function(e){hideLoading();showToast('Gagal membuka file: '+(e.message||e),'error');});
+}
+/** Thumbnail foto untuk tabel (fetch auth utk file storage, Drive thumb utk link lama) */
+function _authImgTag(url){
+  if(!url||url==='-')return '<span style="color:var(--text-muted);font-size:.75rem;">-</span>';
+  if(!_isStorageUrl(url)){
+    var t=_driveToThumb(url);
+    if(t)return '<img src="'+escHTML(t)+'" class="reg-table-thumb" onerror="this.replaceWith(document.createTextNode(\'-\'))"/>';
+    return '<span style="color:var(--text-muted);font-size:.75rem;">Link</span>';
   }
+  var pid='authimg_'+Math.random().toString(36).slice(2,10);
+  var img='<img id="'+pid+'" src="data:image/gif;base64,R0lGODlhAQABAIAAAP7//wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" class="reg-table-thumb" alt="foto" style="background:#e2e8f0;"/>';
+  setTimeout(function(){
+    fetchAuthFileBlobUrl(url).then(function(u){var im=document.getElementById(pid);if(im)im.src=u;})
+      .catch(function(){var im=document.getElementById(pid);if(im)im.replaceWith(document.createTextNode('-'));});
+  },0);
+  return img;
+}
+
+function previewRegFoto(){
+  var input=document.getElementById('regFoto');
+  var box=document.getElementById('regFotoPreview');
+  if(!input||!box)return;
+  var f=input.files&&input.files[0];
+  if(!f){box.classList.remove('has-image');box.innerHTML='<i class="fas fa-camera"></i><span>Preview Foto</span>';return;}
+  if(!/^image\//.test(f.type)){box.classList.remove('has-image');box.innerHTML='<i class="fas fa-exclamation-triangle" style="color:var(--danger);"></i><span style="color:var(--danger);">File bukan gambar</span>';return;}
+  var reader=new FileReader();
+  reader.onload=function(e){box.innerHTML='<img src="'+e.target.result+'" alt="Preview Foto"/>';box.classList.add('has-image');};
+  reader.onerror=function(){box.classList.remove('has-image');box.innerHTML='<i class="fas fa-exclamation-triangle" style="color:var(--danger);"></i><span style="color:var(--danger);">Gagal membaca file</span>';};
+  reader.readAsDataURL(f);
+}
+function showSuratFileName(){
+  var input=document.getElementById('regSuratPernyataan');
+  var lbl=document.getElementById('regSuratFileName');
+  if(!input||!lbl)return;
+  var f=input.files&&input.files[0];
+  lbl.innerHTML=f?'<i class="fas fa-file-arrow-up" style="margin-right:4px;"></i>'+escHTML(f.name)+' ('+(f.size/1024).toFixed(0)+' KB)':'';
 }
 function loadPendaftaran(){
   _initRegInfoBar();
+  _loadJudulKegiatanOptions();
   showLoading('Memuat data pendaftaran...');
   callServer('getPendaftaran').then(function(res){
     hideLoading();if(!res||!res.success){showToast(res?res.message:'Gagal memuat pendaftaran','error');return;}
     _allPendaftaran=res.data||[];renderPendaftaranTable(_allPendaftaran);
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
+}
+/** Isi dropdown Judul Kegiatan dari kolom judul tabel pengumuman (Hasura) */
+function _loadJudulKegiatanOptions(){
+  var sel=document.getElementById('regJudulKegiatan');
+  if(!sel)return;
+  callServer('getPengumuman').then(function(res){
+    if(!res||!res.success||!res.data)return;
+    var juduls=[],seen={};
+    (res.data||[]).forEach(function(p){
+      var j=String(p.Judul||p.judul||'').trim();
+      if(j && !seen[j.toLowerCase()]){seen[j.toLowerCase()]=1;juduls.push(j);}
+    });
+    var current=sel.value;
+    if(!juduls.length){
+      sel.innerHTML='<option value="">-- Belum ada kegiatan dibuka --</option>';
+      return;
+    }
+    var h='<option value="">-- Pilih Judul Kegiatan --</option>';
+    juduls.forEach(function(j){h+='<option value="'+escHTML(j)+'">'+escHTML(j)+'</option>';});
+    sel.innerHTML=h;
+    if(current && seen[current.toLowerCase()])sel.value=current; // pertahankan pilihan bila masih ada
+  }).catch(function(e){console.warn('[PENDAFTARAN] Gagal memuat opsi judul kegiatan:',e);});
 }
 function renderPendaftaranTable(data){
   var tb=document.getElementById('pendaftaranTableBody'),hd=document.getElementById('pendaftaranTableHead'),em=document.getElementById('pendaftaranEmpty');
@@ -68,6 +158,16 @@ function renderPendaftaranTable(data){
     keys.forEach(function(k){
       if(k!=='ID'){
         var v=r[k]||'-';
+        if(k==='Foto'){tr.innerHTML+='<td>'+_authImgTag(v)+'</td>';return;}
+        if(k==='Surat Pernyataan'||k==='Link Google Drive SPJ'){
+          if(v&&v!=='-'){
+            var urlAttr=String(v).replace(/'/g,'%27');
+            tr.innerHTML+='<td><button class="btn btn-sm btn-secondary" onclick="openAuthFile(\''+urlAttr+'\')" title="Buka file"><i class="fas fa-external-link-alt"></i> Buka</button></td>';
+          } else {
+            tr.innerHTML+='<td>-</td>';
+          }
+          return;
+        }
         if(k.toLowerCase().indexOf('status')!==-1 || k==='Status'){
           var statusLabel=getStatusLabel(v);
           v='<span class="status-badge '+statusClass(v)+'">'+escHTML(statusLabel)+'</span>';
@@ -335,7 +435,7 @@ function generateBuktiPendaftaran(regID, data){
 function submitPendaftaran(e){e.preventDefault();
   /* ===== VALIDASI SEMUA FIELD WAJIB DIISI ===== */
   var requiredFields=[
-    {id:'regFoto',label:'Foto'},
+    {id:'regFoto',label:'Foto',type:'file'},
     {id:'regNama',label:'Nama Lengkap dengan Gelar'},
     {id:'regUnitKerja',label:'Unit Kerja'},
     {id:'regJenisSDMK',label:'Jenis SDMK'},
@@ -349,7 +449,8 @@ function submitPendaftaran(e){e.preventDefault();
     {id:'regLamaBekerja',label:'Lama Bekerja'},
     {id:'regKontak',label:'Nomor WhatsApp / Telepon'},
     {id:'regAlamat',label:'Alamat Rumah'},
-    {id:'regSuratPernyataan',label:'Surat Pernyataan'},
+    {id:'regSuratPernyataan',label:'Surat Pernyataan',type:'file'},
+    {id:'regLinkSPJ',label:'Link Google Drive SPJ'},
     {id:'regJudulKegiatan',label:'Judul Kegiatan'},
     {id:'regTanggal',label:'Tanggal'}
   ];
@@ -357,48 +458,72 @@ function submitPendaftaran(e){e.preventDefault();
     var rf=requiredFields[i];
     var el=document.getElementById(rf.id);
     if(!el){showToast('Field '+rf.label+' tidak ditemukan.','error');return;}
-    var v=(el.value||'').trim();
-    if(!v){showToast(rf.label+' wajib diisi!','error');el.focus();el.style.borderColor='var(--danger)';setTimeout((function(e){return function(){e.style.borderColor='';};})(el),3000);return;}
+    if(rf.type==='file'){
+      if(!el.files||!el.files.length){showToast(rf.label+' wajib dipilih (upload file)!','error');el.focus();el.style.borderColor='var(--danger)';setTimeout((function(e2){return function(){e2.style.borderColor='';};})(el),3000);return;}
+    } else {
+      var v=(el.value||'').trim();
+      if(!v){showToast(rf.label+' wajib diisi!','error');el.focus();el.style.borderColor='var(--danger)';setTimeout((function(e2){return function(){e2.style.borderColor='';};})(el),3000);return;}
+    }
   }
+  /* ===== VALIDASI FILE ===== */
+  var fotoFile=document.getElementById('regFoto').files[0];
+  var suratFile=document.getElementById('regSuratPernyataan').files[0];
+  if(!/^image\//.test(fotoFile.type)){showToast('Foto harus berupa file gambar (JPG/PNG/WEBP).','error');return;}
+  if(fotoFile.size>2*1024*1024){showToast('Ukuran foto maksimal 2 MB.','error');return;}
+  var suratOk=/^(image\/|application\/pdf$)/.test(suratFile.type)||/\.pdf$/i.test(suratFile.name);
+  if(!suratOk){showToast('Surat Pernyataan harus file PDF atau gambar (JPG/PNG).','error');return;}
+  if(suratFile.size>5*1024*1024){showToast('Ukuran Surat Pernyataan maksimal 5 MB.','error');return;}
   /* ===== AMBIL SEMUA DATA ===== */
   var regID=document.getElementById('regAutoID').textContent;
   var regDateTime=document.getElementById('regAutoDateTime').textContent;
-  var data={
-    'ID Pendaftaran':regID,
-    'Tanggal & Jam Daftar':regDateTime,
-    'Foto':document.getElementById('regFoto').value.trim(),
-    'Nama Lengkap dengan Gelar':document.getElementById('regNama').value.trim(),
-    'Unit Kerja':document.getElementById('regUnitKerja').value.trim(),
-    'Jenis SDMK':document.getElementById('regJenisSDMK').value.trim(),
-    'Jenis Profesi':document.getElementById('regJenisProfesi').value.trim(),
-    'NIK':document.getElementById('regNIK').value.trim(),
-    'NIP':document.getElementById('regNIP').value.trim(),
-    'NIK (Nomor Induk Kependudukan)':document.getElementById('regNIK').value.trim(),
-    'NIP (Nomor Induk Pegawai)':document.getElementById('regNIP').value.trim(),
-    'Status Pekerjaan':document.getElementById('regStatusPekerjaan').value.trim(),
-    'Jenis Kelamin':document.getElementById('regJenisKelamin').value.trim(),
-    'Tempat dan Tanggal Lahir':document.getElementById('regTempatTglLahir').value.trim(),
-    'Email Plataran Sehat':document.getElementById('regEmailPlataran').value.trim(),
-    'Lama Bekerja di Unit Sekarang':document.getElementById('regLamaBekerja').value.trim(),
-    'Nomor WhatsApp / Telepon':document.getElementById('regKontak').value.trim(),
-    'Alamat Rumah':document.getElementById('regAlamat').value.trim(),
-    'Surat Pernyataan':document.getElementById('regSuratPernyataan').value.trim(),
-    'Judul Kegiatan':document.getElementById('regJudulKegiatan').value.trim(),
-    'Tanggal':document.getElementById('regTanggal').value.trim(),
-    'Status':'Pending'
-  };
-  var btn=document.getElementById('btnSubmitPendaftaran');btn.disabled=true;btn.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> Mengirim...';
-  callServer('tambahPendaftaran',data).then(function(res){
+  var linkSPJ=document.getElementById('regLinkSPJ').value.trim();
+  var btn=document.getElementById('btnSubmitPendaftaran');
+  btn.disabled=true;btn.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> Mengupload file...';
+  /* ===== UPLOAD FOTO & SURAT PERNYATAAN KE NHOST STORAGE ===== */
+  Promise.all([uploadPamungkasFile(fotoFile),uploadPamungkasFile(suratFile)]).then(function(results){
+    var fotoUp=results[0],suratUp=results[1];
+    btn.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> Mengirim pendaftaran...';
+    var data={
+      'ID Pendaftaran':regID,
+      'Tanggal & Jam Daftar':regDateTime,
+      'Foto':fotoUp.url,
+      'Nama Lengkap dengan Gelar':document.getElementById('regNama').value.trim(),
+      'Unit Kerja':document.getElementById('regUnitKerja').value.trim(),
+      'Jenis SDMK':document.getElementById('regJenisSDMK').value.trim(),
+      'Jenis Profesi':document.getElementById('regJenisProfesi').value.trim(),
+      'NIK':document.getElementById('regNIK').value.trim(),
+      'NIP':document.getElementById('regNIP').value.trim(),
+      'NIK (Nomor Induk Kependudukan)':document.getElementById('regNIK').value.trim(),
+      'NIP (Nomor Induk Pegawai)':document.getElementById('regNIP').value.trim(),
+      'Status Pekerjaan':document.getElementById('regStatusPekerjaan').value.trim(),
+      'Jenis Kelamin':document.getElementById('regJenisKelamin').value.trim(),
+      'Tempat dan Tanggal Lahir':document.getElementById('regTempatTglLahir').value.trim(),
+      'Email Plataran Sehat':document.getElementById('regEmailPlataran').value.trim(),
+      'Lama Bekerja di Unit Sekarang':document.getElementById('regLamaBekerja').value.trim(),
+      'Nomor WhatsApp / Telepon':document.getElementById('regKontak').value.trim(),
+      'Alamat Rumah':document.getElementById('regAlamat').value.trim(),
+      'Surat Pernyataan':suratUp.url,
+      'Link Google Drive SPJ':linkSPJ,
+      'Judul Kegiatan':document.getElementById('regJudulKegiatan').value.trim(),
+      'Tanggal':document.getElementById('regTanggal').value.trim(),
+      'Status':'Pending'
+    };
+    return callServer('tambahPendaftaran',data).then(function(res){
+      btn.disabled=false;btn.innerHTML='<i class=\'fas fa-paper-plane\'></i> Kirim Pendaftaran';
+      showToast(res.message,res.success?'success':'error');
+      if(res.success){
+        generateBuktiPendaftaran(regID, data);
+        document.getElementById('pendaftaranForm').reset();
+        document.getElementById('regFotoPreview').classList.remove('has-image');
+        document.getElementById('regFotoPreview').innerHTML='<i class=\'fas fa-camera\'></i><span>Preview Foto</span>';
+        showSuratFileName();
+        _initRegInfoBar();loadPendaftaran();
+      }
+    });
+  }).catch(function(err){
     btn.disabled=false;btn.innerHTML='<i class=\'fas fa-paper-plane\'></i> Kirim Pendaftaran';
-    showToast(res.message,res.success?'success':'error');
-    if(res.success){
-      generateBuktiPendaftaran(regID, data);
-      document.getElementById('pendaftaranForm').reset();
-      document.getElementById('regFotoPreview').classList.remove('has-image');
-      document.getElementById('regFotoPreview').innerHTML='<i class=\'fas fa-camera\'></i><span>Preview Foto</span>';
-      _initRegInfoBar();loadPendaftaran();
-    }
-  }).catch(function(e){btn.disabled=false;btn.innerHTML='<i class=\'fas fa-paper-plane\'></i> Kirim Pendaftaran';showToast('Error: '+(e.message||e),'error');});
+    showToast('Upload gagal: '+(err.message||err),'error');
+  });
 }
 function editPendaftaran(i){
   if(i < 0 || !_allPendaftaran || i >= _allPendaftaran.length){showToast('Data tidak ditemukan.','error');return;}
@@ -444,8 +569,9 @@ function editPendaftaran(i){
       return; // Skip processing lanjutan
     }
     
-    if(k==='Surat Pernyataan' && v && v!=='-'){
-      b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><div style="display:flex;gap:8px;align-items:center;"><input type="url" value="'+v+'" id="editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_')+'" style="flex:1;height:38px;padding:0 10px;border:1.5px solid var(--border-color);border-radius:6px;font-family:inherit;font-size:.85rem;" /><a href="'+v+'" target="_blank" class="btn btn-sm btn-primary" style="flex-shrink:0;"><i class="fas fa-external-link-alt"></i></a></div></div>';
+    if((k==='Surat Pernyataan'||k==='Link Google Drive SPJ') && v && v!=='-'){
+      var urlAttrEdit=String(v).replace(/'/g,'%27');
+      b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><div style="display:flex;gap:8px;align-items:center;"><input type="url" value="'+v+'" id="editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_')+'" style="flex:1;height:38px;padding:0 10px;border:1.5px solid var(--border-color);border-radius:6px;font-family:inherit;font-size:.85rem;" /><button type="button" class="btn btn-sm btn-primary" style="flex-shrink:0;" onclick="openAuthFile(\''+urlAttrEdit+'\')"><i class="fas fa-external-link-alt"></i></button></div></div>';
     }
     else if(k==='Alamat Rumah'){
       b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><textarea id="editReg_'+k.replace(/[^a-zA-Z0-9]/g,'_')+'" rows="3" style="padding:8px 10px;border:1.5px solid var(--border-color);border-radius:6px;font-family:inherit;font-size:.85rem;width:100%;resize:vertical;">'+v+'</textarea></div>';

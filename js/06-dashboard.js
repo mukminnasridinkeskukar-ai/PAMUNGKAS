@@ -619,6 +619,16 @@ function openDetailModal(title,content){
       // Foto column: show image
       if(kl.indexOf('foto')!==-1 && v!=='-' && v){
         var imgSrc=v;
+        if(typeof _isStorageUrl==='function' && _isStorageUrl(v)){
+          /* URL storage Nhost terproteksi → fetch auth lalu tampilkan */
+          var pid='detimg_'+Math.random().toString(36).slice(2,10);
+          b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><div style="margin-top:6px;"><img id="'+pid+'" src="data:image/gif;base64,R0lGODlhAQABAIAAAP7//wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:10px;border:2px solid var(--border-color);background:#e2e8f0;" onerror="this.outerHTML=\x27<span style=color:var(--text-muted);>Gagal memuat foto</span>\x27" /></div></div>';
+          setTimeout(function(){
+            fetchAuthFileBlobUrl(v).then(function(u){var im=document.getElementById(pid);if(im)im.src=u;})
+              .catch(function(){var im=document.getElementById(pid);if(im)im.outerHTML='<span style="color:var(--text-muted);">Gagal memuat foto</span>';});
+          },0);
+          return;
+        }
         if(v.indexOf('drive.google.com')!==-1){
           var fid='';
           var fm=v.match(/\/d\/([a-zA-Z0-9_-]+)/);
@@ -629,9 +639,14 @@ function openDetailModal(title,content){
         }
         b+='<div class="detail-item full"><label>'+escHTML(k)+'</label><div style="margin-top:6px;"><img src="'+escHTML(imgSrc)+'" style="max-width:200px;max-height:200px;object-fit:cover;border-radius:10px;border:2px solid var(--border-color);cursor:pointer;" onclick="window.open(\x27'+escHTML(v)+'\x27,\x27_blank\x27)" onerror="this.outerHTML=\x27<span style=color:var(--text-muted);>Gagal memuat foto</span>\x27" /></div></div>';
       }
-      // Link columns: clickable
+      // Link columns: clickable (URL storage Nhost → openAuthFile)
       else if((k==='Surat Pernyataan'||k==='Link/File'||k==='Link'||kl.indexOf('surat')!==-1||kl.indexOf('link')!==-1||kl.indexOf('url')!==-1) && v!=='-' && v.indexOf('http')===0){
-        b+='<div class="detail-item full"><label>'+escHTML(k.replace(/_/g,' '))+'</label><a href="'+escHTML(v)+'" target="_blank" class="materi-link"><i class="fas fa-external-link-alt"></i> Buka/Download Dokumen</a></div>';
+        if(typeof _isStorageUrl==='function' && _isStorageUrl(v)){
+          var uAttr2=String(v).replace(/'/g,'%27');
+          b+='<div class="detail-item full"><label>'+escHTML(k.replace(/_/g,' '))+'</label><a href="javascript:void(0)" onclick="openAuthFile(\''+uAttr2+'\')" class="materi-link"><i class="fas fa-external-link-alt"></i> Buka/Download Dokumen</a></div>';
+        } else {
+          b+='<div class="detail-item full"><label>'+escHTML(k.replace(/_/g,' '))+'</label><a href="'+escHTML(v)+'" target="_blank" class="materi-link"><i class="fas fa-external-link-alt"></i> Buka/Download Dokumen</a></div>';
+        }
       }
       // ID Pendaftaran: highlight
       else if(k==='ID Pendaftaran' && v!=='-'){

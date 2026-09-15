@@ -161,9 +161,11 @@ CREATE TABLE IF NOT EXISTS public.pendaftaran (
     
     -- Dokumen & Kegiatan
     surat_pernyataan TEXT,
-        -- URL file surat pernyataan
+        -- URL file surat pernyataan (upload ke Nhost Storage: /v1/files/<id>)
+    link_spj TEXT,
+        -- Link Google Drive SPJ (Surat Pertanggungjawaban)
     judul_kegiatan VARCHAR(500) NOT NULL,
-        -- Kegiatan yang didaftari
+        -- Kegiatan yang didaftari (dipilih dari kolom judul tabel pengumuman)
     
     -- Status & Metadata
     status VARCHAR(30) DEFAULT 'pending',

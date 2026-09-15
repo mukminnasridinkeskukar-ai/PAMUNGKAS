@@ -54,6 +54,8 @@ function _cekRegV(row,names){for(var n of names){if(row[n]!==undefined&&row[n]!=
 
 function _cekRegFoto(url){
   if(!url||typeof url!=='string')return null;url=url.trim();
+  /* URL storage Nhost (/v1/files/) — file terproteksi, dimuat via fetch auth */
+  if(typeof _isStorageUrl==='function'&&_isStorageUrl(url))return{thumb:url,full:url,auth:true};
   if(/\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/i.test(url))return{thumb:url,full:url};
   var m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if(m)return{thumb:'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800',full:'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1600'};
@@ -132,7 +134,16 @@ function renderCekRegResult(ct,r,idx){
   /* FOTO */
   h+='<div class="cek-reg-foto">';
   if(fotoInfo){
-    h+='<img src="'+escHTML(fotoInfo.thumb)+'" alt="Foto '+escHTML(nama)+'" onclick="openCekRegLightbox(\''+escHTML(fotoInfo.full).replace(/'/g,"\\'")+'\',\''+escHTML(nama).replace(/'/g,"\\'")+'\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" /><div class="no-foto" style="display:none"><i class="fas fa-user"></i><span>Foto tidak tersedia</span></div>';
+    if(fotoInfo.auth){
+      var pid='cekauthimg_'+Math.random().toString(36).slice(2,10);
+      h+='<img id="'+pid+'" src="data:image/gif;base64,R0lGODlhAQABAIAAAP7//wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" alt="Foto '+escHTML(nama)+'" style="background:#e2e8f0;cursor:zoom-in;" onclick="openCekRegLightbox(\''+escHTML(fotoInfo.full).replace(/'/g,"\\'")+'\',\''+escHTML(nama).replace(/'/g,"\\'")+'\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" /><div class="no-foto" style="display:none"><i class="fas fa-user"></i><span>Foto tidak tersedia</span></div>';
+      setTimeout(function(){
+        fetchAuthFileBlobUrl(fotoInfo.full).then(function(u){var im=document.getElementById(pid);if(im)im.src=u;})
+          .catch(function(){var im=document.getElementById(pid);if(im){im.style.display='none';var nf=im.nextElementSibling;if(nf)nf.style.display='flex';}});
+      },0);
+    } else {
+      h+='<img src="'+escHTML(fotoInfo.thumb)+'" alt="Foto '+escHTML(nama)+'" onclick="openCekRegLightbox(\''+escHTML(fotoInfo.full).replace(/'/g,"\\'")+'\',\''+escHTML(nama).replace(/'/g,"\\'")+'\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" /><div class="no-foto" style="display:none"><i class="fas fa-user"></i><span>Foto tidak tersedia</span></div>';
+    }
   } else {
     h+='<div class="no-foto"><i class="fas fa-user"></i><span>Foto tidak tersedia</span></div>';
   }
@@ -169,6 +180,7 @@ function renderCekRegResult(ct,r,idx){
     {label:'No. WhatsApp / Telepon',keys:['Nomor WhatsApp / Telepon','No. WhatsApp','WhatsApp','Telepon','No HP','HP','Kontak']},
     {label:'Alamat Rumah',keys:['Alamat Rumah','Alamat'],full:true,textarea:true},
     {label:'Judul Kegiatan',keys:['Judul Kegiatan','Judul Pelatihan','Kegiatan','Pelatihan'],full:true},
+    {label:'Link Google Drive SPJ',keys:['Link Google Drive SPJ','Link_SPJ','link_spj'],full:true},
     {label:'Tanggal',keys:['Tanggal','Tanggal Pendaftaran','Tgl Daftar']},
     {label:'Catatan',keys:['Catatan','Keterangan','Notes'],full:true,textarea:true},
     // ✅ TAMBAHAN: Catatan Admin (paragraf - terpisah & menonjol)
@@ -180,6 +192,10 @@ function renderCekRegResult(ct,r,idx){
     var isLink=false;
     if(f.label==='Surat Pernyataan'){
       v=_cekRegV(r,['Surat Pernyataan','Surat_Pernyataan']);
+      if(v&&v.indexOf('http')===0)isLink=true;
+    }
+    if(f.label==='Link Google Drive SPJ'){
+      v=_cekRegV(r,['Link Google Drive SPJ','Link_SPJ','link_spj']);
       if(v&&v.indexOf('http')===0)isLink=true;
     }
     // Also check Surat Pernyataan as a separate link field
@@ -195,8 +211,11 @@ function renderCekRegResult(ct,r,idx){
     
     h+='<div class="'+fieldClass+'">';
     h+='<label>'+f.label+'</label>';
-    if(isLink){
-      h+='<div class="val"><a href="'+escHTML(v)+'" target="_blank"><i class="fas fa-external-link-alt"></i> Lihat/Download Surat Pernyataan</a></div>';
+    if(isLink && typeof _isStorageUrl==='function' && _isStorageUrl(v)){
+      var vAttr=String(v).replace(/'/g,'%27');
+      h+='<div class="val"><a href="javascript:void(0)" onclick="openAuthFile(\''+vAttr+'\')"><i class="fas fa-external-link-alt"></i> Lihat/Download Dokumen</a></div>';
+    } else if(isLink){
+      h+='<div class="val"><a href="'+escHTML(v)+'" target="_blank"><i class="fas fa-external-link-alt"></i> '+(f.label==='Link Google Drive SPJ'?'Lihat SPJ (Google Drive)':'Lihat/Download Surat Pernyataan')+'</a></div>';
     } else if (f.highlight && v && v !== '-') {
       // Catatan Admin dengan styling khusus (paragraf)
       h+='<div class="val catatan-admin-content"><i class="fas fa-sticky-note"></i> '+escHTML(v).replace(/\n/g, '<br>')+'</div>';
@@ -208,7 +227,10 @@ function renderCekRegResult(ct,r,idx){
 
   /* Surat Pernyataan separate */
   var suratV=_cekRegV(r,['Surat Pernyataan','Surat_Pernyataan']);
-  if(suratV&&suratV.indexOf('http')===0){
+  if(suratV&&suratV.indexOf('http')===0&&typeof _isStorageUrl==='function'&&_isStorageUrl(suratV)){
+    var svAttr=String(suratV).replace(/'/g,'%27');
+    h+='<div class="reg-field full"><label>Surat Pernyataan</label><div class="val"><a href="javascript:void(0)" onclick="openAuthFile(\''+svAttr+'\')"><i class="fas fa-file-alt"></i> Lihat/Download Surat Pernyataan</a></div></div>';
+  } else if(suratV&&suratV.indexOf('http')===0){
     h+='<div class="reg-field full"><label>Surat Pernyataan</label><div class="val"><a href="'+escHTML(suratV)+'" target="_blank"><i class="fas fa-file-alt"></i> Lihat/Download Surat Pernyataan</a></div></div>';
   } else if(suratV&&suratV!=='-'){
     h+='<div class="reg-field full"><label>Surat Pernyataan</label><div class="val">'+escHTML(suratV)+'</div></div>';
@@ -243,10 +265,16 @@ function renderCekRegResult(ct,r,idx){
 
 function openCekRegLightbox(url,name){
   var lb=document.getElementById('cekRegLightbox');
-  document.getElementById('cekRegLightboxImg').src=url;
+  var lbImg=document.getElementById('cekRegLightboxImg');
   document.getElementById('cekRegLightboxName').textContent=name||'';
   lb.classList.add('active');
   document.body.style.overflow='hidden';
+  if(typeof _isStorageUrl==='function'&&_isStorageUrl(url)){
+    lbImg.removeAttribute('src');
+    fetchAuthFileBlobUrl(url).then(function(u){lbImg.src=u;}).catch(function(){lbImg.removeAttribute('src');});
+  } else {
+    lbImg.src=url;
+  }
 }
 function closeCekRegLightbox(){
   var lb=document.getElementById('cekRegLightbox');

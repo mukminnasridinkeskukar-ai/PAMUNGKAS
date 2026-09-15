@@ -237,7 +237,7 @@
             <div class="card-box-header"><div><h3><i class="fas fa-edit" style="margin-right:8px;color:var(--primary);"></i>Form Pendaftaran</h3><p>Isi formulir berikut dengan lengkap dan benar. Field bertanda <span style="color:var(--danger);">*</span> wajib diisi.</p></div></div>
             <div class="modal-body">
               <form id="pendaftaranForm" onsubmit="submitPendaftaran(event)">
-                <!-- Foto -->
+                <!-- Foto (Upload File) -->
                 <div class="form-group">
                   <label>Foto <span style="color:var(--danger);">*</span></label>
                   <div class="reg-foto-upload">
@@ -246,12 +246,11 @@
                       <span>Preview Foto</span>
                     </div>
                     <div class="reg-foto-input-area">
-                      <p class="reg-foto-hint"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:4px;"></i> Unggah foto ke <strong>Google Drive</strong>, set akses <em>Anyone with the link</em>, lalu paste link-nya di kolom bawah.</p>
+                      <p class="reg-foto-hint"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:4px;"></i> Pilih file foto dari perangkat Anda. File akan <strong>ter-upload otomatis</strong> ke penyimpanan sistem saat pendaftaran dikirim.</p>
                       <div class="reg-foto-link-row">
-                        <input type="url" id="regFoto" required placeholder="https://drive.google.com/file/d/..." />
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="previewRegFoto()" title="Tampilkan preview"><i class="fas fa-eye"></i></button>
+                        <input type="file" id="regFoto" required accept="image/*" onchange="previewRegFoto()" />
                       </div>
-                      <small class="reg-foto-note">Format: JPG, PNG, WEBP. Ukuran maksimal 2 MB. Link Google Drive wajib bisa diakses publik.</small>
+                      <small class="reg-foto-note">Format: JPG, PNG, WEBP. Ukuran maksimal 2 MB.</small>
                     </div>
                   </div>
                 </div>
@@ -409,28 +408,38 @@
                   <label>Alamat Rumah <span style="color:var(--danger);">*</span></label>
                   <textarea id="regAlamat" required placeholder="Tuliskan alamat lengkap sesuai KTP (Jalan, RT/RW, Desa/Kelurahan, Kecamatan, Kabupaten/Kota, Provinsi)" rows="3"></textarea>
                 </div>
-                <!-- Upload Surat Pernyataan -->
+                <!-- Upload Surat Pernyataan (File) -->
                 <div class="form-group">
                   <label>Upload Surat Pernyataan <span style="color:var(--danger);">*</span></label>
                   <div class="surat-box">
                     <div class="surat-inner">
                       <div class="surat-desc">
-                        <p><i class="fas fa-info-circle" style="color:var(--primary);margin-right:4px;"></i> Unduh template Surat Pernyataan, isi dan tanda tangani, lalu unggah ke Google Drive dan <strong>paste link-nya</strong> di kolom bawah.</p>
+                        <p><i class="fas fa-info-circle" style="color:var(--primary);margin-right:4px;"></i> Unduh template Surat Pernyataan, isi dan tanda tangani, lalu <strong>upload file-nya</strong> di kolom samping. File ter-upload otomatis ke penyimpanan sistem.</p>
                         <a href="https://docs.google.com/document/d/1sFN389oM-23766TXPwYvWg0AojMM8S2T/edit?usp=sharing&ouid=113049310293805241737&rtpof=true&sd=true" target="_blank" class="materi-link" style="margin-top:6px;display:inline-flex;">
                           <i class="fas fa-download"></i> Download Template Surat Pernyataan
                         </a>
                       </div>
                       <div class="surat-input">
-                        <label>Link Google Drive Surat Pernyataan *</label>
-                        <input type="url" id="regSuratPernyataan" required placeholder="https://drive.google.com/file/d/..." />
+                        <label>File Surat Pernyataan *</label>
+                        <input type="file" id="regSuratPernyataan" required accept=".pdf,image/*" onchange="showSuratFileName()" />
+                        <small class="reg-file-name" id="regSuratFileName"></small>
                       </div>
                     </div>
                   </div>
                 </div>
-                <!-- Judul Kegiatan -->
+                <!-- Link Google Drive SPJ -->
+                <div class="form-group">
+                  <label>Link Google Drive SPJ <span style="color:var(--danger);">*</span></label>
+                  <input type="url" id="regLinkSPJ" required placeholder="https://drive.google.com/file/d/..." />
+                  <small class="reg-field-hint">Tempel link Google Drive SPJ (Surat Pertanggungjawaban). Pastikan akses <em>Anyone with the link</em>.</small>
+                </div>
+                <!-- Judul Kegiatan (Opsi dari Pengumuman) -->
                 <div class="form-group">
                   <label>Judul Kegiatan <span style="color:var(--danger);">*</span></label>
-                  <input type="text" id="regJudulKegiatan" required placeholder="Contoh: Pelatihan Pelayanan Kontrasepsi bagi Dokter dan Bidan di Fasilitas Pelayanan Kesehatan" />
+                  <select id="regJudulKegiatan" required>
+                    <option value="">-- Memuat daftar kegiatan... --</option>
+                  </select>
+                  <small class="reg-field-hint">Pilih judul kegiatan sesuai daftar pelatihan yang dibuka di menu Pengumuman.</small>
                 </div>
                 <!-- Tanggal Mulai Kegiatan -->
                 <div class="form-group">

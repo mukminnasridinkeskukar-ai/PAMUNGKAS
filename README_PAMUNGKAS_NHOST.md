@@ -1,8 +1,8 @@
 <!-- ============================================================
-     CATATAN REFACTOR (v7.1-modular)
+     CATATAN REFACTOR (v7.4-modular)
      Aplikasi dipecah menjadi file kecil agar lebih ringan,
      tetap SATU index.html aktif untuk browser.
-     Frontend: GitHub Pages | Backend: Nhost (GraphQL)
+     Frontend: GitHub Pages | Backend: Nhost (GraphQL + Storage)
      ============================================================ -->
 
 ## 🗂 Struktur File (Refactor Modular — WAJIB DIUPLOAD UTUH)
@@ -53,13 +53,42 @@ PAMUNGKAS/
    admin secret, auth, storage) sudah tertaut ke project Nhost Anda dan tersimpan
    di `js/01-config.js`.
 
-### 🧭 Sidebar Baru — 3 Bagian
+### 🧭 Sidebar Baru — 3 Bagian (v7.4)
 
 | Grup | Isi |
 |------|-----|
-| **DASHBOARD** | Dashboard (ringkasan & IKP) |
-| **LAYANAN** | Pengumuman · Profil SDMK Terlatih · Pendaftaran · Cek Sertifikat · Cek Materi · Cek Pendaftaran |
+| **DASHBOARD** | Dashboard (ringkasan & IKP) · Pengumuman · Profil SDMK Terlatih |
+| **LAYANAN** | Pendaftaran · Cek Sertifikat · Cek Materi · Cek Pendaftaran |
 | **ADMIN** | Login Admin (publik) · Panel Admin · modul kelola data · Logout (setelah login, sesuai role) |
+
+> Catatan: untuk user yang login, menu grup DASHBOARD/LAYANAN tetap mengikuti
+> izin role (RBAC). Mis. operator hanya melihat halaman yang diizinkan.
+
+### 📝 Menu Pendaftaran — Upload File & Pilihan Kegiatan (v7.4)
+
+Peningkatan pada form Pendaftaran:
+
+| Fitur | Sebelum | Sesudah |
+|-------|---------|---------|
+| **Foto** | Paste link Google Drive | **Upload file** langsung (JPG/PNG/WEBP, maks 2 MB) dengan preview otomatis |
+| **Surat Pernyataan** | Paste link Google Drive | **Upload file** langsung (PDF/JPG/PNG, maks 5 MB) |
+| **Link Google Drive SPJ** | — | Field baru (wajib), tempel link SPJ setelah upload surat pernyataan |
+| **Judul Kegiatan** | Text bebas | **Dropdown pilihan** yang diambil otomatis dari kolom `judul` tabel `pengumuman` (Hasura) |
+
+- File foto & surat pernyataan ter-upload otomatis ke **Nhost Storage** saat pendaftaran
+  dikirim; URL file tersimpan di kolom `foto` dan `surat_pernyataan`.
+- Field baru **Link Google Drive SPJ** tersimpan di kolom baru `link_spj` (tabel
+  `pendaftaran`). Jika database Anda belum punya kolom ini, jalankan di SQL Editor Nhost:
+  ```sql
+  ALTER TABLE public.pendaftaran ADD COLUMN IF NOT EXISTS link_spj TEXT;
+  ```
+  lalu di Hasura Console klik **Reload Metadata**.
+- Konfigurasi storage tersimpan di `js/01-config.js` (`storageUrl` menunjuk ke
+  domain `storage.*.nhost.run` — berbeda domain dari GraphQL).
+- Karena file storage hanya bisa dibaca lewat autentikasi aplikasi, semua tempat
+  yang menampilkan foto/dokumen (tabel Panel Admin, modal detail, halaman Cek
+  Pendaftaran) otomatis memuat file via fetch terautentikasi — link Google Drive
+  eksternal tetap dibuka langsung di tab baru.
 
 ### 🗂️ Panel Admin — Satu Frame Multi-Tab
 
@@ -93,6 +122,11 @@ dirender. Klik kartu statistik/pintasan di Ringkasan langsung berpindah tab.
   data (`loadIndikatorList` dihubungkan, sebelumnya lewat jalur yang rusak);
   tab **Multiusers** kini berfungsi (sebelumnya memanggil aksi yang tidak ada)
   dan tombol tambah/edit/hapus akun mengikuti permission `multiusers`.
+- **v7.4**: Pengumuman & Profil SDMK Terlatih pindah ke grup DASHBOARD; form
+  Pendaftaran kini pakai **upload file** (foto & surat pernyataan ke Nhost Storage),
+  field **Link Google Drive SPJ** baru, dan **Judul Kegiatan jadi dropdown** dari
+  tabel `pengumuman`; thumbnail foto & tombol Buka Dokumen di tabel admin/modal/cek
+  pendaftaran kini memuat file storage via fetch terautentikasi.
 - **Kartu statistik Pengumuman selalu 0** di dashboard → query `getDashboardData`
   memfilter `status="published"` yang tidak ada di database (status sebenarnya:
   Aktif/Nonaktif/Archived) → filter dihapus agar jumlah konsisten dengan data.

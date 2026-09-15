@@ -653,6 +653,11 @@ function renderCrudTable(){
     _crud.visibleCols.forEach(function(col){
       var val=r[col]||'';
       if(fotoCol && col===fotoCol && val){
+        /* URL storage Nhost (/v1/files/) terproteksi → render via fetch auth */
+        if(typeof _isStorageUrl==='function' && _isStorageUrl(val)){
+          html+='<td class="crud-foto-cell">'+_authImgTag(val)+'</td>';
+          return;
+        }
         var thumbUrl=val;
         if(val.indexOf('drive.google.com')!==-1){
           var fid='';
@@ -665,7 +670,13 @@ function renderCrudTable(){
         }
         html+='<td class="crud-foto-cell"><img class="crud-photo-thumb" src="'+escHTML(thumbUrl)+'" onerror="this.style.display=\x27none\x27" onclick="window.open(\x27'+escHTML(val).replace(/\x27/g,"\\x27")+'\x27,\x27_blank\x27)" title="Klik untuk memperbesar" /></td>';
       } else if(linkCols.indexOf(col)!==-1 && val && String(val).indexOf('http')===0){
-        html+='<td class="crud-link-cell"><a href="'+escHTML(val)+'" target="_blank" title="'+escHTML(val)+'"><i class="fas fa-external-link-alt" style="margin-right:4px;"></i>Buka Dokumen</a></td>';
+        /* URL storage Nhost → buka via openAuthFile (fetch auth); link eksternal → anchor biasa */
+        if(typeof _isStorageUrl==='function' && _isStorageUrl(val)){
+          var uAttr=escHTML(String(val).replace(/'/g,'%27'));
+          html+='<td class="crud-link-cell"><a href="javascript:void(0)" onclick="openAuthFile(\''+uAttr+'\')" title="'+escHTML(val)+'"><i class="fas fa-external-link-alt" style="margin-right:4px;"></i>Buka Dokumen</a></td>';
+        } else {
+          html+='<td class="crud-link-cell"><a href="'+escHTML(val)+'" target="_blank" title="'+escHTML(val)+'"><i class="fas fa-external-link-alt" style="margin-right:4px;"></i>Buka Dokumen</a></td>';
+        }
       } else {
         var vl=String(val).toLowerCase();
         if(vl==='aktif'||vl==='lulus'||vl==='diterima'||vl==='verified'||vl==='asn'||vl==='pppk'||vl==='kontrak'||vl==='pns'){

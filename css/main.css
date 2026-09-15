@@ -1520,3 +1520,13 @@
   .admin-panel-tab{padding:10px 12px;font-size:.78rem}
   .admin-panel-body{padding:14px;min-height:320px}
 }
+
+/* ============================================================
+   v7.4 — PENDAFTARAN: UPLOAD FILE & TABEL (thumbnail/link)
+   ============================================================ */
+.form-group input[type="file"]{height:auto;padding:9px 12px;cursor:pointer;background:var(--bg-secondary);border:1.5px dashed var(--border-color);border-radius:var(--radius-sm);width:100%;transition:border-color .2s ease}
+.form-group input[type="file"]:hover{border-color:var(--primary)}
+.form-group input[type="file"]::file-selector-button{margin-right:12px;border:none;background:var(--primary);color:#fff;padding:8px 14px;border-radius:8px;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:opacity .2s ease}
+.form-group input[type="file"]::file-selector-button:hover{opacity:.88}
+.reg-file-name{display:block;margin-top:6px;font-size:.78rem;color:var(--primary);font-weight:600;word-break:break-all}
+.reg-table-thumb{height:36px;width:36px;object-fit:cover;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.15)}

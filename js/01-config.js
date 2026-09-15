@@ -73,8 +73,8 @@ var NHOST_CONFIG = {
   // Nhost Auth endpoint (untuk authentication)
   authUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/auth',
   
-  // Storage URL (untuk upload file)
-  storageUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/storage'
+  // Storage URL (untuk upload file) — layanan storage Nhost (domain storage.*, bukan hasura.*)
+  storageUrl: 'https://tphsxlntogpbpauvhuum.storage.ap-southeast-1.nhost.run'
 };
 
 /* ---------- ADMIN TABLES (Peta modul Panel Admin) ---------- */
@@ -125,7 +125,7 @@ const ADMIN_TABLES = {
     icon: 'fa-clipboard-list',
     description: 'Data pendaftaran pelatihan',
     category: 'data-utama',
-    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'email_plataran_sehat', 'alamat_rumah', 'lama_bekerja_di_unit_sekarang', 'surat_pernyataan', 'judul_kegiatan', 'status', 'catatan_admin'],
+    fields: ['id', 'foto', 'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'email_plataran_sehat', 'alamat_rumah', 'lama_bekerja_di_unit_sekarang', 'surat_pernyataan', 'link_spj', 'judul_kegiatan', 'status', 'catatan_admin'],
     displayFields: ['nama_lengkap_dengan_gelar', 'nik', 'unit_kerja', 'jenis_sdmk', 'jenis_profesi', 'status', 'catatan_admin'],
     canWrite: true,
     queryAction: 'getPendaftaran',

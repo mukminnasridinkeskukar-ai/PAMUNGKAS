@@ -70,7 +70,7 @@ const GRAPHQL_QUERIES = {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
         pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
         lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
-        judul_kegiatan status created_at updated_at catatan_admin
+        link_spj judul_kegiatan status created_at updated_at catatan_admin
       }
       pendaftaran_aggregate(where: $where) { aggregate { count } }
     }
@@ -121,7 +121,7 @@ const GRAPHQL_QUERIES = {
         id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
         pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
         lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
-        judul_kegiatan status created_at updated_at catatan_admin
+        link_spj judul_kegiatan status created_at updated_at catatan_admin
       }
     }
   `,
@@ -436,6 +436,7 @@ function callServer(action, data) {
             'Tempat dan Tanggal Lahir': p.tempat_dan_tanggal_lahir, Email: p.email_plataran_sehat,
             'Lama Bekerja di Unit Sekarang': p.lama_bekerja_di_unit_sekarang, WhatsApp: p.nomor_whatsapp,
             'Alamat Rumah': p.alamat_rumah, 'Surat Pernyataan': p.surat_pernyataan,
+            'Link Google Drive SPJ': p.link_spj || '',
             'Judul Kegiatan': p.judul_kegiatan, Status: p.status,
             'Tanggal Pendaftaran': p.created_at ? p.created_at.split('T')[0] : '',
             'Tanggal Update': p.updated_at ? p.updated_at.split('T')[0] : '',
@@ -489,6 +490,7 @@ function callServer(action, data) {
               'No. WhatsApp / Telepon': p.nomor_whatsapp,
               'Alamat Rumah': p.alamat_rumah,
               'Surat Pernyataan': p.surat_pernyataan,
+              'Link Google Drive SPJ': p.link_spj || '',
               'Judul Kegiatan': p.judul_kegiatan,
               Status: p.status,
               'Tanggal Pendaftaran': p.created_at ? p.created_at.split('T')[0] : '',
@@ -598,6 +600,7 @@ function callServer(action, data) {
               nomor_whatsapp: data.WhatsApp || data['Nomor WhatsApp / Telepon'] || data.Kontak,
               alamat_rumah: data['Alamat Rumah'], 
               surat_pernyataan: data['Surat Pernyataan'],
+              link_spj: data['Link Google Drive SPJ'] || null,
               judul_kegiatan: data['Judul Kegiatan'], 
               status: 'pending',
               catatan_admin: data['Catatan Admin'] || data.catatan_admin || null  // ✅ TAMBAHAN
@@ -691,7 +694,7 @@ function callServer(action, data) {
             'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin',
             'tempat_dan_tanggal_lahir', 'email_plataran_sehat',
             'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
-            'surat_pernyataan', 'judul_kegiatan', 'status',
+            'surat_pernyataan', 'link_spj', 'judul_kegiatan', 'status',
             'catatan_admin'
           ];
           
@@ -715,6 +718,7 @@ function callServer(action, data) {
             'Lama Bekerja': 'lama_bekerja_di_unit_sekarang',
             'Lama Bekerja di Unit Sekarang': 'lama_bekerja_di_unit_sekarang',
             'Surat Pernyataan': 'surat_pernyataan',
+            'Link Google Drive SPJ': 'link_spj',
             'Judul Kegiatan': 'judul_kegiatan',
             'Status': 'status',
             'Catatan Admin': 'catatan_admin',
@@ -733,6 +737,7 @@ function callServer(action, data) {
             'alamat_rumah': 'alamat_rumah',
             'lama_bekerja_di_unit_sekarang': 'lama_bekerja_di_unit_sekarang',
             'surat_pernyataan': 'surat_pernyataan',
+            'link_spj': 'link_spj',
             'judul_kegiatan': 'judul_kegiatan',
             'status': 'status',
             'catatan_admin': 'catatan_admin'
