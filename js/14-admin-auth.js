@@ -158,6 +158,9 @@ function handleLogin(e){
       closeModal('loginModal');
       showToast('Login berhasil! Selamat datang, ' + (currentUser.nama_lengkap || adminUsername) + ' (' + levelLabel() + ').', 'success');
       
+      // Reset tab Panel Admin ke Ringkasan setiap login
+      _adminPanelActiveTab = 'ringkasan';
+      
       // Update UI components
       updateAdminUI();
       renderDynamicSidebar(); // Re-render sidebar with role-based menu
@@ -184,11 +187,11 @@ function updateAdminUI(){
 function updateAdminView(){
   if (isAdminUser()) {
     _safeDisplay('adminContent', 'none');
-    _safeDisplay('adminDashboard', 'block');
+    _safeDisplay('adminPanelFrame', 'block');
     _safeText('adminName', adminUsername + ' (' + levelLabel() + ')');
   } else {
     _safeDisplay('adminContent', 'block');
-    _safeDisplay('adminDashboard', 'none');
+    _safeDisplay('adminPanelFrame', 'none');
   }
 }
 function handleLogout(){
@@ -197,6 +200,7 @@ function handleLogout(){
   adminUsername = '';
   currentUser = null;
   currentRole = '';
+  _adminPanelActiveTab = 'ringkasan'; // Reset tab Panel Admin
   
   sessionStorage.removeItem('pamungkas_admin_level');
   sessionStorage.removeItem('pamungkas_admin_user');

@@ -150,13 +150,8 @@ function renderAdminDashboard(){
   
   var html = '';
   var visibleMenuCount = 0;
-  
-  // Header untuk Panel Admin
-  html += '<div class="admin-category-header" style="color:var(--primary);margin-bottom:10px;">';
-  html += '  <i class="fas fa-table"></i> <h3>SEMUA TABEL NHOST (7 Tabel)</h3>';
-  html += '</div>';
-  html += '<div class="admin-category-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px,1fr));">';
-  
+  var cards = '';
+
   // Urutan tabel sesuai permintaan: 7 tabel Nhost berurutan
   var tableOrder = ['indikator', 'sdmk', 'pendaftaran', 'materi', 'pengumuman', 'sertifikat', 'multiusers'];
   
@@ -211,16 +206,22 @@ function renderAdminDashboard(){
     };
     var iconStyle = iconColors[tableConfig.id] || 'background:var(--primary-light);color:var(--primary)';
     
-    html += '<div class="admin-menu-card" onclick="openAdminCrud(\'' + tableConfig.id + '\')" style="cursor:pointer;transition:transform .2s;">';
-    html += '  <div class="admin-menu-card-icon" style="' + iconStyle + '"><i class="fas ' + tableConfig.icon + '"></i></div>';
-    html += '  <div class="admin-menu-card-content">';
-    html += '    <h4>' + tableConfig.label + '</h4>';
-    html += '    <p>' + tableConfig.description + '</p>';
-    html += '    ' + writeBadge;
-    html += '  </div>';
-    html += '</div>';
+    cards += '<div class="admin-menu-card" onclick="openAdminCrud(\'' + tableConfig.id + '\')" style="cursor:pointer;transition:transform .2s;">';
+    cards += '  <div class="admin-menu-card-icon" style="' + iconStyle + '"><i class="fas ' + tableConfig.icon + '"></i></div>';
+    cards += '  <div class="admin-menu-card-content">';
+    cards += '    <h4>' + tableConfig.label + '</h4>';
+    cards += '    <p>' + tableConfig.description + '</p>';
+    cards += '    ' + writeBadge;
+    cards += '  </div>';
+    cards += '</div>';
   });
   
+  // Header dengan jumlah modul sesuai role (dinamis, bukan hardcoded "7 Tabel")
+  html += '<div class="admin-category-header" style="color:var(--primary);margin-bottom:10px;">';
+  html += '  <i class="fas fa-table"></i> <h3>MODUL DATA (' + visibleMenuCount + ' Tabel)</h3>';
+  html += '</div>';
+  html += '<div class="admin-category-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px,1fr));">';
+  html += cards;
   html += '</div>'; // end grid
   
   grid.innerHTML = html;
@@ -400,17 +401,17 @@ function submitIndikatorForm(e) {
 function confirmDeleteIndikator(idx) {
   var item = _allIndikator[idx];
   if (!item) return;
-  
+
   var itemName = item.indikator || 'Indikator #' + (idx + 1);
-  
+
   if (confirm('Apakah Anda yakin ingin menghapus indikator "' + itemName + '"?')) {
     console.log('[ADMIN] Deleting Indikator:', idx, item.id);
-    
+
     showLoading('Menghapus indikator...');
-    
+
     callServer('deleteIndikator', { idx: idx, id: item.id }).then(function(res) {
       hideLoading();
-      
+
       if (res.success) {
         showToast(res.message, 'success');
         loadIndikatorList(); // Refresh from Nhost
@@ -424,4 +425,149 @@ function confirmDeleteIndikator(idx) {
       showToast('Error: ' + (err.message || err), 'error');
     });
   }
+}
+
+/* ============================================================
+   ADMIN PANEL FRAME — Satu frame, beberapa tab
+   (Ringkasan + tab modul data; menggantikan sub-halaman terpisah)
+   ============================================================ */
+
+// Tab aktif terakhir (persist selama sesi login)
+var _adminPanelActiveTab = 'ringkasan';
+
+/**
+ * ADMIN_PANEL_TABS - Konfigurasi tab Panel Admin (single source of truth).
+ * Urutan modul = urutan 7 tabel Nhost: indikator, sdmk, pendaftaran,
+ * materi, pengumuman, sertifikat, multiusers.
+ */
+var ADMIN_PANEL_TABS = [
+  { id: 'ringkasan',   label: 'Ringkasan',   icon: 'fa-tachometer-alt' },
+  { id: 'indikator',   label: 'Indikator',   icon: 'fa-chart-line',     module: 'indikator' },
+  { id: 'sdmk',        label: 'SDMK',        icon: 'fa-user-md',        module: 'sdmk' },
+  { id: 'pendaftaran', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' },
+  { id: 'materi',      label: 'Materi',      icon: 'fa-book-open',      module: 'materi' },
+  { id: 'pengumuman',  label: 'Pengumuman',  icon: 'fa-bullhorn',       module: 'pengumuman' },
+  { id: 'sertifikat',  label: 'Sertifikat',  icon: 'fa-certificate',    module: 'sertifikat' },
+  { id: 'multiusers',  label: 'Multiusers',  icon: 'fa-users-cog',      module: 'multiusers', superadminOnly: true }
+];
+
+/**
+ * getAdminPanelTabs() - Daftar tab yang terlihat untuk role saat ini (RBAC).
+ * Tab tanpa permission TIDAK dirender sama sekali.
+ */
+function getAdminPanelTabs() {
+  var role = getCurrentRole();
+  return ADMIN_PANEL_TABS.filter(function(tab) {
+    if (!tab.module) return true; // Ringkasan selalu tampil
+    if (tab.superadminOnly && role !== 'superadmin') return false;
+    return hasPermission(role, tab.module, 'read');
+  });
+}
+
+/**
+ * renderAdminPanel() - Render seluruh frame Panel Admin (tab bar + panel).
+ * Dipanggil dari navigateTo('panel-admin').
+ */
+function renderAdminPanel() {
+  if (!isAdminUser()) return;
+  console.log('[ADMIN PANEL] Rendering frame (tab aktif: ' + _adminPanelActiveTab + ')');
+
+  // Badge role di header frame
+  _safeHTML('adminPanelRoleBadge', levelBadgeHTML());
+
+  // Validasi: tab terakhir mungkin tidak tersedia lagi untuk role ini
+  var stillThere = getAdminPanelTabs().some(function(t) { return t.id === _adminPanelActiveTab; });
+  if (!stillThere) _adminPanelActiveTab = 'ringkasan';
+
+  renderAdminPanelTabs();
+  switchAdminTab(_adminPanelActiveTab);
+}
+
+/**
+ * renderAdminPanelTabs() - Bangun tab bar + container panel di dalam frame.
+ * Panel modul berupa wadah kosong; kontennya diisi lazy oleh
+ * loadAdminModuleTab() setiap tab dibuka (data selalu fresh dari Nhost).
+ */
+function renderAdminPanelTabs() {
+  var tabsBar = document.getElementById('adminPanelTabs');
+  var panelsWrap = document.getElementById('adminTabPanels');
+  if (!tabsBar || !panelsWrap) {
+    console.warn('[DOM] renderAdminPanelTabs: #adminPanelTabs / #adminTabPanels tidak ditemukan');
+    return;
+  }
+
+  var tabs = getAdminPanelTabs();
+
+  // --- Tab bar ---
+  var btns = '';
+  tabs.forEach(function(tab) {
+    btns += '<button class="admin-panel-tab' + (tab.id === _adminPanelActiveTab ? ' active' : '') + '"' +
+      ' id="apt-' + tab.id + '" role="tab" data-tab="' + tab.id + '"' +
+      ' onclick="switchAdminTab(\'' + tab.id + '\')">' +
+      '<i class="fas ' + tab.icon + '"></i><span>' + tab.label + '</span></button>';
+  });
+  tabsBar.innerHTML = btns;
+
+  // --- Panel containers ---
+  var panels = '';
+  tabs.forEach(function(tab) {
+    if (tab.id === 'ringkasan') {
+      // Panel ringkasan: info user + statistik real + menu grid (ID dipertahankan utk kompatibilitas)
+      // Catatan: #adminMenuGrid TANPA class .admin-grid — grid ditangani .admin-category-grid di dalamnya
+      panels += '<div class="admin-tab-panel' + (tab.id === _adminPanelActiveTab ? ' active' : '') + '" id="panel-ringkasan">' +
+        '<div id="adminInfoBar"></div>' +
+        '<div id="adminStatsGrid" class="admin-stats-grid"></div>' +
+        '<div id="adminMenuGrid"></div>' +
+        '</div>';
+    } else {
+      panels += '<div class="admin-tab-panel' + (tab.id === _adminPanelActiveTab ? ' active' : '') + '" id="panel-' + tab.id + '"></div>';
+    }
+  });
+  panelsWrap.innerHTML = panels;
+}
+
+/**
+ * switchAdminTab(tabId) - Pindah tab di dalam frame Panel Admin.
+ * - Ringkasan  : render info bar + statistik + menu grid.
+ * - Tab modul  : panel modul lain dikosongkan (mencegah ID ganda di DOM),
+ *                lalu konten dimuat ulang (fresh data dari Nhost).
+ */
+function switchAdminTab(tabId) {
+  console.log('[ADMIN PANEL] Switch tab →', tabId);
+  _adminPanelActiveTab = tabId;
+
+  // State tombol tab
+  document.querySelectorAll('#adminPanelTabs .admin-panel-tab').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  // State panel
+  document.querySelectorAll('#adminTabPanels .admin-tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'panel-' + tabId);
+  });
+
+  if (tabId === 'ringkasan') {
+    updateAdminSidebarHighlight(null);
+    renderAdminDashboard();
+    return;
+  }
+
+  // Kosongkan panel modul lain agar tidak ada duplikasi #adminCrudTable dsb.
+  document.querySelectorAll('#adminTabPanels .admin-tab-panel').forEach(function(p) {
+    if (p.id !== 'panel-' + tabId && p.id !== 'panel-ringkasan') p.innerHTML = '';
+  });
+
+  updateAdminSidebarHighlight(tabId);
+  if (typeof loadAdminModuleTab === 'function') loadAdminModuleTab(tabId);
+}
+
+/**
+ * updateAdminSidebarHighlight(tabId) - Sinkronkan highlight sidebar dengan tab aktif.
+ * tabId null → highlight item "Panel Admin"; selain itu → item modul terkait.
+ */
+function updateAdminSidebarHighlight(tabId) {
+  document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
+  var modItem = tabId ? document.querySelector('.nav-item[data-admin-tab="' + tabId + '"]') : null;
+  if (modItem) { modItem.classList.add('active'); return; }
+  var panelItem = document.querySelector('.nav-item[data-page="panel-admin"]');
+  if (panelItem) panelItem.classList.add('active');
 }

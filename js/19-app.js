@@ -37,12 +37,11 @@ closeMobileSidebar();
     case 'cek-pendaftaran':initCekPendaftaran();break;
     case 'panel-admin':updateAdminView();break;
   }
-  // Reset admin crud section - SAFE with null checks
-  _safeDisplay('adminCrudSection', 'none');
+  // Panel Admin: SATU FRAME multi-tab (Ringkasan + modul data sesuai role)
   if(page === 'panel-admin'){
     _safeDisplay('adminContent', isAdminUser() ? 'none' : 'block');
-    _safeDisplay('adminDashboard', isAdminUser() ? 'block' : 'none');
-    if(isAdminUser()) renderAdminDashboard();
+    _safeDisplay('adminPanelFrame', isAdminUser() ? 'block' : 'none');
+    if(isAdminUser() && typeof renderAdminPanel === 'function') renderAdminPanel();
   }
 }
 

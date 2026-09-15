@@ -30,8 +30,8 @@ PAMUNGKAS/
     ├── 12-cek-pendaftaran.js   ← lacak pendaftaran + perbaikan
     ├── 13-sidebar.js           ← sidebar 3 GRUP: Dashboard/Layanan/Admin
     ├── 14-admin-auth.js        ← login/logout admin & sesi
-    ├── 15-admin-dashboard.js   ← statistik admin + CRUD indikator
-    ├── 16-admin-crud.js        ← engine CRUD, tab pendaftaran, export
+    ├── 15-admin-dashboard.js   ← frame Panel Admin multi-tab + statistik + CRUD indikator
+    ├── 16-admin-crud.js        ← engine CRUD, loader tab modul, export
     ├── 17-admin-import.js      ← import massal (tab CSV & modal)
     ├── 18-workflow.js          ← status workflow pendaftaran
     └── 19-app.js               ← navigasi, handler global, init
@@ -59,7 +59,26 @@ PAMUNGKAS/
 |------|-----|
 | **DASHBOARD** | Dashboard (ringkasan & IKP) |
 | **LAYANAN** | Pengumuman · Profil SDMK Terlatih · Pendaftaran · Cek Sertifikat · Cek Materi · Cek Pendaftaran |
-| **ADMIN** | Login Admin (publik) · Dashboard Admin · modul kelola data · Logout (setelah login, sesuai role) |
+| **ADMIN** | Login Admin (publik) · Panel Admin · modul kelola data · Logout (setelah login, sesuai role) |
+
+### 🗂️ Panel Admin — Satu Frame Multi-Tab
+
+Seluruh fitur pengelolaan kini berada dalam **SATU frame** dengan tab di dalamnya
+(tidak lagi berpindah-pindah sub-halaman):
+
+| Tab | Isi | Role |
+|-----|-----|------|
+| **Ringkasan** | Info user, statistik real Nhost, pintasan modul | semua role admin |
+| **Indikator** | CRUD indikator kinerja | superadmin |
+| **SDMK** | CRUD SDMK + rekap tahunan | superadmin, admin |
+| **Pendaftaran** | CRUD pendaftaran + Import Data Massal | superadmin, admin, operator |
+| **Materi** | CRUD materi pelatihan | superadmin |
+| **Pengumuman** | CRUD pengumuman | superadmin |
+| **Sertifikat** | CRUD sertifikat | superadmin |
+| **Multiusers** | Kelola akun pengguna | superadmin |
+
+Tab difilter otomatis sesuai permission role (RBAC) — tab tanpa izin tidak
+dirender. Klik kartu statistik/pintasan di Ringkasan langsung berpindah tab.
 
 ### 🔧 Perbaikan yang Disertakan
 
@@ -69,7 +88,16 @@ PAMUNGKAS/
 - **Simpan/hapus Materi error** (`loadMateri` tidak pernah didefinisikan) →
   diganti `loadCekMateriPublic` yang benar.
 - Kode mati (definisi `openAdminCrud` & `formatFileSize` yang tertimpa) dibuang.
-- Semua fungsi & template tampilan lain **tidak diubah**.
+- **Panel Admin disatukan dalam satu frame multi-tab** (v7.3): sub-halaman CRUD
+  terpisah diganti tab; kartu statistik tab **Indikator** kini benar-benar memuat
+  data (`loadIndikatorList` dihubungkan, sebelumnya lewat jalur yang rusak);
+  tab **Multiusers** kini berfungsi (sebelumnya memanggil aksi yang tidak ada)
+  dan tombol tambah/edit/hapus akun mengikuti permission `multiusers`.
+- **Kartu statistik Pengumuman selalu 0** di dashboard → query `getDashboardData`
+  memfilter `status="published"` yang tidak ada di database (status sebenarnya:
+  Aktif/Nonaktif/Archived) → filter dihapus agar jumlah konsisten dengan data.
+- Header menu ringkasan kini dinamis: "MODUL DATA (N Tabel)" sesuai role.
+- Semua fungsi lain & template tampilan publik **tidak diubah**.
 
 ---
 

@@ -12,18 +12,22 @@ function confirmDelete(sheet,idx){
 }
 function executeDelete(sheet,idx){
   closeModal('confirmModal');showLoading('Menghapus...');
-  var fnMap={Pengumuman:'hapusPengumuman',SDMK:'hapusSDMK',Pendaftaran:'hapusPendaftaran',Sertifikat:'hapusSertifikat',Materi:'hapusMateri',Admin:'hapusAdmin'};
+  var fnMap={Pengumuman:'hapusPengumuman',SDMK:'hapusSDMK',Pendaftaran:'hapusPendaftaran',Sertifikat:'hapusSertifikat',Materi:'hapusMateri',Admin:'hapusAdmin',Multiusers:'hapusMultiuser'};
   if(!canWrite(sheet.toLowerCase())){hideLoading();showToast('Anda tidak memiliki izin untuk menghapus data ini.','error');return;}
   var fn=fnMap[sheet];if(!fn){hideLoading();showToast('Sheet tidak dikenali.','error');return;}
   var reloadFn=null;
-  switch(sheet){case 'Pengumuman':reloadFn=loadPengumuman;break;case 'SDMK':reloadFn=function(){_sdmk.loaded=false;loadSDMK();};break;case 'Pendaftaran':reloadFn=loadPendaftaran;break;case 'Sertifikat':reloadFn=function(){if(typeof loadAdminSertifikat==='function')loadAdminSertifikat();};break;case 'Materi':reloadFn=loadCekMateriPublic;break;case 'Admin':reloadFn=function(){if(typeof loadAdminList==='function')loadAdminList();};break;}
+  switch(sheet){case 'Pengumuman':reloadFn=loadPengumuman;break;case 'SDMK':reloadFn=function(){_sdmk.loaded=false;loadSDMK();};break;case 'Pendaftaran':reloadFn=loadPendaftaran;break;case 'Sertifikat':reloadFn=function(){if(typeof loadAdminSertifikat==='function')loadAdminSertifikat();};break;case 'Materi':reloadFn=loadCekMateriPublic;break;case 'Admin':case 'Multiusers':reloadFn=function(){if(typeof loadAdminList==='function')loadAdminList();};break;}
   callServer(fn,{idx:idx}).then(function(res){hideLoading();showToast(res.message,res.success?'success':'error');if(res.success&&reloadFn)reloadFn();}).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
 }
 
-/* ========== ADMIN: NAVIGATION ========== */
+/* ========== ADMIN: NAVIGATION (Tab dalam SATU frame Panel Admin) ========== */
+/**
+ * closeAdminCrud() - Kompatibilitas: kembali ke tab Ringkasan.
+ * Sub-halaman terpisah sudah digantikan tab di dalam satu frame.
+ */
 function closeAdminCrud(){
-  _safeDisplay('adminCrudSection', 'none');
-  _safeDisplay('adminDashboard', 'block');
+  _adminPanelActiveTab = 'ringkasan';
+  if (currentPage === 'panel-admin' && typeof switchAdminTab === 'function') switchAdminTab('ringkasan');
 }
 
 /* ================================================================
@@ -280,13 +284,13 @@ function loadAdminList(){
   if(!res||!res.success){ct.innerHTML='<div class="empty-state"><p>'+escHTML(res?res.message:'Gagal memuat')+'</p></div>';return;}
   _allAdmin=res.data||[];
   var html='';
-  if(canWrite('admin'))html+='<div class="toolbar" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openAdminForm()"><i class="fas fa-plus"></i> Tambah Admin</button></div>';
+  if(canWrite('multiusers'))html+='<div class="toolbar" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openAdminForm()"><i class="fas fa-plus"></i> Tambah Admin</button></div>';
   if(!_allAdmin.length){html+='<div class="empty-state"><i class="fas fa-users-cog" style="font-size:2rem;color:var(--text-muted);"></i><p>Belum ada akun admin di database. Akun default (admin/admin123) aktif sebagai Admin (Full Access).</p></div>';ct.innerHTML=html;return;}
   html+='<div class="crud-table-container"><div class="crud-table-scroll"><table class="crud-table"><thead><tr><th class="no-sort" style="text-align:center;width:50px;">No</th><th>Username</th><th>Password</th><th>Level</th><th class="no-sort" style="text-align:center;">Aksi</th></tr></thead><tbody>';
   _allAdmin.forEach(function(r,i){
     var lv=String(r.Level||'user').toLowerCase();
     var cls=lv==='admin'?'aktif':lv==='operator'?'pending':'inactive';
-    html+='<tr><td class="td-no">'+(i+1)+'</td><td>'+escHTML(r.Username||'-')+'</td><td>********</td><td><span class="crud-status '+cls+'">'+escHTML(r.Level||lv)+'</span></td><td style="text-align:center;">'+(canWrite('admin')?'<button class="btn btn-sm btn-warning" onclick="openAdminForm('+i+')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Admin\','+i+')"><i class="fas fa-trash"></i></button>':'')+'</td></tr>';
+    html+='<tr><td class="td-no">'+(i+1)+'</td><td>'+escHTML(r.Username||'-')+'</td><td>********</td><td><span class="crud-status '+cls+'">'+escHTML(r.Level||lv)+'</span></td><td style="text-align:center;">'+(canWrite('multiusers')?'<button class="btn btn-sm btn-warning" onclick="openAdminForm('+i+')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Multiusers\','+i+')"><i class="fas fa-trash"></i></button>':'')+'</td></tr>';
   });
   html+='</tbody></table></div></div>';ct.innerHTML=html;
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
@@ -339,26 +343,53 @@ var _crud = {
   debounceTimer: null
 };
 
-/* Open CRUD sub-page for a sheet type */
+/* Open CRUD for a sheet type → kini cukup mengaktifkan tab modul di frame Panel Admin */
 function openAdminCrud(type){
   if(!canAccessAdminMenu(type)){showToast('Anda tidak memiliki akses ke menu ini.','error');return;}
-  _safeDisplay('adminDashboard', 'none');
-  _safeDisplay('adminCrudSection', 'block');
-  var titles={pengumuman:'Kelola Pengumuman',sdmk:'Kelola SDMK',pendaftaran:'Kelola Pendaftaran',sertifikat:'Kelola Sertifikat',materi:'Kelola Materi',admin:'Kelola Akun Admin'};
+  _adminPanelActiveTab = type;
+  if(currentPage !== 'panel-admin'){
+    // navigateTo('panel-admin') → renderAdminPanel() → switchAdminTab(type)
+    navigateTo('panel-admin');
+    return;
+  }
+  if(typeof switchAdminTab === 'function') switchAdminTab(type);
+}
+
+/**
+ * loadAdminModuleTab(type) - Isi panel tab modul (header modul + tabel CRUD).
+ * Dipanggil oleh switchAdminTab() setiap kali tab modul dibuka.
+ * Konten ditargetkan ke #adminCrudTable di dalam panel tab aktif.
+ */
+function loadAdminModuleTab(type){
+  // Alias kompatibilitas: 'admin' (Akun Admin legacy) & 'user_accounts' → tab multiusers
+  if(type==='admin' || type==='user_accounts') type='multiusers';
+
+  var panel=document.getElementById('panel-'+type);
+  if (!panel) { console.warn('[DOM] loadAdminModuleTab: #panel-'+type+' tidak ditemukan'); return; }
+
+  var titles={pengumuman:'Kelola Pengumuman',sdmk:'Kelola SDMK',pendaftaran:'Kelola Pendaftaran',sertifikat:'Kelola Sertifikat',materi:'Kelola Materi',indikator:'Kelola Indikator',multiusers:'Kelola Akun Pengguna (Multiusers)'};
   var writable=canWrite(type);
   var readOnly=!writable;
-  var c=document.getElementById('adminCrudContent');
-  if (!c) { console.warn('[DOM] openAdminCrud: #adminCrudContent tidak ditemukan'); return; }
-  var infoBar=readOnly?'<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>'+levelLabel()+'</strong> \u2014 mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>':'';
-  // Add Import button ONLY for admin users who are logged in
-  const isAdminLoggedIn = isAdminUser() && canWrite(type);
-  const importBtn = (isAdminLoggedIn && ['pengumuman','sdmk','pendaftaran','sertifikat','materi','admin'].includes(type)) 
-    ? '<button class="btn btn-success ml-2" onclick="openBulkImportForModule(\''+type+'\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
-    : '';
-    
-  c.innerHTML='<div class="page-header"><h2><i class="fas fa-cog" style="margin-right:8px;color:var(--primary);"></i>'+(titles[type]||type)+'</h2><p>Kelola data dari database Nhost.</p>'+importBtn+'</div>'+infoBar+'<div id="adminCrudTable"></div>';
 
-  if(type==='admin'){loadAdminList();return;}
+  // Header modul + aksi
+  var infoBar=readOnly?'<div class="admin-info-bar"><i class="fas fa-eye"></i> Anda login sebagai <strong>'+levelLabel()+'</strong> \u2014 mode <strong>hanya lihat</strong>. Tombol tambah, edit, dan hapus tidak ditampilkan.</div>':'';
+  const isAdminLoggedIn = isAdminUser() && canWrite(type);
+  const importBtn = (isAdminLoggedIn && ['pengumuman','sdmk','pendaftaran','sertifikat','materi'].includes(type))
+    ? '<button class="btn btn-success" onclick="openBulkImportForModule(\''+type+'\')"><i class="fas fa-file-import"></i> Import Data Massal</button>'
+    : '';
+  var moduleIcon=(ADMIN_TABLES[type]&&ADMIN_TABLES[type].icon)?ADMIN_TABLES[type].icon:'fa-table';
+
+  panel.innerHTML='<div class="admin-module-head">'+
+    '<div class="admin-module-title">'+
+      '<div class="admin-module-icon"><i class="fas '+moduleIcon+'"></i></div>'+
+      '<div><h3>'+(titles[type]||type)+'</h3><p>Kelola data dari database Nhost.</p></div>'+
+    '</div>'+
+    '<div class="admin-module-actions">'+importBtn+'</div>'+
+  '</div>'+infoBar+
+  '<div id="adminCrudTable"></div>';
+
+  if(type==='multiusers'){loadAdminList();return;}
+  if(type==='indikator'){loadIndikatorList();return;}
 
   _crud.sheetType=type;
   _crud.writable=writable;

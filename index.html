@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>   
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PAMUNGKAS — Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan</title>
@@ -498,7 +498,7 @@
         <div id="cekRegResult" class="cek-reg-result"></div>
       </section>
 
-<!-- ==================== PANEL ADMIN ==================== -->
+<!-- ==================== PANEL ADMIN (SATU FRAME MULTI-TAB) ==================== -->
       <section class="page-section" id="page-panel-admin">
         <!-- Belum login -->
         <div id="adminContent">
@@ -509,21 +509,20 @@
             <button class="btn btn-primary" style="margin-top:20px;" onclick="openLoginModal()"><i class="fas fa-sign-in-alt"></i> Login sebagai Admin</button>
           </div>
         </div>
-        <!-- Sudah login: pilih menu -->
-        <div id="adminDashboard" style="display:none;">
-          <div class="page-header"><h2>Panel Admin</h2><p>Selamat datang, <strong id="adminName">Admin</strong>.</p></div>
-          <div id="adminInfoBar"></div>
-          
-          <!-- Real Statistics from Nhost -->
-          <div id="adminStatsGrid" class="admin-stats-grid"></div>
-          
-          <!-- Menu Grid organized by category -->
-          <div class="admin-grid" id="adminMenuGrid"></div>
-        </div>
-        <!-- Sub-halaman CRUD Admin -->
-        <div id="adminCrudSection" style="display:none;">
-          <button class="btn-back" onclick="closeAdminCrud()"><i class="fas fa-arrow-left"></i> Kembali ke Panel Admin</button>
-          <div id="adminCrudContent"></div>
+        <!-- Sudah login: SATU FRAME berisi tab Ringkasan + tab modul data (sesuai role) -->
+        <div id="adminPanelFrame" style="display:none;">
+          <div class="admin-panel-header">
+            <div class="admin-panel-header-info">
+              <div class="admin-panel-avatar"><i class="fas fa-user-shield"></i></div>
+              <div>
+                <h2>Panel Admin</h2>
+                <p>Selamat datang, <strong id="adminName">Admin</strong>. Kelola semua data dari satu panel.</p>
+              </div>
+            </div>
+            <div class="admin-panel-header-badge" id="adminPanelRoleBadge"></div>
+          </div>
+          <div class="admin-panel-tabs" id="adminPanelTabs" role="tablist"></div>
+          <div class="admin-panel-body" id="adminTabPanels"></div>
         </div>
       </section>
 

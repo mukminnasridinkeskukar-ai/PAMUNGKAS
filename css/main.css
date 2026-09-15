@@ -1485,3 +1485,38 @@
     /* ========== TABLE WORKFLOW ACTIONS ========== */
     .workflow-actions{display:flex;gap:6px;flex-wrap:wrap}
     @media(max-width:768px){.pf-grid{grid-template-columns:1fr}.workflow-modal-box{width:95%;max-height:90vh}.konfirmasi-modal-box{width:95%}}
+
+/* ============================================================
+   ADMIN PANEL FRAME — Satu frame multi-tab
+   (Ringkasan + tab modul data; sub-halaman terpisah dihapus)
+   ============================================================ */
+.admin-panel-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:linear-gradient(135deg,var(--primary),#0a4fb0);border-radius:var(--radius-md) var(--radius-md) 0 0;padding:20px 24px;color:#fff}
+.admin-panel-header-info{display:flex;align-items:center;gap:14px;min-width:0}
+.admin-panel-avatar{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex:0 0 auto}
+.admin-panel-header h2{font-size:1.15rem;font-weight:700;margin:0;color:#fff}
+.admin-panel-header p{font-size:.8rem;margin:2px 0 0;color:rgba(255,255,255,.88)}
+.admin-panel-header p strong{color:#fff}
+.admin-panel-header-badge{flex:0 0 auto}
+.admin-panel-header-badge .level-badge{font-size:.72rem}
+.admin-panel-tabs{display:flex;gap:2px;background:var(--bg-card);border:1px solid var(--border-color);border-top:none;overflow-x:auto;padding:6px 8px 0;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.admin-panel-tabs::-webkit-scrollbar{height:5px}
+.admin-panel-tabs::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px}
+.admin-panel-tab{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;background:transparent;border:none;border-bottom:3px solid transparent;font-family:inherit;font-size:.85rem;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .2s ease;white-space:nowrap;border-radius:8px 8px 0 0}
+.admin-panel-tab:hover{background:var(--primary-light);color:var(--primary)}
+.admin-panel-tab.active{color:var(--primary);border-bottom-color:var(--primary);background:var(--primary-light)}
+.admin-panel-tab i{font-size:.9rem}
+.admin-panel-body{background:var(--bg-card);border:1px solid var(--border-color);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);padding:24px;min-height:420px}
+.admin-tab-panel{display:none}
+.admin-tab-panel.active{display:block;animation:tabFadeIn .25s ease}
+.admin-module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.admin-module-title{display:flex;align-items:center;gap:12px;min-width:0}
+.admin-module-icon{width:42px;height:42px;border-radius:10px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex:0 0 auto}
+.admin-module-title h3{font-size:1.05rem;font-weight:700;margin:0}
+.admin-module-title p{font-size:.78rem;color:var(--text-secondary);margin:2px 0 0}
+.admin-module-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:768px){
+  .admin-panel-header{padding:16px}
+  .admin-panel-header h2{font-size:1.02rem}
+  .admin-panel-tab{padding:10px 12px;font-size:.78rem}
+  .admin-panel-body{padding:14px;min-height:320px}
+}

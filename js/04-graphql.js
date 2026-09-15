@@ -13,7 +13,7 @@ const GRAPHQL_QUERIES = {
       sdmk_aggregate { aggregate { count } }
       pendaftaran_aggregate { aggregate { count } }
       sertifikat_aggregate { aggregate { count } }
-      pengumuman(where: {status: {_eq: "published"}}) { id judul isi_pengumuman tanggal status created_at created_by }
+      pengumuman { id judul isi_pengumuman tanggal status created_at created_by }
       
       # SDMK Data dengan field lengkap
       sdmk(order_by: {created_at: desc_nulls_last}, limit: 50) { 

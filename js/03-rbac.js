@@ -70,7 +70,7 @@ const SIDEBAR_MENU_CONFIG = {
       { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
     ],
     panelAdmin: [
-      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+      { id: 'panel-admin-dashboard', label: 'Panel Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
     ],
     dataUtama: [
       { id: 'indikator', label: 'Indikator', icon: 'fa-chart-line', module: 'indikator' },
@@ -83,8 +83,7 @@ const SIDEBAR_MENU_CONFIG = {
       { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
     ],
     sistem: [
-      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' },
-      { id: 'user-accounts', label: 'Akun User', icon: 'fa-user-shield', module: 'user_accounts' }
+      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' }
     ]
   },
   
@@ -100,7 +99,7 @@ const SIDEBAR_MENU_CONFIG = {
       { id: 'cek-pendaftaran', label: 'Cek Pendaftaran', icon: 'fa-search-location', page: 'cek-pendaftaran' }
     ],
     panelAdmin: [
-      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+      { id: 'panel-admin-dashboard', label: 'Panel Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
     ],
     dataUtama: [
       { id: 'indikator', label: 'Indikator', icon: 'fa-chart-line', module: 'indikator' },
@@ -113,8 +112,7 @@ const SIDEBAR_MENU_CONFIG = {
       { id: 'sertifikat', label: 'Sertifikat', icon: 'fa-certificate', module: 'sertifikat' }
     ],
     sistem: [
-      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' },
-      { id: 'user-accounts', label: 'Akun User', icon: 'fa-user-shield', module: 'user_accounts' }
+      { id: 'multiusers', label: 'Multiusers', icon: 'fa-users-cog', module: 'multiusers' }
     ]
   },
   
@@ -126,7 +124,7 @@ const SIDEBAR_MENU_CONFIG = {
       { id: 'cek-sertifikat', label: 'Cek Sertifikat', icon: 'fa-certificate', page: 'cek-sertifikat' }
     ],
     panelAdmin: [
-      { id: 'panel-admin-dashboard', label: 'Dashboard Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
+      { id: 'panel-admin-dashboard', label: 'Panel Admin', icon: 'fa-tachometer-alt', page: 'panel-admin' }
     ],
     dataUtama: [
       { id: 'pendaftaran-admin', label: 'Pendaftaran', icon: 'fa-clipboard-list', module: 'pendaftaran' }

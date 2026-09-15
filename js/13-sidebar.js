@@ -113,7 +113,8 @@ function renderDynamicSidebar() {
       });
     }
 
-    // 3b. Modul kelola data (CRUD per modul, sesuai permission)
+    // 3b. Modul kelola data (CRUD per modul, sesuai permission) → tab di frame Panel Admin
+    // data-admin-tab dipakai untuk highlight sidebar sesuai tab aktif
     var groups = [
       ['dataUtama', 'Data Utama'],
       ['informasi', 'Informasi'],
@@ -123,7 +124,7 @@ function renderDynamicSidebar() {
       var items = menuConfig[grp[0]] || menuConfig[grp[1]] || [];
       items.forEach(function(menu) {
         if (hasPermission(role, menu.module, 'read')) {
-          html += '<a class="nav-item" onclick="openAdminCrud(\'' + menu.module + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
+          html += '<a class="nav-item" data-admin-tab="' + menu.module + '" onclick="openAdminCrud(\'' + menu.module + '\')"><i class="fas ' + menu.icon + '"></i><span>' + menu.label + '</span></a>';
           visibleMenus.push(menu.label);
         }
       });
