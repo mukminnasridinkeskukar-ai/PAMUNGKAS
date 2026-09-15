@@ -777,3 +777,41 @@ Project ini dibuat untuk keperluan **Dinas Kesehatan** dalam pengelolaan SDM Kes
 [⬆ Back to Top](#--pamungkas--platform-manajemen-sdm-kesehatan)
 
 </div>
+
+
+---
+
+## 🔐 KEAMANAN SESI v7.5 — Nhost Auth Asli (bukan simulasi)
+
+### Arsitektur
+| Lapisan | Implementasi |
+|---|---|
+| Autentikasi | **Nhost Auth** `/v1/signin/email-password` (bcrypt di server) — TIDAK ada pencocokan password di browser |
+| Token | Access token (sessionStorage, ±15 mnt) + refresh token (localStorage, rotasi otomatis, smart-retry antar-tab) |
+| Autorisasi | **JWT claims → Hasura permission per role**: `public` / `user` / `operator` / `admin` / `superadmin` |
+| Role | `auth.users.default_role` + `auth.user_roles`, disinkronkan fungsi `security.set_user_role` (superadmin-only) |
+| Admin secret | **DIHAPUS dari frontend.** Semua request: JWT user atau permission publik |
+
+### Fitur aktif
+1. **Auto logout idle 15 menit** — timestamp `lastActivity` (mousemove, mousedown, click, scroll, keydown, touchstart, touchmove, pindah halaman); dicek tick 20 detik + saat tab aktif kembali (visibilitychange/focus/pageshow) — bukan sekadar setTimeout.
+2. **Validasi kembali ke tab** — cek token, refresh token, dan status sesi ke server.
+3. **Single-session per user** — tabel `security.session_tracking` + trigger: login dari browser lain MENCABUT sesi lama (`replaced_by_new_login`); browser lama mendeteksi & keluar otomatis.
+4. **Lockout 3x salah password** — tabel `security.login_security`, server-side; kunci 15 menit; login saat terkunci DITOLAK (password benar pun); counter reset otomatis saat login sukses (trigger).
+5. **Protected route** — `panel-admin` wajib sesi valid; gagal → `forceSecureLogout()`.
+6. **`forceSecureLogout(reason)`** — pusat reset: blokir request, signout Nhost, audit, broadcast antar-tab, bersihkan state, `window.location.replace('https://mukminnasri.com/')` (tidak bisa Back).
+7. **Sinkronisasi antar-tab** — `BroadcastChannel('pamungkas-security')` + storage-event: LOGOUT / IDLE_TIMEOUT / SESSION_REVOKED / SECURITY_LOCK / SESSION_SYNC.
+8. **Validasi berkala** — tick 20 dtk lokal + validasi sesi server maks 1x/menit + sebelum operasi penting; 401/JWT-expired → auto-refresh sekali; 403/permission-denied → logout.
+9. **Audit log** — `security.security_audit_log`: login sukses/gagal (per percobaan), lock, sesi dicabut, logout, perubahan user. Tanpa password/token.
+10. **Privasi pendaftaran** — anonim hanya bisa INSERT kolom tertentu (status dipaksa `Menunggu` oleh preset server) dan membaca data via `security.cek_pendaftaran_by_nik` (hanya NIK yang dicari). Dashboard publik memakai kolom non-PII.
+
+### Akun (Nhost Auth)
+| Username (login) | Email Nhost | Level |
+|---|---|---|
+| `superadmin` | superadmin@pamungkas.mukminnasri.com | superadmin |
+| `operator1` | operator1@pamungkas.mukminnasri.com | operator |
+| `operator2` | operator2@pamungkas.mukminnasri.com | operator |
+
+- Login cukup ketik **username** (app menambahkan domain) atau email lengkap.
+- Password sama dengan sebelumnya (migrasi otomatis ke bcrypt Nhost; kolom plaintext DIHAPUS dari DB).
+- Superadmin menambah user baru via tab **Multiusers** → dibuat sebagai akun **Nhost Auth asli**.
+- **Wajib**: ganti `adminSecret` lama di dashboard Nhost jika belum, karena secret itu pernah terdapat di kode frontend.

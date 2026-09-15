@@ -6,7 +6,12 @@
 
 /* ========== NAVIGASI ========== */
 function navigateTo(page){
+  /* SECURITY v7.5 — PROTECTED ROUTE: halaman internal (panel-admin) wajib
+     sesi valid (token + sesi server + tidak idle). Gagal → forceSecureLogout
+     → redirect https://mukminnasri.com/ (replace, tidak bisa Back). */
+  if (window.Sec && !Sec.assertProtectedPage(page)) return;
   currentPage=page;
+  if (window.Sec) Sec.touchActivity(); // perpindahan halaman = aktivitas
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');if(i.getAttribute('data-page')===page)i.classList.add('active');});
   document.querySelectorAll('.page-section').forEach(function(s){s.classList.remove('active');});
   var t=document.getElementById('page-'+page);if(t)t.classList.add('active');
@@ -89,84 +94,44 @@ function closeSDMKLightbox(){
   document.body.style.overflow = '';
 }
 
-/* ========== SESSION RESTORATION (RBAC) ==========
- * Restore user session on page load
- * Called automatically when DOM is ready
+/* ========== SESSION RESTORATION (SECURITY v7.5) ==========
+ * Sesi dipulihkan HANYA bila Nhost Auth valid (refresh token → server,
+ * sesi tercatat aktif di security.session_tracking, user aktif di registry).
+ * Bukan sekadar localStorage flag — server yang memutuskan.
  * ============================================================ */
 function restoreUserSession() {
-  console.log('[AUTH] Restoring user session...');
-  
-  // Check for existing session
-  var savedLevel = sessionStorage.getItem('pamungkas_admin_level');
-  var savedUser = sessionStorage.getItem('pamungkas_admin_user');
-  var savedRole = sessionStorage.getItem('pamungkas_current_role');
-  var savedCurrentUser = sessionStorage.getItem('pamungkas_current_user');
-  
-  if (savedLevel && savedUser) {
-    // Restore state variables
-    adminLevel = savedLevel;
-    adminUsername = savedUser;
-    currentRole = savedRole || normalizeRole(savedLevel);
-    
-    // Parse currentUser object if exists
-    if (savedCurrentUser) {
-      try {
-        currentUser = JSON.parse(savedCurrentUser);
-      } catch(e) {
-        console.warn('[AUTH] Failed to parse currentUser, creating basic object');
-        currentUser = {
-          username: savedUser,
-          nama_lengkap: savedUser,
-          role: currentRole,
-          level: currentRole
-        };
-      }
-    } else {
-      // Create basic currentUser from available data
-      currentUser = {
-        username: savedUser,
-        nama_lengkap: savedUser,
-        role: currentRole,
-        level: currentRole
-      };
-    }
-    
-    // Validate role is still valid
-    if (!isValidRole(currentRole)) {
-      console.warn('[AUTH] Invalid role in session:', currentRole, '- clearing session');
-      handleLogout();
-      return false;
-    }
-    
-    console.log('[AUTH] Session restored successfully:');
-    console.log('[AUTH] Current user:', currentUser);
-    console.log('[AUTH] Current role:', currentRole);
-    console.log('[AUTH] Permissions:', ROLE_PERMISSIONS[currentRole]);
-    
-    // Update UI components
-    updateAdminUI();
+  if (!window.Sec) {
+    console.error('[SECURITY] Modul keamanan tidak termuat!');
     renderDynamicSidebar();
-    
-    return true;
-  } else {
-    console.log('[AUTH] No existing session found - user not logged in');
-    
-    // Render public sidebar (no admin menu)
-    renderDynamicSidebar();
-    
-    return false;
+    return Promise.resolve(false);
   }
+  return Sec.init().then(function (restored) {
+    if (restored) {
+      updateAdminUI();
+    } else {
+      // mode publik
+      try {
+        var topbarRight = document.getElementById('topbarRight');
+        if (topbarRight && !topbarRight.innerHTML.trim()) {
+          topbarRight.innerHTML = '<button class="btn-admin-login" onclick="openLoginModal()"><i class="fas fa-lock"></i><span>Login Admin</span></button>';
+        }
+      } catch (e) {}
+    }
+    renderDynamicSidebar();
+    return restored;
+  }).catch(function (e) {
+    console.warn('[SECURITY] init warning:', e);
+    renderDynamicSidebar();
+    return false;
+  });
 }
 
 // Auto-restore session when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[INIT] DOM Content Loaded - initializing PAMUNGKAS RBAC system...');
-  
-  // Restore user session
+  console.log('[INIT] DOM Content Loaded - initializing PAMUNGKAS RBAC + SECURITY...');
+
+  // Validasi sesi Nhost dulu (async), lalu render UI sesuai hasil
   restoreUserSession();
-  
-  // Initialize sidebar
-  initSidebar();
-  
-  console.log('[INIT] PAMUNGKAS RBAC system initialized');
+
+  console.log('[INIT] PAMUNGKAS security initialized');
 });

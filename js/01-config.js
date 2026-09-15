@@ -59,22 +59,29 @@ var _importState = {
 
 /* ---------- KONFIGURASI NHOST / HASURA ---------- */
 /* ========== KONFIGURASI NHOST / HASURA GRAPHQL ==========
- * GANTI nilai di bawah ini sesuai dengan project Nhost Anda
- * Dapatkan dari: Nhost Dashboard > Hasura > Settings > API Endpoint
+ * SECURITY v7.5: TIDAK ADA admin secret di sisi browser.
+ * - Autentikasi   : Nhost Auth (authUrl) — email/password → JWT
+ * - Autorisasi    : JWT claims (role) + Hasura permission per role
+ * - Query publik  : permission role "public" (unauthenticated)
  * ============================================================ */
 var NHOST_CONFIG = {
-  // Hasura GraphQL Endpoint (WAJIB DIUBAH)
+  // Hasura GraphQL Endpoint
   graphqlUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/graphql',
-  
-  // Admin Secret dari Nhost Dashboard > Hasura > Settings > Admin Secret
-  // Untuk production, gunakan Nhost Auth token, bukan admin secret
-  adminSecret: '6zFaZ5::7R5^Rwg!zPM%s,7XHicFuwvB',
-  
-  // Nhost Auth endpoint (untuk authentication)
-  authUrl: 'https://tphsxlntogpbpauvhuum.hasura.ap-southeast-1.nhost.run/v1/auth',
-  
-  // Storage URL (untuk upload file) — layanan storage Nhost (domain storage.*, bukan hasura.*)
+
+  // Nhost Auth endpoint (service auth.* — BUKAN hasura.*)
+  authUrl: 'https://tphsxlntogpbpauvhuum.auth.ap-southeast-1.nhost.run/v1',
+
+  // Storage URL (layanan storage.* — upload/read file)
   storageUrl: 'https://tphsxlntogpbpauvhuum.storage.ap-southeast-1.nhost.run'
+};
+
+/* ---------- KONFIGURASI KEAMANAN SESI (v7.5) ---------- */
+var SECURITY_CONFIG = {
+  IDLE_MINUTES: 15,                        // auto-logout idle 15 menit
+  LOCKOUT_ATTEMPTS: 3,                     // salah password 3x
+  LOCKOUT_MINUTES: 15,                     // kunci 15 menit (server-side)
+  SESSION_HOURS: 24,                       // masa berlaku sesi tercatat
+  REDIRECT_URL: 'https://mukminnasri.com/' // tujuan saat sesi diakhiri
 };
 
 /* ---------- ADMIN TABLES (Peta modul Panel Admin) ---------- */

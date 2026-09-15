@@ -383,3 +383,122 @@ Features included:
 -- ============================================================
 -- END OF SCHEMA
 -- ============================================================
+
+-- ============================================================
+-- SECURITY LAYER — v7.5 (Nhost Auth asli + Session Security)
+-- ============================================================
+-- Catatan penting:
+-- * Login TIDAK lagi memakai tabel multiusers.password (kolom sudah DIHAPUS).
+--   Autentikasi = Nhost Auth (bcrypt di server auth).
+-- * User multiusers ditautkan ke auth.users via kolom: email + auth_user_id.
+-- * User sintaks: username@pamungkas.mukminnasri.com (kecuali username ber-email).
+-- * Role JWT: superadmin | admin | operator | user (auth.users.default_role +
+--   auth.user_roles, disinkronkan fungsi security.set_user_role).
+-- * Single-session: login baru mencabut sesi aktif lain (trigger).
+-- * Lockout 3x salah password 15 menit (security.login_security, server-side).
+-- * Idel timeout 15 menit ditangani frontend js/20-session-security.js dan
+--   selalu divalidasi ulang ke server (security.session_tracking).
+
+CREATE SCHEMA IF NOT EXISTS security;
+
+CREATE TABLE IF NOT EXISTS security.login_security (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         uuid,
+  email           citext NOT NULL UNIQUE,
+  failed_attempts integer NOT NULL DEFAULT 0,
+  last_failed_at  timestamptz,
+  locked_until    timestamptz,
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS security.session_tracking (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id            uuid NOT NULL,
+  session_identifier text NOT NULL UNIQUE,
+  device_label       text,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  last_activity      timestamptz NOT NULL DEFAULT now(),
+  expires_at         timestamptz,
+  status             text NOT NULL DEFAULT 'active',   -- active|revoked|logged_out
+  revoked_at         timestamptz,
+  revoked_reason     text
+);
+CREATE INDEX IF NOT EXISTS idx_sess_user ON security.session_tracking(user_id, status);
+
+CREATE TABLE IF NOT EXISTS security.security_audit_log (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid,
+  email      text,
+  event      text NOT NULL,
+  detail     text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON security.security_audit_log(created_at DESC);
+
+-- Tipe kembalian fungsi (tabel kosong; data hanya lewat fungsi)
+CREATE TABLE IF NOT EXISTS security.op_result        (status text, message text);
+CREATE TABLE IF NOT EXISTS security.login_lock_state (email citext, failed_attempts integer, locked_until timestamptz, is_locked boolean);
+CREATE TABLE IF NOT EXISTS security.session_state    (status text, expires_at timestamptz, last_activity timestamptz);
+CREATE TABLE IF NOT EXISTS security.app_role_state   (app_role text, username text, display_name text, status text, is_active boolean, email text);
+
+-- ---------------------------------------------------------------
+-- TRIGGER: single-session (login baru = sesi lama dicabut)
+-- ---------------------------------------------------------------
+CREATE OR REPLACE FUNCTION security.fn_single_session() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE security.session_tracking
+     SET status = 'revoked', revoked_at = now(), revoked_reason = 'replaced_by_new_login'
+   WHERE user_id = NEW.user_id AND status = 'active'
+     AND session_identifier <> NEW.session_identifier;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS tr_single_session ON security.session_tracking;
+CREATE TRIGGER tr_single_session BEFORE INSERT ON security.session_tracking
+FOR EACH ROW EXECUTE FUNCTION security.fn_single_session();
+
+-- ---------------------------------------------------------------
+-- TRIGGER: sesi dibuat → reset counter lockout + audit login_success
+-- ---------------------------------------------------------------
+CREATE OR REPLACE FUNCTION security.fn_on_session_created() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_email text;
+BEGIN
+  SELECT u.email::text INTO v_email FROM auth.users u WHERE u.id = NEW.user_id;
+  IF v_email IS NOT NULL THEN
+    UPDATE security.login_security
+       SET failed_attempts = 0, locked_until = NULL, updated_at = now(), user_id = NEW.user_id
+     WHERE lower(email::text) = lower(v_email)
+       AND (failed_attempts > 0 OR locked_until IS NOT NULL);
+    INSERT INTO security.security_audit_log (user_id, email, event, detail)
+    VALUES (NEW.user_id, v_email, 'login_success', 'session=' || left(NEW.session_identifier, 40));
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS tr_on_session_created ON security.session_tracking;
+CREATE TRIGGER tr_on_session_created AFTER INSERT ON security.session_tracking
+FOR EACH ROW EXECUTE FUNCTION security.fn_on_session_created();
+
+-- ---------------------------------------------------------------
+-- FUNGSI UTAMA (SECURITY DEFINER; otorisasi via Hasura execute permission)
+-- Nama argumen camelCase (pEmail, dst) = nama argumen GraphQL.
+-- Semua fungsi mutasi dipanggil dgn format: security_fn(args: {...})
+-- ---------------------------------------------------------------
+-- Lihat implementasi lengkap di deployment; ringkas:
+--   security.check_lock(pEmail)                 → SETOF login_lock_state (query, public)
+--   security.record_failed_login(pEmail)        → SETOF login_lock_state (mutation, public)
+--   security.log_event(pEvent,pDetail,pEmail)   → SETOF op_result        (mutation, public+)
+--   security.cek_pendaftaran_by_nik(pNik)       → SETOF pendaftaran      (query, public)
+--   security.set_user_role(pEmail,pLevel,pStatus,pPassword) → op_result (mutation, SUPERADMIN)
+--   security.create_app_user(pUsername,pEmail,pPassword,pLevel) → op_result (mutation, SUPERADMIN)
+--   security.delete_app_user(pEmail)            → op_result (mutation, SUPERADMIN)
+--   security.jwt_user_id()/jwt_default_role()   → helper internal
+
+-- multiusers v7.5: password DIHAPUS (bcrypt di Nhost Auth)
+-- ALTER TABLE public.multiusers DROP COLUMN IF EXISTS password;
+-- ALTER TABLE public.multiusers ADD COLUMN IF NOT EXISTS email citext;
+-- ALTER TABLE public.multiusers ADD COLUMN IF NOT EXISTS auth_user_id uuid;
+
+-- ============================================================
+-- END OF SECURITY LAYER
+-- ============================================================

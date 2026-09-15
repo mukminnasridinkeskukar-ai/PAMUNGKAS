@@ -46,6 +46,26 @@ const GRAPHQL_QUERIES = {
     }
   `,
   
+  /* SECURITY v7.5: varian dashboard utk pengunjung anonim — hanya kolom
+     non-PII pendaftaran (tanpa NIK/NIP/kontak/alamat/file). Statistik
+     PNS/PPPK & gender tetap jalan (kolom agregat non-identifying). */
+  getDashboardDataPublic: `
+    query GetDashboardDataPublic {
+      indikator(order_by: {id: asc}) { id indikator nilai target satuan periode }
+      sdmk_aggregate { aggregate { count } }
+      pendaftaran_aggregate { aggregate { count } }
+      sertifikat_aggregate { aggregate { count } }
+      pengumuman { id judul isi_pengumuman tanggal status created_at created_by }
+      sdmk(order_by: {created_at: desc_nulls_last}, limit: 50) {
+        id foto nama nik profesi unit_kerja nomor_sertifikat judul_kegiatan
+        tanggal_pelaksanaan tahun tempat_pelaksanaan created_at updated_at
+      }
+      pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 20) {
+        id nama_lengkap_dengan_gelar unit_kerja jenis_sdmk jenis_profesi
+        pekerjaan jenis_kelamin judul_kegiatan status created_at
+      }
+    }
+  `,
   getPengumuman: `
     query GetPengumuman($order: [pengumuman_order_by!]) {
       pengumuman(order_by: $order) {
@@ -95,11 +115,6 @@ const GRAPHQL_QUERIES = {
     }
   `,
   
-  getMultiusers: `
-    query GetMultiusers {
-      multiusers { id username level status created_at }
-    }
-  `,
   
   getIndikator: `
     query GetIndikator {
@@ -115,16 +130,6 @@ const GRAPHQL_QUERIES = {
     }
   `,
   
-  cekPendaftaran: `
-    query CekPendaftaran($nik: String!) {
-      pendaftaran(where: {nik: {_eq: $nik}}) {
-        id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
-        pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
-        lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
-        link_spj judul_kegiatan status created_at updated_at catatan_admin
-      }
-    }
-  `,
 
   // === MUTATIONS ===
   insertPengumuman: `mutation InsertPengumuman($object: pengumuman_insert_input!) { insert_pengumuman_one(object: $object) { id } }`,
@@ -146,27 +151,47 @@ const GRAPHQL_QUERIES = {
   insertMateri: `mutation InsertMateri($object: materi_insert_input!) { insert_materi_one(object: $object) { id } }`,
   updateMateri: `mutation UpdateMateri($id: uuid!, $object: materi_set_input!) { update_materi_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
   deleteMateri: `mutation DeleteMateri($id: uuid!) { delete_materi_by_pk(id: $id) { id } }`,
-  
-  insertMultiuser: `mutation InsertMultiuser($object: multiusers_insert_input!) { insert_multiusers_one(object: $object) { id } }`,
-  updateMultiuser: `mutation UpdateMultiuser($id: uuid!, $object: multiusers_set_input!) { update_multiusers_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
-  deleteMultiuser: `mutation DeleteMultiuser($id: uuid!) { delete_multiusers_by_pk(id: $id) { id } }`,
-  
+
   // === INDIKATOR MUTATIONS (Previously Missing!) ===
   insertIndikator: `mutation InsertIndikator($object: indikator_insert_input!) { insert_indikator_one(object: $object) { id indikator nilai target satuan } }`,
   updateIndikator: `mutation UpdateIndikator($id: uuid!, $object: indikator_set_input!) { update_indikator_by_pk(pk_columns: {id: $id}, _set: $object) { id indikator nilai target satuan } }`,
   deleteIndikator: `mutation DeleteIndikator($id: uuid!) { delete_indikator_by_pk(id: $id) { id } }`,
-  
-  // Special query for authentication (returns password field)
-  getAllUsersForAuth: `
-    query GetAllUsersForAuth {
-      multiusers {
-        id
-        username
-        password
-        level
-        status
-        created_at
+
+  /* SECURITY v7.5:
+     - Query auth lama (getAllUsersForAuth — mengambil password ke browser) DIHAPUS.
+       Login kini via Nhost Auth (js/20-session-security.js).
+     - Manajemen multiusers via fungsi security_create_app_user / set_user_role /
+       security_delete_app_user (SECURITY DEFINER, gate execute permission).
+     - Cek Pendaftaran publik via security_cek_pendaftaran_by_nik (hanya data milik
+       NIK yang dicari; anonim TIDAK punya select ke tabel pendaftaran). */
+  cekPendaftaran: `
+    query CekPendaftaran($nik: String!) {
+      security_cek_pendaftaran_by_nik(args: {pNik: $nik}) {
+        id foto nama_lengkap_dengan_gelar nik nip unit_kerja jenis_sdmk jenis_profesi
+        pekerjaan jenis_kelamin tempat_dan_tanggal_lahir email_plataran_sehat
+        lama_bekerja_di_unit_sekarang nomor_whatsapp alamat_rumah surat_pernyataan
+        link_spj judul_kegiatan status created_at updated_at catatan_admin
       }
+    }
+  `,
+  getMultiusers: `
+    query GetMultiusers {
+      multiusers { id username email level status created_at }
+    }
+  `,
+  createAppUser: `
+    mutation CreateAppUser($u: String!, $e: String!, $p: String!, $l: String!) {
+      security_create_app_user(args: {pUsername: $u, pEmail: $e, pPassword: $p, pLevel: $l}) { status message }
+    }
+  `,
+  setUserRole: `
+    mutation SetUserRole($e: String!, $l: String!, $s: String!, $p: String) {
+      security_set_user_role(args: {pEmail: $e, pLevel: $l, pStatus: $s, pPassword: $p}) { status message }
+    }
+  `,
+  deleteAppUser: `
+    mutation DeleteAppUser($e: String!) {
+      security_delete_app_user(args: {pEmail: $e}) { status message }
     }
   `
 };
@@ -176,62 +201,86 @@ const GRAPHQL_QUERIES = {
 async function graphqlRequest(operationName, query, variables = {}) {
   const url = NHOST_CONFIG.graphqlUrl;
   const headers = { 'Content-Type': 'application/json' };
-  
-  if (NHOST_CONFIG.adminSecret && NHOST_CONFIG.adminSecret !== 'YOUR_ADMIN_SECRET') {
-    headers['x-hasura-admin-secret'] = NHOST_CONFIG.adminSecret;
-  }
-  
-  const authToken = safeStorage.getItem('nhost_token');
-  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
-  // ✅ DEEP DEBUG: Log semua detail request SEBELUM kirim ke Hasura
-  console.log('[GQL] === REQUEST START ===');
-  console.log('[GQL] Operation:', operationName);
-  console.log('[GQL] Variables:', JSON.stringify(variables, null, 2));
-  
-  // ✅ INSPECTION KRITIS: Cek setiap value dalam variables
-  if (variables && typeof variables === 'object') {
-    Object.keys(variables).forEach(function(key) {
-      var val = variables[key];
-      var type = typeof val;
-      console.log(`[GQL] Var "${key}":`, type, '=', 
-        type === 'object' ? JSON.stringify(val).substring(0, 150) : 
-        type === 'string' ? `"${val}"`.substring(0, 50) : val);
-      
-      // ✅ PERBAIKAN: Variable $object MEMANG harus bertipe object (input type)
-      // Jangan anggap sebagai error! Hanya log untuk debugging
-      if (type === 'object' && val !== null && !Array.isArray(val)) {
-        console.log(`[GQL] ℹ️ Variable "${key}" is object (this is OK for input types)`);
-        // Cek apakah ada nilai undefined/null DI DALAM object
-        if (val) {
-          Object.keys(val).forEach(function(innerKey) {
-            var innerVal = val[innerKey];
-            if (innerVal === undefined) {
-              console.warn(`[GQL] ⚠️ Inner field "${innerKey}" is UNDEFINED!`);
-            }
-          });
-        }
-      }
+  /* SECURITY v7.5: TIDAK ADA admin secret di browser.
+     Autentikasi = Nhost Auth JWT (Authorization: Bearer) via PamungkasSecurity.
+     Role & permission diverifikasi Hasura server-side. */
+  if (window.__PK_SECURITY_LOCKED__) {
+    throw new Error('Sesi telah diakhiri untuk keamanan.');
+  }
+  var hasSesi = !!(window.Sec && window.Sec.hasSession && window.Sec.hasSession());
+  if (hasSesi) {
+    const at = await window.Sec.ensureAccessToken().catch(function (e) {
+      window.Sec.forceSecureLogout(e && e.message === 'no-refresh-token' ? 'session_expired' : 'session_invalid');
+      throw new Error('Sesi tidak valid. Silakan login kembali.');
     });
+    headers['Authorization'] = 'Bearer ' + at;
   }
 
-  try {
-    const response = await fetch(url, {
+  const sendOnce = async function () {
+    return fetch(url, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({ query: query, variables: variables, operationName: operationName })
     });
+  };
+  const classifyErrors = function (result) {
+    if (!result || !result.errors || !result.errors.length) return null;
+    var e0 = result.errors[0] || {};
+    var code = (e0.extensions && e0.extensions.code) || '';
+    var msg = e0.message || '';
+    if (code === 'invalid-jwt' || code === 'JWT expired' || code === 'JWTExpired' || /jwt.*expired|invalid.*jwt/i.test(msg)) return 'jwt';
+    if (code === 'permission-denied' || code === 'unauthenticated') return 'unauthorized';
+    return 'other';
+  };
 
+  try {
+    let response = await sendOnce();
+
+    // 401/JWT-expired → refresh token sekali → coba ulang sekali
+    if (response.status === 401 && hasSesi) {
+      try {
+        await window.Sec.ensureAccessToken();
+        headers['Authorization'] = 'Bearer ' + window.Sec.getAccessToken();
+        response = await sendOnce();
+      } catch (e2) {
+        // genuine = server menolak refresh token → logout penuh (semua tab).
+        // transien (jaringan/race) → logout lokal saja, tab lain tetap aman.
+        window.Sec.forceSecureLogout('session_expired', { clearShared: !!(e2 && e2.genuine) });
+        throw new Error('Sesi tidak valid. Silakan login kembali.');
+      }
+    }
+    if (response.status === 403) {
+      window.Sec.forceSecureLogout('unauthorized');
+      throw new Error('Akses ditolak (403). Sesi diakhiri untuk keamanan.');
+    }
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
     const result = await response.json();
-    
-    // ✅ Log response dari Hasura
-    console.log('[GQL] Response status:', response.status);
-    
+    var kind = classifyErrors(result);
+    if (kind === 'jwt' && hasSesi) {
+      try {
+        await window.Sec.ensureAccessToken();
+        headers['Authorization'] = 'Bearer ' + window.Sec.getAccessToken();
+        const resp2 = await sendOnce();
+        if (!resp2.ok) throw new Error(`HTTP error! status: ${resp2.status}`);
+        const result2 = await resp2.json();
+        if (result2.errors) {
+          console.error('GraphQL Errors:', result2.errors);
+          throw new Error(result2.errors[0].message || 'GraphQL error');
+        }
+        return result2.data;
+      } catch (e3) {
+        window.Sec.forceSecureLogout('token_invalid', { clearShared: !!(e3 && e3.genuine) });
+        throw e3;
+      }
+    }
+    if (kind === 'unauthorized') {
+      window.Sec.forceSecureLogout('unauthorized');
+      throw new Error(result.errors[0].message || 'Akses ditolak.');
+    }
     if (result.errors) {
       console.error('GraphQL Errors:', result.errors);
-      console.error('[GQL] Full error details:', JSON.stringify(result.errors, null, 2));
       throw new Error(result.errors[0].message || 'GraphQL error');
     }
 
@@ -253,7 +302,11 @@ function callServer(action, data) {
       
       switch(action) {
         case 'getDashboardData':
-          result = await graphqlRequest('GetDashboardData', GRAPHQL_QUERIES.getDashboardData);
+          /* SECURITY v7.5: anonim → query publik (kolom non-PII);
+             user login → query lengkap (permission role masing-masing). */
+          var _dashIsPub = !(window.Sec && window.Sec.hasSession && window.Sec.hasSession());
+          result = await graphqlRequest(_dashIsPub ? 'GetDashboardDataPublic' : 'GetDashboardData',
+            _dashIsPub ? GRAPHQL_QUERIES.getDashboardDataPublic : GRAPHQL_QUERIES.getDashboardData);
           
           // Extract base counts
           var sdmkData = result.sdmk || [];
@@ -473,7 +526,7 @@ function callServer(action, data) {
           result = await graphqlRequest('CekPendaftaran', GRAPHQL_QUERIES.cekPendaftaran, { nik: cekNik });
           resolve({ 
             success: true, 
-            data: (result.pendaftaran || []).map(p => ({
+            data: (result.security_cek_pendaftaran_by_nik || []).map(p => ({
               ID: p.id,
               Foto: p.foto,
               'Nama Lengkap dengan Gelar': p.nama_lengkap_dengan_gelar,
@@ -504,8 +557,8 @@ function callServer(action, data) {
         case 'getMultiusers':
           result = await graphqlRequest('GetMultiusers', GRAPHQL_QUERIES.getMultiusers);
           resolve({ success: true, data: (result.multiusers || []).map(u => ({
-            ID: u.id, Username: u.username, Password: '********',
-            Level: u.level.charAt(0).toUpperCase() + u.level.slice(1), Status: u.status
+            ID: u.id, Username: u.username, Email: u.email || '', Password: '********',
+            Level: (u.level || 'user').charAt(0).toUpperCase() + (u.level || 'user').slice(1), Status: u.status
           })) });
           break;
 
@@ -628,11 +681,21 @@ function callServer(action, data) {
 
         case 'tambahAdmin':
         case 'tambahMultiuser':
-          await graphqlRequest('InsertMultiuser', GRAPHQL_QUERIES.insertMultiuser, {
-            object: { username: data.Username, password: data.Password,
-              level: data.Level?.toLowerCase() || 'user', status: 'active' }
+          /* SECURITY v7.5: buat user Nhost Auth asli (bcrypt di server) + baris
+             multiusers. Password TIDAK disimpan plaintext. Gate: superadmin. */
+          var nuEmail = (data.Email || data.Username || '').trim().toLowerCase();
+          if (nuEmail.indexOf('@') === -1) nuEmail += '@' + (window.Sec ? Sec.CFG.AUTH_EMAIL_DOMAIN : 'pamungkas.mukminnasri.com');
+          if (!data.Password || data.Password.length < 8) {
+            resolve({ success: false, message: 'Password minimal 8 karakter.' });
+            break;
+          }
+          result = await graphqlRequest('CreateAppUser', GRAPHQL_QUERIES.createAppUser, {
+            u: String(data.Username || '').trim(), e: nuEmail, p: data.Password,
+            l: (data.Level || 'user').toLowerCase()
           });
-          resolve({ success: true, message: 'Admin berhasil ditambahkan' });
+          var nuRes = (result && result.security_create_app_user && result.security_create_app_user[0]) || null;
+          if (!nuRes || nuRes.status !== 'OK') throw new Error((nuRes && nuRes.message) || 'Gagal membuat user');
+          resolve({ success: true, message: 'User Nhost Auth berhasil dibuat: ' + nuEmail });
           break;
 
         // UPDATE OPERATIONS
@@ -899,11 +962,22 @@ function callServer(action, data) {
 
         case 'updateAdmin':
         case 'updateMultiuser':
-          const adminId = _allAdmin[data.idx]?.ID || data.idx;
-          const adminUpdateObj = { level: data.Level?.toLowerCase() };
-          if (data.Password) adminUpdateObj.password = data.Password;
-          await graphqlRequest('UpdateMultiuser', GRAPHQL_QUERIES.updateMultiuser, { id: adminId, object: adminUpdateObj });
-          resolve({ success: true, message: 'Admin berhasil diperbarui' });
+          /* SECURITY v7.5: level/status/password disinkronkan ke auth.users via
+             security_set_user_role (SECURITY DEFINER). Gate: superadmin. */
+          var upRow = _allAdmin[data.idx] || {};
+          var upEmail = (data.Email || upRow.Email || upRow.Username || '').trim().toLowerCase();
+          if (upEmail.indexOf('@') === -1) upEmail += '@' + (window.Sec ? Sec.CFG.AUTH_EMAIL_DOMAIN : 'pamungkas.mukminnasri.com');
+          if (data.Password && data.Password.length > 0 && data.Password.length < 8) {
+            resolve({ success: false, message: 'Password minimal 8 karakter.' });
+            break;
+          }
+          result = await graphqlRequest('SetUserRole', GRAPHQL_QUERIES.setUserRole, {
+            e: upEmail, l: (data.Level || 'user').toLowerCase(), s: 'active',
+            p: data.Password || null
+          });
+          var upRes = (result && result.security_set_user_role && result.security_set_user_role[0]) || null;
+          if (!upRes || upRes.status !== 'OK') throw new Error((upRes && upRes.message) || 'Gagal memperbarui user');
+          resolve({ success: true, message: 'Akun diperbarui & tersinkron Nhost Auth' });
           break;
 
         case 'updateSertifikat':
@@ -963,10 +1037,15 @@ function callServer(action, data) {
 
         case 'hapusAdmin':
         case 'hapusMultiuser':
-          await graphqlRequest('DeleteMultiuser', GRAPHQL_QUERIES.deleteMultiuser, {
-            id: _allAdmin[data.idx]?.ID || _allAdmin[data.idx]?.id || data.idx
-          });
-          resolve({ success: true, message: 'Admin berhasil dihapus' });
+          /* SECURITY v7.5: hapus dari registry + nonaktifkan akun Nhost Auth
+             (disabled=true) via security_delete_app_user. Gate: superadmin. */
+          var delRow = _allAdmin[data.idx] || {};
+          var delEmail = (delRow.Email || delRow.Username || '').trim().toLowerCase();
+          if (delEmail.indexOf('@') === -1) delEmail += '@' + (window.Sec ? Sec.CFG.AUTH_EMAIL_DOMAIN : 'pamungkas.mukminnasri.com');
+          result = await graphqlRequest('DeleteAppUser', GRAPHQL_QUERIES.deleteAppUser, { e: delEmail });
+          var delRes = (result && result.security_delete_app_user && result.security_delete_app_user[0]) || null;
+          if (!delRes || delRes.status !== 'OK') throw new Error((delRes && delRes.message) || 'Gagal menghapus user');
+          resolve({ success: true, message: 'Akun dihapus & dinonaktifkan dari Nhost Auth' });
           break;
 
         case 'checkDuplicateSDMK':
@@ -975,136 +1054,10 @@ function callServer(action, data) {
           break;
 
         // VALIDATE ADMIN LOGIN - Enhanced version with full logging
-        case 'validateAdminLogin':
-          try {
-            console.log('%c[AUTH] Starting login process...', 'color: blue; font-weight: bold;');
-            console.log('[AUTH] Input username:', JSON.stringify(data.username));
-            console.log('[AUTH] Input password length:', data.password ? data.password.length : 0);
-            
-            // CRITICAL: Fetch ALL fields including password for comparison
-            result = await graphqlRequest('GetAllUsersForAuth', `
-              query GetAllUsersForAuth {
-                multiusers {
-                  id
-                  username
-                  password
-                  level
-                  status
-                  created_at
-                }
-              }
-            `);
-            
-            const users = result.multiusers || [];
-            
-            console.log('%c[AUTH] Database query complete', 'color: green;');
-            console.log('[AUTH] Total users in DB:', users.length);
-            console.table(users.map(u => ({
-              username: u.username,
-              password_preview: (u.password || '').substring(0, 3) + '***',
-              level: u.level,
-              status: u.status
-            })));
-            
-            let adminUser = null;
-            let matchReason = '';
-            
-            // STRATEGY 1: Exact match (most strict)
-            console.log('[AUTH] Strategy 1: Exact match...');
-            adminUser = users.find(u => 
-              String(u.username || '') === String(data.username || '') && 
-              String(u.password || '') === String(data.password || '') && 
-              String(u.status || '') === 'active'
-            );
-            if (adminUser) { matchReason = 'EXACT_MATCH'; console.log('[AUTH] ✓ Strategy 1 SUCCESS'); }
-            
-            // STRATEGY 2: Case-insensitive username
-            if (!adminUser) {
-              console.log('[AUTH] Strategy 2: Case-insensitive username...');
-              adminUser = users.find(u => 
-                String(u.username || '').toLowerCase() === String(data.username || '').toLowerCase() && 
-                String(u.password || '') === String(data.password || '') && 
-                String(u.status || '') === 'active'
-              );
-              if (adminUser) { matchReason = 'CASE_INSENSITIVE'; console.log('[AUTH] ✓ Strategy 2 SUCCESS'); }
-            }
-            
-            // STRATEGY 3: Trim whitespace
-            if (!adminUser) {
-              console.log('[AUTH] Strategy 3: Trimmed values...');
-              adminUser = users.find(u => 
-                String(u.username || '').trim() === String(data.username || '').trim() && 
-                String(u.password || '').trim() === String(data.password || '').trim() && 
-                String(u.status || '').trim() === 'active'
-              );
-              if (adminUser) { matchReason = 'TRIMMED'; console.log('[AUTH] ✓ Strategy 3 SUCCESS'); }
-            }
-            
-            // STRATEGY 4: Compare char by char (for hidden characters)
-            if (!adminUser) {
-              console.log('[AUTH] Strategy 4: Character analysis...');
-              const similarUser = users.find(u => 
-                String(u.username || '').toLowerCase().includes(String(data.username || '').toLowerCase()) ||
-                String(data.username || '').toLowerCase().includes(String(u.username || '').toLowerCase())
-              );
-              
-              if (similarUser) {
-                console.log('[AUTH] Similar user found, analyzing differences:');
-                console.log('[AUTH] DB username chars:', [...(similarUser.username || '')].map(c => c.charCodeAt(0)));
-                console.log('[AUTH] Input username chars:', [...(data.username || '')].map(c => c.charCodeAt(0)));
-                console.log('[AUTH] DB password chars:', [...(similarUser.password || '')].map(c => c.charCodeAt(0)));
-                console.log('[AUTH] Input password chars:', [...(data.password || '')].map(c => c.charCodeAt(0)));
-              }
-            }
-            
-            if (adminUser) {
-              console.log('%c[AUTH] ✅ LOGIN SUCCESS!', 'color: green; font-size: 16px; font-weight: bold;');
-              console.log('[AUTH] Match reason:', matchReason);
-              console.log('[AUTH] Logged in as:', adminUser.username, '(' + adminUser.level + ')');
-              
-              // Store session
-              sessionStorage.setItem('pamungkas_admin_level', adminUser.level);
-              sessionStorage.setItem('pamungkas_admin_user', adminUser.username);
-              
-              resolve({ 
-                success: true, 
-                username: adminUser.username, 
-                level: adminUser.level,
-                message: 'Login berhasil'
-              });
-            } else {
-              console.log('%c[AUTH] ❌ LOGIN FAILED', 'color: red; font-size: 16px; font-weight: bold;');
-              
-              // Detailed failure analysis
-              const inputUserLower = String(data.username || '').toLowerCase();
-              const dbUser = users.find(u => String(u.username || '').toLowerCase() === inputUserLower);
-              
-              if (dbUser) {
-                console.log('[AUTH] Failure analysis: USER EXISTS but credentials invalid');
-                console.log('[AUTH] DB password:', JSON.stringify(dbUser.password));
-                console.log('[AUTH] Input password:', JSON.stringify(data.password));
-                console.log('[AUTH] Passwords equal?', dbUser.password === data.password);
-                
-                if (dbUser.status !== 'active') {
-                  resolve({ success: false, message: 'Akun "' + dbUser.username + '" tidak aktif. Status: ' + dbUser.status });
-                } else {
-                  resolve({ success: false, message: 'Password salah untuk user "' + data.username + '". Periksa spasi atau karakter tersembunyi.' });
-                }
-              } else {
-                console.log('[AUTH] Failure analysis: USERNAME NOT FOUND');
-                console.log('[AUTH] Available usernames:', users.map(u => '"' + u.username + '"'));
-                
-                resolve({ 
-                  success: false, 
-                  message: 'Username "' + data.username + '" tidak ditemukan. User tersedia: ' + users.map(u => u.username).join(', ')
-                });
-              }
-            }
-          } catch (loginError) {
-            console.error('[AUTH] System error:', loginError);
-            reject(loginError);
-          }
-          break;
+        /* SECURITY v7.5: case 'validateAdminLogin' DIHAPUS — login pencocokan
+           password di browser adalah celah keamanan serius (semua user+password
+           dikirim ke klien). Sekarang: Nhost Auth asli via PamungkasSecurity
+           (js/20-session-security.js) + lockout server-side. */
 
         // === IMPORT OPERATIONS (Legacy Import Modal) ===
         case 'importPendaftaran': {

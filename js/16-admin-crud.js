@@ -286,11 +286,11 @@ function loadAdminList(){
   var html='';
   if(canWrite('multiusers'))html+='<div class="toolbar" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openAdminForm()"><i class="fas fa-plus"></i> Tambah Admin</button></div>';
   if(!_allAdmin.length){html+='<div class="empty-state"><i class="fas fa-users-cog" style="font-size:2rem;color:var(--text-muted);"></i><p>Belum ada akun admin di database. Akun default (admin/admin123) aktif sebagai Admin (Full Access).</p></div>';ct.innerHTML=html;return;}
-  html+='<div class="crud-table-container"><div class="crud-table-scroll"><table class="crud-table"><thead><tr><th class="no-sort" style="text-align:center;width:50px;">No</th><th>Username</th><th>Password</th><th>Level</th><th class="no-sort" style="text-align:center;">Aksi</th></tr></thead><tbody>';
+  html+='<div class="crud-table-container"><div class="crud-table-scroll"><table class="crud-table"><thead><tr><th class="no-sort" style="text-align:center;width:50px;">No</th><th>Username</th><th>Email (Nhost Auth)</th><th>Level</th><th class="no-sort" style="text-align:center;">Aksi</th></tr></thead><tbody>';
   _allAdmin.forEach(function(r,i){
     var lv=String(r.Level||'user').toLowerCase();
     var cls=lv==='admin'?'aktif':lv==='operator'?'pending':'inactive';
-    html+='<tr><td class="td-no">'+(i+1)+'</td><td>'+escHTML(r.Username||'-')+'</td><td>********</td><td><span class="crud-status '+cls+'">'+escHTML(r.Level||lv)+'</span></td><td style="text-align:center;">'+(canWrite('multiusers')?'<button class="btn btn-sm btn-warning" onclick="openAdminForm('+i+')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Multiusers\','+i+')"><i class="fas fa-trash"></i></button>':'')+'</td></tr>';
+    html+='<tr><td class="td-no">'+(i+1)+'</td><td>'+escHTML(r.Username||'-')+'</td><td style="font-size:.8rem;color:var(--text-muted);">'+escHTML(r.Email||'-')+'</td><td><span class="crud-status '+cls+'">'+escHTML(r.Level||lv)+'</span></td><td style="text-align:center;">'+(canWrite('multiusers')?'<button class="btn btn-sm btn-warning" onclick="openAdminForm('+i+')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="confirmDelete(\'Multiusers\','+i+')"><i class="fas fa-trash"></i></button>':'')+'</td></tr>';
   });
   html+='</tbody></table></div></div>';ct.innerHTML=html;
   }).catch(function(e){hideLoading();showToast('Error: '+(e.message||e),'error');});
@@ -307,7 +307,7 @@ function openAdminForm(idx){
     document.getElementById('admLevel').value=lv;
   }else{
     document.getElementById('adminForm').reset();
-    document.getElementById('admPassword').placeholder='Password (plain text)';
+    document.getElementById('admPassword').placeholder='Password (min. 8 karakter — disimpan ter-hash oleh Nhost Auth)';
     document.getElementById('admLevel').value='user';
   }
   openModal('adminFormModal');
@@ -345,6 +345,8 @@ var _crud = {
 
 /* Open CRUD for a sheet type → kini cukup mengaktifkan tab modul di frame Panel Admin */
 function openAdminCrud(type){
+  /* SECURITY v7.5 defense-in-depth: tab modul data hanya utk sesi valid */
+  if (window.Sec && !Sec.isLoggedIn()) { Sec.forceSecureLogout('unauthorized_access'); return; }
   if(!canAccessAdminMenu(type)){showToast('Anda tidak memiliki akses ke menu ini.','error');return;}
   _adminPanelActiveTab = type;
   if(currentPage !== 'panel-admin'){

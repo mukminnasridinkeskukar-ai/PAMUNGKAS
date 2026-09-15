@@ -31,6 +31,14 @@ function _driveToThumb(url){
 /* ========== NHOST STORAGE (Upload File & Akses Terproteksi) ========== */
 var _authFileCache = {}; // url storage -> objectURL (hindari fetch berulang)
 function _isStorageUrl(url){ return typeof url === 'string' && url.indexOf('/v1/files/') !== -1; }
+function _storageAuthHeaders(){
+  /* SECURITY v7.5: upload/read storage pakai JWT Nhost (user login) atau
+     permission publik (form pendaftaran anonim) — TANPA admin secret. */
+  var h = {};
+  var at = window.Sec ? Sec.getAccessToken() : '';
+  if (at) h['Authorization'] = 'Bearer ' + at;
+  return h;
+}
 /** Upload file ke Nhost Storage → Promise<{url,name,size,mimeType}> */
 function uploadPamungkasFile(file){
   return new Promise(function(resolve,reject){
@@ -39,7 +47,7 @@ function uploadPamungkasFile(file){
     fd.append('file[]',file,file.name);
     fetch(NHOST_CONFIG.storageUrl+'/v1/files',{
       method:'POST',
-      headers:{'x-hasura-admin-secret':NHOST_CONFIG.adminSecret},
+      headers:_storageAuthHeaders(),
       body:fd
     }).then(function(r){
       return r.json().then(function(j){return {ok:r.ok,body:j};});
@@ -54,12 +62,13 @@ function uploadPamungkasFile(file){
     }).catch(function(e){reject(e);});
   });
 }
-/** Fetch file storage yang terproteksi admin-secret → blob objectURL (cache). Link eksternal (Drive dll) dibalikkan apa adanya. */
+/** Fetch file storage → blob objectURL (cache). Link eksternal (Drive dll) dibalikkan apa adanya.
+    Akses file memakai JWT user (bila login) atau permission publik (anonim). */
 function fetchAuthFileBlobUrl(url){
   if(!url)return Promise.reject(new Error('URL kosong'));
   if(_authFileCache[url])return Promise.resolve(_authFileCache[url]);
   if(!_isStorageUrl(url))return Promise.resolve(url);
-  return fetch(url,{headers:{'x-hasura-admin-secret':NHOST_CONFIG.adminSecret}})
+  return fetch(url,{headers:_storageAuthHeaders()})
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
     .then(function(b){var u=URL.createObjectURL(b);_authFileCache[url]=u;return u;});
 }
