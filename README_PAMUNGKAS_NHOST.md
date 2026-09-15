@@ -815,3 +815,47 @@ Project ini dibuat untuk keperluan **Dinas Kesehatan** dalam pengelolaan SDM Kes
 - Password sama dengan sebelumnya (migrasi otomatis ke bcrypt Nhost; kolom plaintext DIHAPUS dari DB).
 - Superadmin menambah user baru via tab **Multiusers** → dibuat sebagai akun **Nhost Auth asli**.
 - **Wajib**: ganti `adminSecret` lama di dashboard Nhost jika belum, karena secret itu pernah terdapat di kode frontend.
+
+---
+
+## 🛠 PERBAIKAN v7.5.1 — Error Menu Pendaftaran & Cek Pendaftaran Publik
+
+### Gejala
+```
+GraphQL Request Error (GetPendaftaran): Error: field 'foto' not found in type: 'pendaftaran'
+```
+muncul di konsol saat menu **Pendaftaran** dibuka (pengunjung belum login), dan error
+serupa pada alur **Cek Pendaftaran**.
+
+### Penyebab
+Sejak v7.5, peran `public` (pengunjung anonim) hanya diizinkan membaca **10 kolom
+non-PII** tabel `pendaftaran`. Di Hasura, schema GraphQL **per-role**: kolom yang
+tidak masuk permission tidak ada di schema → query `GetPendaftaran` (yang meminta
+`foto`, `nik`, dll.) gagal untuk anonim. Dua titik pemicu:
+1. `loadPendaftaran()` dijalankan setiap kali menu Pendaftaran dibuka, termasuk anonim.
+2. Fungsi `security_cek_pendaftaran_by_nik` mengembalikan `SETOF pendaftaran` — kolom
+   output mengikuti select permission role, sehingga `foto` juga tidak tersedia via
+   fungsi bagi anonim.
+
+### Perbaikan
+| # | Perbaikan | Lokasi |
+|---|-----------|--------|
+| 1 | `loadPendaftaran()` hanya memuat data bila ada **sesi login** dan kontainer tabel tersedia; anonim cukup form + dropdown judul kegiatan | `js/09-pendaftaran.js` |
+| 2 | Tabel tipe `security.pendaftaran_cek_result` (**selalu kosong**) + fungsi `cek_pendaftaran_by_nik` kini mengembalikan SETOF tabel tipe tersebut → kolom lengkap tersedia **hanya via fungsi** (NIK/NIP yang dicari), akses langsung ke tabel = 0 baris. Bonus: pencarian kini mendukung NIK **atau** NIP | Nhost (DB live) |
+| 3 | Fungsi baru `security.update_pendaftaran_perbaikan(pNik, pId, pPatch, pResubmit)` — memulihkan alur **"Perbaiki Data / Perbaiki & Kirim Ulang"** bagi pendaftar yang datanya Ditolak/Perlu Perbaikan: whitelist kolom, wajib NIK cocok, `status` & `catatan_admin` ditetapkan server, audit log. Sebelumnya alur ini rusak sejak v7.5 (anonim tidak punya `update_pendaftaran_by_pk`) | Nhost + `js/04-graphql.js` |
+| 4 | Cache-busting `?v=7.5.1` (22 referensi) | `index.html` |
+
+> Catatan: role `admin` adalah **role reserved** pada build Hasura/Nhost ini
+> ("cannot define permission for admin role"). Belum ada akun level `admin`; hindari
+> membuatnya, atau petakan level `admin` → role Hasura lain bila kelak diperlukan.
+
+### File yang berubah (v7.5.1)
+`index.html` (v=7.5.1), `js/04-graphql.js`, `js/09-pendaftaran.js`, `nhost_schema_pamungkas.sql`, `README_PAMUNGKAS_NHOST.md`.
+**Deploy**: upload isi folder ke repo GitHub yang sama. Perubahan database (#2 dan #3) sudah LIVE — setelah upload, seluruh fungsi kembali normal.
+
+### Uji yang dilakukan
+- Anonim: menu Pendaftaran tanpa error, dropdown judul terisi, form + upload siap. ✓
+- Anonim: Cek Pendaftaran by NIK menampilkan kartu lengkap (foto, badge status, catatan admin). ✓
+- Anonim: alur Perbaiki & Kirim Ulang E2E — perubahan tersimpan, status `rejected → pending`, percobaan mengubah `status`/`catatan_admin` dari klien diabaikan server. ✓
+- Superadmin: login, Panel Admin → tab Pendaftaran memuat 10 baris + thumbnail foto. ✓
+- Baris uji dihapus dari database setelah pengujian. ✓

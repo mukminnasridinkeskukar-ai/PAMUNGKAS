@@ -119,6 +119,16 @@ function showSuratFileName(){
 function loadPendaftaran(){
   _initRegInfoBar();
   _loadJudulKegiatanOptions();
+  /* FIX v7.5.1 — error "field 'foto' not found in type: 'pendaftaran'":
+     Query GetPendaftaran memuat kolom PII (foto, nik, surat_pernyataan, dll)
+     yang TIDAK tersedia bagi role public (pengunjung anonim) di permission
+     Hasura v7.5 → schema GraphQL role public tidak punya field 'foto'.
+     Selain itu halaman form ini tidak lagi memiliki kontainer tabel pendaftaran
+     (data dikelola di Panel Admin dengan loader tersendiri).
+     Maka: muat data HANYA bila ada sesi login DAN kontainer tabel tersedia.
+     Pengunjung anonim tetap bisa: form pendaftaran + dropdown judul kegiatan. */
+  if (!(window.Sec && window.Sec.hasSession && window.Sec.hasSession())) return;
+  if (!document.getElementById('pendaftaranTableBody')) return;
   showLoading('Memuat data pendaftaran...');
   callServer('getPendaftaran').then(function(res){
     hideLoading();if(!res||!res.success){showToast(res?res.message:'Gagal memuat pendaftaran','error');return;}

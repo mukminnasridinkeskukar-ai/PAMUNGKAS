@@ -488,11 +488,102 @@ FOR EACH ROW EXECUTE FUNCTION security.fn_on_session_created();
 --   security.check_lock(pEmail)                 → SETOF login_lock_state (query, public)
 --   security.record_failed_login(pEmail)        → SETOF login_lock_state (mutation, public)
 --   security.log_event(pEvent,pDetail,pEmail)   → SETOF op_result        (mutation, public+)
---   security.cek_pendaftaran_by_nik(pNik)       → SETOF pendaftaran      (query, public)
+--   security.cek_pendaftaran_by_nik(pNik)       → SETOF pendaftaran_cek_result (query, public)
+--   security.update_pendaftaran_perbaikan(pNik,pId,pPatch,pResubmit) → SETOF op_result (mutation, public)
 --   security.set_user_role(pEmail,pLevel,pStatus,pPassword) → op_result (mutation, SUPERADMIN)
 --   security.create_app_user(pUsername,pEmail,pPassword,pLevel) → op_result (mutation, SUPERADMIN)
 --   security.delete_app_user(pEmail)            → op_result (mutation, SUPERADMIN)
 --   security.jwt_user_id()/jwt_default_role()   → helper internal
+
+-- ---------------------------------------------------------------
+-- v7.5.1 — CEK & PERBAIKAN PENDAFTARAN PUBLIK (tanpa sesi)
+-- ---------------------------------------------------------------
+-- 1) Tabel TIPE hasil cek — SELALU KOSONG, hanya dipakai sebagai tipe balikan
+--    fungsi agar GraphQL menyediakan kolom lengkap (foto, nik, dll) TANPA
+--    membuka select langsung ke tabel pendaftaran (peran public tetap terbatas
+--    pada 10 kolom non-PII untuk akses tabel langsung).
+CREATE TABLE IF NOT EXISTS security.pendaftaran_cek_result (
+  id uuid, foto text, nama_lengkap_dengan_gelar text, nik text, nip text,
+  unit_kerja text, jenis_sdmk text, jenis_profesi text, pekerjaan text,
+  jenis_kelamin text, tempat_dan_tanggal_lahir text, email_plataran_sehat text,
+  lama_bekerja_di_unit_sekarang text, nomor_whatsapp text, alamat_rumah text,
+  surat_pernyataan text, link_spj text, judul_kegiatan text, status text,
+  created_at timestamptz, updated_at timestamptz, catatan_admin text
+);
+COMMENT ON TABLE security.pendaftaran_cek_result IS
+ 'Tipe hasil cek pendaftaran publik (SELALU KOSONG — diisi via fungsi security.cek_pendaftaran_by_nik).';
+
+-- 2) Cek pendaftaran by NIK/NIP (SECURITY DEFINER, LIMIT 10, return tabel tipe)
+-- CREATE OR REPLACE FUNCTION security.cek_pendaftaran_by_nik("pNik" text)
+-- RETURNS SETOF security.pendaftaran_cek_result
+-- LANGUAGE sql STABLE SECURITY DEFINER
+-- SET search_path TO 'security', 'public', 'extensions'
+-- AS $fn$
+--   SELECT id, foto, nama_lengkap_dengan_gelar, nik, nip, unit_kerja, jenis_sdmk,
+--          jenis_profesi, pekerjaan, jenis_kelamin, tempat_dan_tanggal_lahir,
+--          email_plataran_sehat, lama_bekerja_di_unit_sekarang, nomor_whatsapp,
+--          alamat_rumah, surat_pernyataan, link_spj, judul_kegiatan, status,
+--          created_at, updated_at, catatan_admin
+--     FROM public.pendaftaran
+--    WHERE nik = btrim("pNik") OR nip = btrim("pNik")
+--    ORDER BY created_at DESC
+--    LIMIT 10;
+-- $fn$;
+
+-- 3) Perbaikan data pendaftaran oleh PUBLIK (tanpa sesi) — alur "Perbaiki Data"
+--    dari Cek Pendaftaran. Whitelist kolom; wajib NIK cocok dengan baris; hanya
+--    baris berstatus Ditolak/Perbaikan; status & catatan_admin ditetapkan server.
+-- CREATE OR REPLACE FUNCTION security.update_pendaftaran_perbaikan(
+--   "pNik" text, "pId" uuid, "pPatch" jsonb, "pResubmit" boolean DEFAULT false
+-- ) RETURNS SETOF security.op_result
+-- LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+-- SET search_path TO 'security', 'public', 'extensions'
+-- AS $fn$
+-- DECLARE
+--   v_allowed text[] := ARRAY[
+--     'nama_lengkap_dengan_gelar','nip','unit_kerja','jenis_sdmk','jenis_profesi',
+--     'pekerjaan','jenis_kelamin','tempat_dan_tanggal_lahir','email_plataran_sehat',
+--     'alamat_rumah','lama_bekerja_di_unit_sekarang','nomor_whatsapp',
+--     'surat_pernyataan','link_spj','judul_kegiatan'];
+--   v_patch jsonb; v_key text; v_val jsonb;
+--   v_id uuid; v_status text; v_new_status text; v_changes int := 0;
+-- BEGIN
+--   IF "pNik" IS NULL OR length(btrim("pNik")) < 6 OR "pId" IS NULL THEN
+--     RETURN QUERY SELECT 'error'::text, 'Data permintaan tidak valid.'::text; RETURN;
+--   END IF;
+--   IF "pPatch" IS NULL OR jsonb_typeof("pPatch") <> 'object' THEN
+--     RETURN QUERY SELECT 'error'::text, 'Tidak ada data perbaikan yang valid.'::text; RETURN;
+--   END IF;
+--   v_patch := '{}'::jsonb;
+--   FOR v_key, v_val IN SELECT * FROM jsonb_each("pPatch") LOOP
+--     IF v_key = ANY(v_allowed) AND jsonb_typeof(v_val) = 'string'
+--        AND length(btrim(v_val #>> '{}')) BETWEEN 1 AND 500 THEN
+--       v_patch := jsonb_set(v_patch, ARRAY[v_key], v_val);
+--     END IF;
+--   END LOOP;
+--   IF v_patch = '{}'::jsonb THEN
+--     RETURN QUERY SELECT 'error'::text, 'Tidak ada perubahan data yang valid untuk disimpan.'::text; RETURN;
+--   END IF;
+--   SELECT id, status INTO v_id, v_status FROM public.pendaftaran
+--    WHERE id = "pId" AND nik = btrim("pNik")
+--      AND lower(btrim(status)) IN ('rejected','ditolak','perbaikan','revisi','perbaikan data')
+--    LIMIT 1;
+--   IF v_id IS NULL THEN
+--     RETURN QUERY SELECT 'error'::text, 'Data tidak ditemukan atau tidak dalam status yang dapat diperbaiki.'::text; RETURN;
+--   END IF;
+--   v_new_status := CASE WHEN "pResubmit" THEN 'pending' ELSE 'Proses Verifikasi' END;
+--   FOR v_key, v_val IN SELECT * FROM jsonb_each(v_patch) LOOP
+--     EXECUTE format('UPDATE public.pendaftaran SET %I = $1 WHERE id = $2', v_key)
+--       USING (v_val #>> '{}'), v_id;
+--     v_changes := v_changes + 1;
+--   END LOOP;
+--   UPDATE public.pendaftaran SET status = v_new_status, updated_at = now() WHERE id = v_id;
+--   INSERT INTO security.security_audit_log (event, detail)
+--   VALUES ('pendaftaran_perbaikan',
+--           'id=' || v_id::text || ' nik=' || left(btrim("pNik"), 4) || '****' ||
+--           ' fields=' || v_changes::text || ' resubmit=' || "pResubmit"::text);
+--   RETURN QUERY SELECT 'OK'::text, 'Perbaikan data berhasil disimpan. Status: ' || v_new_status || '.'::text;
+-- END $fn$;
 
 -- multiusers v7.5: password DIHAPUS (bcrypt di Nhost Auth)
 -- ALTER TABLE public.multiusers DROP COLUMN IF EXISTS password;

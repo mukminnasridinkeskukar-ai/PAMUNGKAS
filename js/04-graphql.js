@@ -142,6 +142,15 @@ const GRAPHQL_QUERIES = {
   
   insertPendaftaran: `mutation InsertPendaftaran($object: pendaftaran_insert_input!) { insert_pendaftaran_one(object: $object) { id } }`,
   updatePendaftaran: `mutation UpdatePendaftaran($id: uuid!, $object: pendaftaran_set_input!) { update_pendaftaran_by_pk(pk_columns: {id: $id}, _set: $object) { id } }`,
+  /* SECURITY v7.5.1: jalur perbaikan data PUBLIK (tanpa sesi) — fungsi SECURITY
+     DEFINER: whitelist kolom, wajib NIK cocok, hanya status Ditolak/Perbaikan. */
+  updatePendaftaranPerbaikan: `
+    mutation UpdatePendaftaranPerbaikan($nik: String!, $id: uuid!, $patch: jsonb!, $resubmit: Boolean) {
+      security_update_pendaftaran_perbaikan(args: {pNik: $nik, pId: $id, pPatch: $patch, pResubmit: $resubmit}) {
+        status message
+      }
+    }
+  `,
   deletePendaftaran: `mutation DeletePendaftaran($id: uuid!) { delete_pendaftaran_by_pk(id: $id) { id } }`,
   
   insertSertifikat: `mutation InsertSertifikat($object: sertifikat_insert_input!) { insert_sertifikat_one(object: $object) { id } }`,
@@ -756,7 +765,7 @@ function callServer(action, data) {
             'nama_lengkap_dengan_gelar', 'nik', 'nip', 'unit_kerja',
             'jenis_sdmk', 'jenis_profesi', 'pekerjaan', 'jenis_kelamin',
             'tempat_dan_tanggal_lahir', 'email_plataran_sehat',
-            'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
+            'alamat_rumah', 'lama_bekerja_di_unit_sekarang', 'nomor_whatsapp',
             'surat_pernyataan', 'link_spj', 'judul_kegiatan', 'status',
             'catatan_admin'
           ];
@@ -777,6 +786,10 @@ function callServer(action, data) {
             'Tempat dan Tanggal Lahir': 'tempat_dan_tanggal_lahir',
             'Email Plataran Sehat': 'email_plataran_sehat',
             'Email': 'email_plataran_sehat',
+            'No. WhatsApp / Telepon': 'nomor_whatsapp',
+            'No. WhatsApp': 'nomor_whatsapp',
+            'WhatsApp': 'nomor_whatsapp',
+            'No HP': 'nomor_whatsapp',
             'Alamat Rumah': 'alamat_rumah',
             'Lama Bekerja': 'lama_bekerja_di_unit_sekarang',
             'Lama Bekerja di Unit Sekarang': 'lama_bekerja_di_unit_sekarang',
@@ -952,7 +965,48 @@ function callServer(action, data) {
             resolve({ success: false, message: 'Tidak ada data yang valid untuk disimpan' });
             break;
           }
-          
+
+          /* SECURITY v7.5.1 — PENGGUNA TANPA SESI (alur "Perbaiki Data" dari Cek
+             Pendaftaran): role public TIDAK punya update_pendaftaran_by_pk.
+             Perbaikan diproses server-side via security_update_pendaftaran_perbaikan
+             (SECURITY DEFINER): whitelist kolom, wajib NIK cocok dengan baris,
+             hanya baris berstatus Ditolak/Perbaikan; status & catatan_admin
+             ditetapkan server, bukan klien. */
+          var _isAnonUpd = !(window.Sec && window.Sec.hasSession && window.Sec.hasSession());
+          if (_isAnonUpd) {
+            var _regData = (typeof _cekRegData !== 'undefined') ? _cekRegData : null;
+            var _regNik = _regData ? (_regData.NIK || _regData.nik || '') : '';
+            var _regId = _regData ? (_regData.ID || _regData.id || '') : '';
+            if (!_regNik || !_regId || !/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(String(_regId))) {
+              resolve({ success: false, message: 'Data perbaikan tidak lengkap. Silakan cek pendaftaran ulang dengan NIK Anda.' });
+              break;
+            }
+            var _anonCols = ['nama_lengkap_dengan_gelar', 'nip', 'unit_kerja', 'jenis_sdmk',
+              'jenis_profesi', 'pekerjaan', 'jenis_kelamin', 'tempat_dan_tanggal_lahir',
+              'email_plataran_sehat', 'alamat_rumah', 'lama_bekerja_di_unit_sekarang',
+              'nomor_whatsapp', 'surat_pernyataan', 'link_spj', 'judul_kegiatan'];
+            var _anonPatch = {};
+            _anonCols.forEach(function (f) {
+              var fv = sanitizedUpdate[f];
+              if (typeof fv === 'string' && fv.trim() !== '') _anonPatch[f] = fv.trim();
+            });
+            if (!Object.keys(_anonPatch).length) {
+              resolve({ success: false, message: 'Tidak ada perubahan data yang valid untuk disimpan.' });
+              break;
+            }
+            var _anonRes = await graphqlRequest('UpdatePendaftaranPerbaikan', GRAPHQL_QUERIES.updatePendaftaranPerbaikan, {
+              nik: String(_regNik), id: String(_regId), patch: _anonPatch,
+              resubmit: window._perbaikanSource === 'rejected'
+            });
+            var _opr = (_anonRes && _anonRes.security_update_pendaftaran_perbaikan && _anonRes.security_update_pendaftaran_perbaikan[0]) || null;
+            if (!_opr || _opr.status !== 'OK') {
+              resolve({ success: false, message: (_opr && _opr.message) || 'Perbaikan data gagal diproses server.' });
+              break;
+            }
+            resolve({ success: true, message: _opr.message || 'Perbaikan data berhasil disimpan' });
+            break;
+          }
+
           await graphqlRequest('UpdatePendaftaran', GRAPHQL_QUERIES.updatePendaftaran, {
             id: pendaftaranId,
             object: sanitizedUpdate  // ✅ Gunakan sanitized object
