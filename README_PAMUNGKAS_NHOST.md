@@ -1,3 +1,78 @@
+<!-- ============================================================
+     CATATAN REFACTOR (v7.1-modular)
+     Aplikasi dipecah menjadi file kecil agar lebih ringan,
+     tetap SATU index.html aktif untuk browser.
+     Frontend: GitHub Pages | Backend: Nhost (GraphQL)
+     ============================================================ -->
+
+## 🗂 Struktur File (Refactor Modular — WAJIB DIUPLOAD UTUH)
+
+```
+PAMUNGKAS/
+├── index.html                  ← SATU-SATUNYA HTML (entry browser)
+├── CNAME                       ← domain GitHub Pages
+├── nhost_schema_pamungkas.sql  ← schema database Nhost
+├── css/
+│   ├── main.css                ← seluruh CSS template utama
+│   └── import.css              ← CSS bulk import & komponen tambahan
+└── js/  (19 modul, urutan loading PENTING — jangan diubah)
+    ├── 01-config.js            ← NHOST_CONFIG, RBAC, ADMIN_TABLES, state
+    ├── 02-utils.js             ← helper DOM, storage, toast, modal
+    ├── 03-rbac.js              ← role & permission
+    ├── 04-graphql.js           ← query/mutation + callServer (API Nhost)
+    ├── 05-landing.js           ← animasi landing page & countdown
+    ├── 06-dashboard.js         ← IKP, kartu statistik, tabel pendaftar
+    ├── 07-pengumuman.js
+    ├── 08-sdmk.js              ← profil SDMK terlatih
+    ├── 09-pendaftaran.js       ← form pendaftaran + bukti PDF
+    ├── 10-cek-sertifikat.js
+    ├── 11-cek-materi.js
+    ├── 12-cek-pendaftaran.js   ← lacak pendaftaran + perbaikan
+    ├── 13-sidebar.js           ← sidebar 3 GRUP: Dashboard/Layanan/Admin
+    ├── 14-admin-auth.js        ← login/logout admin & sesi
+    ├── 15-admin-dashboard.js   ← statistik admin + CRUD indikator
+    ├── 16-admin-crud.js        ← engine CRUD, tab pendaftaran, export
+    ├── 17-admin-import.js      ← import massal (tab CSV & modal)
+    ├── 18-workflow.js          ← status workflow pendaftaran
+    └── 19-app.js               ← navigasi, handler global, init
+```
+
+### 🚀 Cara Deploy ke GitHub Pages (versi modular)
+
+1. Upload **SELURUH isi folder ini** (index.html + folder `css/` + folder `js/` +
+   CNAME + file lain) ke branch `main` repository GitHub Anda.
+   - Lewat web: *uploading an existing file* → drag semua file & folder.
+   - Lewat git:
+     ```bash
+     git add .
+     git commit -m "Refactor: pecah index.html menjadi css/ + js/ modular"
+     git push origin main
+     ```
+2. Settings → Pages → Source: *Deploy from a branch*, Branch `main` / `(root)`.
+3. Selesai. **Tidak ada konfigurasi tambahan** — `NHOST_CONFIG` (URL GraphQL,
+   admin secret, auth, storage) sudah tertaut ke project Nhost Anda dan tersimpan
+   di `js/01-config.js`.
+
+### 🧭 Sidebar Baru — 3 Bagian
+
+| Grup | Isi |
+|------|-----|
+| **DASHBOARD** | Dashboard (ringkasan & IKP) |
+| **LAYANAN** | Pengumuman · Profil SDMK Terlatih · Pendaftaran · Cek Sertifikat · Cek Materi · Cek Pendaftaran |
+| **ADMIN** | Login Admin (publik) · Dashboard Admin · modul kelola data · Logout (setelah login, sesuai role) |
+
+### 🔧 Perbaikan yang Disertakan
+
+- **Tab Input Massal pendaftaran tidak berfungsi** (fungsi `resetImportState` &
+  `executeBulkImport` tertimpa definisi baru) → versi lama di-rename
+  `resetImportMassalState` / `executeImportMassal` sehingga kedua alur import jalan.
+- **Simpan/hapus Materi error** (`loadMateri` tidak pernah didefinisikan) →
+  diganti `loadCekMateriPublic` yang benar.
+- Kode mati (definisi `openAdminCrud` & `formatFileSize` yang tertimpa) dibuang.
+- Semua fungsi & template tampilan lain **tidak diubah**.
+
+---
+
 # 🏥 PAMUNGKAS — Platform Manajemen SDM Kesehatan
 
 ## Pengelolaan Pengembangan Mutu dan Peningkatan Kompetensi SDM Kesehatan
