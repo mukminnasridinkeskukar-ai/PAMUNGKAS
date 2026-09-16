@@ -89,7 +89,7 @@ function closeSDMKLightbox(){
   else console.warn('[DOM] closeSDMKLightbox: #sdmkLightbox tidak ditemukan');
   
   var lbImg = document.getElementById('sdmkLightboxImg');
-  if (lbImg) lbImg.src = '';
+  if (lbImg) { lbImg.onerror=null; lbImg.src = ''; lbImg.style.opacity = '1'; lbImg.dataset.chainStop = '1'; } /* v7.6.2: onerror dibersihkan + reset opacity + hentikan fallback chain */
   
   document.body.style.overflow = '';
 }

@@ -23,7 +23,7 @@ const SENSITIVE_KEYS = ['nik','NIK','NIP','NIK/NIP','NIK_NIP','Nik','Nip'];
 const _sdmk = {
   filtered: [],
   page: 1,
-  perPage: 10,
+  perPage: 20, /* v7.6.1: 20 baris per halaman (sebelumnya 10) */
   acIndex: -1,
   acItems: [],
   loaded: false
@@ -175,6 +175,10 @@ function renderTable() {
     return url;
   };
   const _v = function(row, names) { for (const n of names) { if (row[n] !== undefined && row[n] !== '') return row[n]; } return ''; };
+  /* v7.6.1: deteksi URL Nhost Storage (terproteksi) → thumbnail & lightbox
+     harus via fetch terautentikasi (fetchAuthFileBlobUrl), sama seperti dashboard */
+  const _isStor = (typeof _isStorageUrl === 'function') ? _isStorageUrl : function(u) { return typeof u === 'string' && u.indexOf('/v1/files/') !== -1; };
+  const _authJobs = []; /* {pid, url} foto storage yang perlu di-fetch auth setelah render */
 
   let html = '';
   pageData.forEach((r, i) => {
@@ -188,14 +192,26 @@ function renderTable() {
     const kegiatan = escHTML(r[m.judul_kegiatan] || r.judul_kegiatan || '-');
     const tglPelaksanaan = escHTML(r[m.tanggal_pelaksanaan] || r.tanggal_pelaksanaan || '-');
     const tempat = escHTML(r[m.tempat_pelaksanaan] || r.tempat_pelaksanaan || '-');
-    // Foto dari field 'foto' di tabel sdmk
-    const fotoRaw = r.foto || '';
-    const thumb = _driveThumb(fotoRaw);
-    const fullUrl = _driveFull(fotoRaw);
+    /* v7.6.1 FIX FOTO: baca 'foto' ATAU 'Foto' — sebelumnya handler getSDMK
+       hanya mengirim key 'Foto' (kapital) sementara di sini dibaca r.foto
+       (lowercase) → foto TIDAK PERNAH tampil di menu Profil SDMK Terlatih. */
+    const fotoRaw = r.foto || r.Foto || '';
+    const fullUrl = fotoRaw ? _driveFull(fotoRaw) : '';
+    const isStorFoto = _isStor(fotoRaw);
+    const thumb = isStorFoto ? null : _driveThumb(fotoRaw);
 
-    html += '<tr data-idx="' + origIdx + '" data-full="' + escHTML(fullUrl) + '" data-name="' + nama + '">';
+    html += '<tr data-idx="' + origIdx + '" data-full="' + escHTML(fullUrl) + '"' + (isStorFoto ? ' data-auth="1"' : '') + ' data-name="' + nama + '">';
     if (thumb) {
-      html += '<td><div class="sdmk-photo"><img src="' + escHTML(thumb) + '" alt="Foto" loading="lazy" onerror="this.parentElement.innerHTML=\'<i class=\\\'fas fa-user ph-icon\\\'></i>\'" /></div></td>';
+      /* v7.6.1: src diisi SETELAH mount via mountResilientImg (fallback berantai
+         utk thumbnail Drive yang kadang ditolak sementara oleh Google) */
+      /* v7.6.2: tanpa loading="lazy" — antrean sudah membatasi laju request;
+         lazy pada section tersembunyi tidak pernah memicu load → antrean macet */
+      html += '<td><div class="sdmk-photo"><img data-thumb="' + escHTML(fotoRaw) + '" alt="Foto" /></div></td>';
+    } else if (isStorFoto) {
+      /* v7.6.1: foto Nhost Storage → placeholder dulu, lalu fetch auth → img */
+      const pid = 'sdmkph_' + Math.random().toString(36).slice(2, 10);
+      _authJobs.push({ pid: pid, url: fotoRaw });
+      html += '<td><div class="sdmk-photo" id="' + pid + '"><i class="fas fa-user ph-icon"></i></div></td>';
     } else {
       html += '<td><div class="sdmk-photo"><i class="fas fa-user ph-icon"></i></div></td>';
     }
@@ -235,10 +251,43 @@ function renderTable() {
         const phName = tr.getAttribute('data-name');
         if (fullUrl) {
           const lb = document.getElementById('sdmkLightbox');
-          document.getElementById('sdmkLightboxImg').src = fullUrl;
+          const lbImg = document.getElementById('sdmkLightboxImg');
           document.getElementById('sdmkLightboxName').textContent = phName || '';
           lb.classList.add('active');
           document.body.style.overflow = 'hidden';
+          /* v7.6.1: URL Nhost Storage terproteksi → fetch auth dulu baru tampil;
+             URL publik (Drive/direct) → langsung set src */
+          if (tr.getAttribute('data-auth') === '1' && typeof fetchAuthFileBlobUrl === 'function') {
+            lbImg.removeAttribute('src');
+            lbImg.style.opacity = '0';
+            fetchAuthFileBlobUrl(fullUrl).then(function(u) {
+              lbImg.style.opacity = '1';
+              lbImg.src = u;
+            }).catch(function() { lbImg.style.opacity = '1'; });
+          } else {
+            /* v7.6.1: lightbox dgn fallback berantai (w800) — tahan throttle Drive */
+            lbImg.style.opacity = '1';
+            lbImg.dataset.chainStop = '';
+            const cands = (typeof driveImgCandidates === 'function') ? driveImgCandidates(fullUrl, 800) : [fullUrl];
+            /* v7.6.2: URL thumbnail yang SUDAH TERBUKTI tampil di tabel ditambahkan
+               sebagai kandidat cadangan terakhir — bila semua varian ukuran besar
+               ditolak Drive (throttle/privat), foto tetap tampil di lightbox */
+            const _cellEl = e.target.closest('.sdmk-photo');
+            const _phImg = _cellEl ? _cellEl.querySelector('img') : null;
+            if (_phImg && _phImg.src && _phImg.naturalWidth > 0 && cands.indexOf(_phImg.src) === -1) cands.push(_phImg.src);
+            if (typeof queueResilientImg === 'function') {
+              queueResilientImg(lbImg, cands, function() {
+                /* v7.6.2: semua kandidat gagal → siluet placeholder, bukan gambar rusak */
+                lbImg.onerror = null;
+                if (typeof LB_IMG_PLACEHOLDER !== 'undefined') lbImg.src = LB_IMG_PLACEHOLDER;
+              });
+            } else if (typeof mountResilientImg === 'function') {
+              mountResilientImg(lbImg, cands, function() {
+                lbImg.onerror = null;
+                if (typeof LB_IMG_PLACEHOLDER !== 'undefined') lbImg.src = LB_IMG_PLACEHOLDER;
+              });
+            } else lbImg.src = fullUrl;
+          }
         }
         return;
       }
@@ -249,6 +298,42 @@ function renderTable() {
     fragment.appendChild(tr);
   });
   tbody.appendChild(fragment);
+
+  /* v7.6.1: fetch foto Nhost Storage (terproteksi) setelah tabel terpasang DOM */
+  if (_authJobs.length && typeof fetchAuthFileBlobUrl === 'function') {
+    _authJobs.forEach(function(job) {
+      fetchAuthFileBlobUrl(job.url).then(function(u) {
+        const el = document.getElementById(job.pid);
+        if (!el || !el.isConnected) return;
+        const img = document.createElement('img');
+        img.alt = 'Foto'; img.loading = 'lazy';
+        img.onerror = function() { el.innerHTML = '<i class="fas fa-user ph-icon"></i>'; };
+        img.src = u;
+        el.innerHTML = '';
+        el.appendChild(img);
+      }).catch(function() { /* biarkan placeholder ikon user */ });
+    });
+  }
+
+  /* v7.6.1: thumbnail Drive dengan fallback berantai (throttle Google 404/429) */
+  tbody.querySelectorAll('img[data-thumb]').forEach(function(im) {
+    const raw = im.getAttribute('data-thumb');
+    const cands = (typeof driveImgCandidates === 'function') ? driveImgCandidates(raw, 200) : [raw];
+    /* v7.6.2: via ANTREAN (maks 3 paralel) — request serentak memicu throttle
+       Drive sehingga foto gagal tampil; bila antrean tak tersedia, mount langsung */
+    if (typeof queueResilientImg === 'function') {
+      queueResilientImg(im, cands, function() {
+        if (im.parentElement) im.parentElement.innerHTML = '<i class="fas fa-user ph-icon"></i>';
+      });
+    } else if (typeof mountResilientImg === 'function') {
+      mountResilientImg(im, cands, function() {
+        if (im.parentElement) im.parentElement.innerHTML = '<i class="fas fa-user ph-icon"></i>';
+      });
+    } else {
+      im.src = raw; /* fallback: langsung URL asli */
+      im.onerror = function() { if (im.parentElement) im.parentElement.innerHTML = '<i class="fas fa-user ph-icon"></i>'; };
+    }
+  });
 
   renderPagination(totalPages);
 }

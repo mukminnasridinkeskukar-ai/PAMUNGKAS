@@ -894,3 +894,64 @@ tidak masuk permission tidak ada di schema → query `GetPendaftaran` (yang memi
 ### ⚠️ Catatan akun operator2
 Password operator2 direset saat pengujian. Password sementara: `Operator2#2026` —
 **SEGERA ganti** melalui Panel Admin → Multiusers setelah login.
+
+---
+
+## 🖼️ PERBAIKAN v7.6.1 — Foto SDMK & Dashboard Tampil Sempurna, 20 Baris Data
+
+### Ringkasan
+| # | Perbaikan | Detail |
+|---|-----------|--------|
+| 1 | **AKAR MASALAH foto SDMK (bug kritis diperbaiki)** | Handler `getSDMK` me-map foto ke key `Foto` (kapital) sedangkan `08-sdmk.js` membaca `r.foto` (lowercase) → foto **TIDAK PERNAH tampil** di menu Profil SDMK Terlatih. Kini handler mengirim `foto` + `Foto` sekaligus. |
+| 2 | **Foto tahan throttle Google Drive** | Terdeteksi Drive menolak thumbnail secara SEMENTARA (404/429) sehingga banyak foto gagal (uji awal: hanya 5 dari 20 tampil). Kini ada **fallback berantai**: `drive.google.com/thumbnail` → `drive.google.com/uc?export=view` → `lh3.googleusercontent.com/d/<id>` → jeda 2,5 detik → ulang sekali lagi → baru ikon placeholder. Helper baru di `02-utils.js`: `driveIdFromUrl`, `driveImgCandidates`, `mountResilientImg`. **Hasil uji: 20/20 foto tampil.** |
+| 3 | **Foto Nhost Storage di menu SDMK** | Foto hasil upload (URL `/v1/files/`, terproteksi) kini ditangani: thumbnail & lightbox via fetch terautentikasi `fetchAuthFileBlobUrl` (sebelumnya tidak ditangani → selalu placeholder). |
+| 4 | **Dashboard 20 baris terbaru** | Tabel "Pendaftar Terbaru" kini **20 baris** (sebelumnya 10) — `recentRegistrations: slice(0, 20)`. |
+| 5 | **Profil SDMK Terlatih 20 baris/halaman** | `perPage: 10 → 20`. Total 920 data = 46 halaman; uji halaman 1 & 46 (20 baris penuh). |
+| 6 | **Lightbox auth-aware & bersih** | Lightbox SDMK kini menangani `data-auth` (storage) + fallback berantai (Drive w800); saat ditutup opacity & chain di-reset (mencegah sisa state). Pola sama diterapkan di lightbox dashboard. |
+| 7 | **FIX SUBMIT PENDAFTARAN ANONIM (bug kritis)** | Permission INSERT pendaftaran untuk role publik TIDAK menyertakan kolom `status` & `catatan_admin` (ber-preset/default di DB) — mengirimnya (bahkan `null`) menyebabkan validation-failed → pendaftaran gagal dikirim. Kini keduanya hanya dikirim bila ada isinya (jalur admin); DB mengisi default `pending` otomatis. |
+| 8 | **Resilience dashboard login** | Bila query dashboard lengkap (user login) ditolak Hasura (perubahan permission), otomatis jatuh ke query publik agar dashboard tetap tampil (angka tetap akurat via agregat). |
+
+### Peta permission Hasura live (hasil probe 16 Sep 2026, role anon)
+- **SELECT pendaftaran**: hanya 10 kolom non-PII (`id, nama_lengkap_dengan_gelar, unit_kerja, jenis_sdmk, jenis_profesi, pekerjaan, jenis_kelamin, judul_kegiatan, status, created_at`). Kolom `foto, nik, nip, kontak, alamat, surat_pernyataan, link_spj, catatan_admin` **diblok untuk anonim** — BY DESIGN (proteksi PII v7.5). → Foto pendaftar di dashboard hanya tampil saat **login**; foto SDMK tampil untuk semua pengunjung (permission sdmk terbuka penuh).
+- **INSERT pendaftaran (anon)**: 17 kolom diizinkan termasuk `foto` & `surat_pernyataan`; `id/status/catatan_admin/created_at/updated_at` tidak (default/preset DB).
+- **SELECT sdmk (anon)**: semua 13 kolom termasuk `foto` ✓.
+
+### File yang berubah (v7.6.1)
+`index.html` (v=7.6.1), `js/02-utils.js`, `js/04-graphql.js`, `js/06-dashboard.js`, `js/08-sdmk.js`, `js/19-app.js`, `README_PAMUNGKAS_NHOST.md`.
+**Deploy**: upload seluruh isi folder ke repo GitHub yang sama. Tidak ada perubahan skema database.
+
+### Uji yang dilakukan (E2E browser + probe langsung Hasura live)
+- Probe permission per-kolom (SELECT/INSERT) langsung ke Hasura live → peta di atas. ✓
+- Anonim: dashboard 20 baris (foto placeholder sesuai desain PII), SDMK 20 baris/halaman × 46 halaman. ✓
+- **Foto SDMK: 20/20 thumbnail tampil** berkat fallback berantai (sebelum 5/20). ✓
+- Klik foto SDMK → lightbox besar + nama; tutup bersih; navigasi halaman 46 → 20 baris. ✓
+- Login operator2: dashboard 20 baris, thumbnail foto pendaftar tampil, klik → lightbox + nama. ✓
+- Popup kartu: "Total SDMK (920 data)". ✓
+- Logout → redirect `https://mukminnasri.com/` sesuai spesifikasi keamanan. ✓
+- 0 console error; `node --check` lulus untuk 20 modul. ✓
+
+## 🚀 PERBAIKAN v7.6.2 — Antrean Foto Anti-Throttle, Lightbox Anti-Gagal & Refresh Data Pasca-Login
+
+### Ringkasan
+| # | Perbaikan | Detail |
+|---|-----------|--------|
+| 1 | **AKAR MASALAH BARU: burst throttle Drive (bug kritis diperbaiki)** | Uji mendalam membuktikan semua URL thumbnail Drive **valid (HTTP 200)** — kegagalan foto terjadi karena **puluhan request thumbnail dikirim serentak** (burst 20+) sehingga Google Drive menolak sementara (404/429), lalu rantai fallback ikut kena throttle → foto diganti ikon placeholder permanen (uji ulang: hanya 4–9 dari 20 tampil). Solusi: **ANTREAN PEMUAT FOTO** (`queueResilientImg` + `_pumpImgQueue` di `02-utils.js`) — maks **3 request paralel**, jeda 130 ms antar-start, slot dilepas otomatis saat selesai (sukses/gagal/mat). **Hasil uji: 20/20 foto SDMK tampil (dari 4/20).** |
+| 2 | **Lightbox foto tetap tampil (kandidat cadangan terbukti)** | Saat membuka lightbox, URL thumbnail yang **SUDAH TERBUKTI tampil** di tabel ditambahkan sebagai kandidat cadangan terakhir rantai (setelah w800/uc/lh3) → bila semua varian besar ditolak Drive, foto tetap muncul di lightbox. |
+| 3 | **Placeholder lightbox elegan** | Bila SEMUA kandidat gagal (file benar-benar privat), lightbox kini menampilkan **siluet SVG** (`LB_IMG_PLACEHOLDER`) — bukan ikon gambar rusak browser. |
+| 4 | **Fix deadlock antrean (loading="lazy")** | `<img loading="lazy">` pada section tersembunyi **tidak pernah memicu onload/onerror** → slot antrean bisa macet selamanya. `loading="lazy"` dihapus dari semua foto tabel (antrean sudah membatasi laju) + **watchdog 12 detik** di `mountResilientImg` memaksa melepas slot bila tergantung. |
+| 5 | **Token rantai anti-race (foto salah tampil)** | Setiap pemasangan rantai diberi `chainToken` unik — rantai lama (termasuk timer retry yang masih tertunda) otomatis mati saat foto baru dipasang; perpindahan foto cepat di lightbox tidak mungkin menampilkan foto orang lain. `closeSDMKLightbox`/`closeDashLightbox` ikut membersihkan `onerror`. |
+| 6 | **Refresh dashboard pasca-login (retry token)** | Saat baru login, request dashboard pertama bisa gagal karena token sedang refresh → tanpa retry, dashboard menampilkan data publik TANPA foto. Kini query penuh **diulang sekali setelah jeda 900 ms** sebelum fallback publik. |
+| 7 | **Data & paginasi terverifikasi ulang** | Dashboard = 20 baris terbaru (`order_by created_at desc`); Profil SDMK Terlatih = 20 baris/halaman × 46 halaman (920 data); baris tanpa foto (data kosong di DB) tampil sebagai siluet — perilaku benar. |
+
+### File yang berubah (v7.6.2)
+`index.html` (v=7.6.2), `js/02-utils.js`, `js/04-graphql.js`, `js/06-dashboard.js`, `js/08-sdmk.js`, `js/19-app.js`, `README_PAMUNGKAS_NHOST.md`.
+**Deploy**: upload seluruh isi folder ke repo GitHub yang sama (live masih v7.5 — gabungkan dengan perbaikan v7.5.1/v7.6/v7.6.1 sebelumnya). Tidak ada perubahan skema database.
+
+### Uji yang dilakukan (E2E browser ulang, v7.6.2)
+- **Foto SDMK halaman 1: 20/20 tampil** (sebelum fix antrean: 4/20). ✓
+- Halaman 2: 9/9 foto Drive tampil; 11 baris lain memang tanpa data foto (siluet). ✓
+- Lightbox SDMK: foto besar + nama tampil; buka-tutup cepat antar-foto → foto selalu sesuai (token anti-race). ✓
+- Dashboard login (operator2): 20/20 baris berisi foto, 17/17 thumbnail tampil, klik foto → lightbox + nama. ✓
+- Dashboard anon: 20 baris + 18 kartu (foto pendaftar diblok Hasura untuk anonim — by design PII v7.5). ✓
+- Logout → redirect `https://mukminnasri.com/`. ✓
+- 0 console error; `node --check` lulus untuk 20 modul. ✓

@@ -342,8 +342,28 @@ function callServer(action, data) {
           /* SECURITY v7.5: anonim → query publik (kolom non-PII);
              user login → query lengkap (permission role masing-masing). */
           var _dashIsPub = !(window.Sec && window.Sec.hasSession && window.Sec.hasSession());
-          result = await graphqlRequest(_dashIsPub ? 'GetDashboardDataPublic' : 'GetDashboardData',
-            _dashIsPub ? GRAPHQL_QUERIES.getDashboardDataPublic : GRAPHQL_QUERIES.getDashboardData);
+          /* v7.6.1 RESILIENCE: jika query lengkap (login) ditolak Hasura
+             (permission kolom berubah/dll), jatuh otomatis ke query publik
+             agar dashboard TETAP tampil (angka tetap akurat dari agregat). */
+          try {
+            result = await graphqlRequest(_dashIsPub ? 'GetDashboardDataPublic' : 'GetDashboardData',
+              _dashIsPub ? GRAPHQL_QUERIES.getDashboardDataPublic : GRAPHQL_QUERIES.getDashboardData);
+          } catch (_dashErr) {
+            /* v7.6.2: sebelum fallback publik, ULANGI SEKALI query penuh dgn jeda —
+               saat baru login token bisa sedang refresh → request pertama gagal
+               (role belum menempel) padahal sesi valid. Tanpa retry, dashboard
+               menampilkan data publik TANPA foto setelah login. */
+            if (!_dashIsPub) {
+              console.warn('[GraphQL] getDashboardData gagal, ulangi sekali sebelum fallback:', _dashErr.message);
+              await new Promise(function(r){ setTimeout(r, 900); });
+              try {
+                result = await graphqlRequest('GetDashboardData', GRAPHQL_QUERIES.getDashboardData);
+              } catch (_retryErr) {
+                console.warn('[GraphQL] getDashboardData gagal lagi, fallback ke query publik:', _retryErr.message);
+                result = await graphqlRequest('GetDashboardDataPublic', GRAPHQL_QUERIES.getDashboardDataPublic);
+              }
+            } else { throw _dashErr; }
+          }
           
           // Extract base counts
           var sdmkData = result.sdmk || [];
@@ -457,7 +477,8 @@ function callServer(action, data) {
               allPengumuman: pengumumanData.map(function(pg) {
                 return { Judul: pg.judul, Tanggal: pg.tanggal ? String(pg.tanggal).split('T')[0] : '' };
               }),
-              recentRegistrations: mappedPendaftaran.slice(0, 10)
+              /* v7.6.1: 20 baris pendaftaran TERBARU utk tabel dashboard */
+              recentRegistrations: mappedPendaftaran.slice(0, 20)
             }
           });
           break;
@@ -526,8 +547,12 @@ function callServer(action, data) {
           result = await graphqlRequest('GetSDMK', GRAPHQL_QUERIES.getSDMK, {
             order: { created_at: 'desc_nulls_last' }
           });
+          /* v7.6.1 FIX FOTO: sediakan key 'foto' (lowercase) — menu Profil SDMK
+             Terlatih (08-sdmk.js) membaca r.foto/r.Foto. Sebelumnya hanya 'Foto'
+             (kapital) sehingga foto TIDAK PERNAH tampil di tabel SDMK. */
           resolve({ success: true, data: (result.sdmk || []).map(s => ({
-            ID: s.id, Foto: s.foto, 'Nama Lengkap dengan Gelar': s.nama, Nama: s.nama,
+            ID: s.id, foto: s.foto, Foto: s.foto,
+            'Nama Lengkap dengan Gelar': s.nama, Nama: s.nama,
             'NIK/NIP': s.nik, NIK: s.nik, Profesi: s.profesi, 'Unit Kerja': s.unit_kerja,
             Unit_Kerja: s.unit_kerja, 'No. Sertifikat': s.nomor_sertifikat, Nomor_Sertifikat: s.nomor_sertifikat,
             'Judul Kegiatan': s.judul_kegiatan, 'Tgl Pelaksanaan': s.tanggal_pelaksanaan,
@@ -703,29 +728,34 @@ function callServer(action, data) {
           break;
 
         case 'tambahPendaftaran':
-          await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, {
-            object: { 
-              foto: data.Foto || null, 
+          /* v7.6.1 FIX SUBMIT ANONIM: permission INSERT pendaftaran utk role
+             publik/user TIDAK menyertakan 'status' & 'catatan_admin' (kolom
+             ber-preset/default di DB). Mengirim field tsb — BAHKAN bernilai
+             null — menyebabkan validation-failed → pendaftaran gagal dikirim.
+             Keduanya hanya dikirim bila benar-benar ada isinya (jalur admin);
+             DB mengisi default 'pending' otomatis utk status. */
+          var _pdaInsert = {
+              foto: data.Foto || null,
               nama_lengkap_dengan_gelar: data['Nama Lengkap dengan Gelar'],
-              nik: data.NIK, 
-              nip: data.NIP, 
-              unit_kerja: data['Unit Kerja'], 
+              nik: data.NIK,
+              nip: data.NIP,
+              unit_kerja: data['Unit Kerja'],
               jenis_sdmk: data['Jenis SDMK'],
-              jenis_profesi: data['Jenis Profesi'], 
+              jenis_profesi: data['Jenis Profesi'],
               pekerjaan: data.Pekerjaan || data['Status Pekerjaan'],
               jenis_kelamin: data['Jenis Kelamin'],
-              tempat_dan_tanggal_lahir: data['Tempat dan Tanggal Lahir'], 
+              tempat_dan_tanggal_lahir: data['Tempat dan Tanggal Lahir'],
               email_plataran_sehat: data.Email || data['Email Plataran Sehat'],
               lama_bekerja_di_unit_sekarang: data['Lama Bekerja'] || data['Lama Bekerja di Unit Sekarang'],
               nomor_whatsapp: data.WhatsApp || data['Nomor WhatsApp / Telepon'] || data.Kontak,
-              alamat_rumah: data['Alamat Rumah'], 
+              alamat_rumah: data['Alamat Rumah'],
               surat_pernyataan: data['Surat Pernyataan'],
               link_spj: data['Link Google Drive SPJ'] || null,
-              judul_kegiatan: data['Judul Kegiatan'], 
-              status: 'pending',
-              catatan_admin: data['Catatan Admin'] || data.catatan_admin || null  // ✅ TAMBAHAN
-            }
-          });
+              judul_kegiatan: data['Judul Kegiatan']
+          };
+          var _catatan = data['Catatan Admin'] || data.catatan_admin;
+          if (_catatan) _pdaInsert.catatan_admin = _catatan;
+          await graphqlRequest('InsertPendaftaran', GRAPHQL_QUERIES.insertPendaftaran, { object: _pdaInsert });
           resolve({ success: true, message: 'Pendaftaran berhasil dikirim' });
           break;
 

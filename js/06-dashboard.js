@@ -579,6 +579,7 @@ function renderDashboardTable(rows){
   const _v=function(row,names){for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
 
   const fragment=document.createDocumentFragment();
+  const _photoJobs=[]; /* v7.6.1: {img, fotoRaw} foto Drive utk fallback berantai */
   rows.forEach((r,i)=>{
     const tr=document.createElement('tr');
     const fotoRaw=_v(r,['Foto','Pas Foto','Pas_Foto','Photo','Link Foto','Foto Peserta']);
@@ -599,8 +600,10 @@ function renderDashboardTable(rows){
       photoDiv.setAttribute('data-full',fullUrl);
       photoDiv.setAttribute('data-name',nama);
       const img=document.createElement('img');
-      img.src=thumb;img.alt='Foto';img.loading='lazy';
-      img.onerror=function(){this.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';};
+      img.alt='Foto';/* v7.6.2: tanpa lazy — antrean sudah membatasi laju; lazy di section tersembunyi bikin antrean macet */
+      /* v7.6.1: tanpa src & tanpa onerror inline — diisi setelah mount via
+         mountResilientImg (fallback berantai utk throttle Drive 404/429) */
+      _photoJobs.push({img:img,fotoRaw:fotoRaw});
       photoDiv.appendChild(img);
       const tdFoto=document.createElement('td');
       tdFoto.appendChild(photoDiv);
@@ -621,7 +624,7 @@ function renderDashboardTable(rows){
         fetchAuthFileBlobUrl(fotoRaw).then(function(u){
           if(!_phEl.isConnected)return;
           const img=document.createElement('img');
-          img.alt='Foto';img.loading='lazy';
+          img.alt='Foto';/* v7.6.2: tanpa lazy — antrean sudah membatasi laju; lazy di section tersembunyi bikin antrean macet */
           img.onerror=function(){this.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';};
           img.src=u;
           _phEl.innerHTML='';
@@ -652,7 +655,7 @@ function renderDashboardTable(rows){
         document.getElementById('dashLightboxName').textContent=phName||'';
         lb.classList.add('active');
         document.body.style.overflow='hidden';
-        /* v7.6: URL storage terproteksi → fetch auth dulu; URL publik → langsung */
+        /* v7.6.1: URL storage terproteksi → fetch auth dulu; URL publik → fallback berantai w800 */
         if(ph.getAttribute('data-auth')==='1'&&typeof fetchAuthFileBlobUrl==='function'){
           lbImg.removeAttribute('src');
           lbImg.style.opacity='0';
@@ -662,7 +665,25 @@ function renderDashboardTable(rows){
           }).catch(function(){lbImg.style.opacity='1';});
         } else {
           lbImg.style.opacity='1';
-          lbImg.src=fullUrl;
+          lbImg.dataset.chainStop='';
+          const _cands=(typeof driveImgCandidates==='function')?driveImgCandidates(fullUrl,800):[fullUrl];
+          /* v7.6.2: URL thumbnail yang SUDAH TERBUKTI tampil di tabel ditambahkan
+             sebagai kandidat cadangan terakhir — bila semua varian ukuran besar
+             ditolak Drive (throttle/privat), foto tetap tampil di lightbox */
+          const _phImg=ph.querySelector('img');
+          if(_phImg&&_phImg.src&&_phImg.naturalWidth>0&&_cands.indexOf(_phImg.src)===-1)_cands.push(_phImg.src);
+          if(typeof queueResilientImg==='function'){
+            queueResilientImg(lbImg,_cands,function(){
+              /* v7.6.2: semua kandidat gagal → siluet placeholder, bukan gambar rusak */
+              lbImg.onerror=null;
+              if(typeof LB_IMG_PLACEHOLDER!=='undefined')lbImg.src=LB_IMG_PLACEHOLDER;
+            });
+          } else if(typeof mountResilientImg==='function'){
+            mountResilientImg(lbImg,_cands,function(){
+              lbImg.onerror=null;
+              if(typeof LB_IMG_PLACEHOLDER!=='undefined')lbImg.src=LB_IMG_PLACEHOLDER;
+            });
+          } else lbImg.src=fullUrl;
         }
       }
     });
@@ -670,6 +691,25 @@ function renderDashboardTable(rows){
     fragment.appendChild(tr);
   });
   tb.appendChild(fragment);
+
+  /* v7.6.1: pasang thumbnail Drive dgn fallback berantai setelah tabel terpasang */
+  _photoJobs.forEach(function(job){
+    const _im=job.img;
+    const _cands=(typeof driveImgCandidates==='function')?driveImgCandidates(job.fotoRaw,200):[job.fotoRaw];
+    /* v7.6.2: via ANTREAN (maks 3 paralel) — request serentak memicu throttle Drive */
+    if(typeof queueResilientImg==='function'){
+      queueResilientImg(_im,_cands,function(){
+        if(_im.parentElement)_im.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';
+      });
+    } else if(typeof mountResilientImg==='function'){
+      mountResilientImg(_im,_cands,function(){
+        if(_im.parentElement)_im.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';
+      });
+    } else {
+      _im.src=job.fotoRaw; /* fallback: URL asli */
+      _im.onerror=function(){if(_im.parentElement)_im.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';};
+    }
+  });
 }
 
 function closeDashLightbox(){
@@ -678,7 +718,7 @@ function closeDashLightbox(){
   else console.warn('[DOM] closeDashLightbox: #dashLightbox tidak ditemukan');
   
   var lbImg = document.getElementById('dashLightboxImg');
-  if (lbImg) lbImg.src = '';
+  if (lbImg) { lbImg.onerror=null; lbImg.src = ''; lbImg.style.opacity = '1'; lbImg.dataset.chainStop = '1'; } /* v7.6.2: onerror dibersihkan + reset + hentikan chain */
   
   document.body.style.overflow = '';
 }
