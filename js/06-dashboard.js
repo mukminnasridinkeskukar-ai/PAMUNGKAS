@@ -34,6 +34,7 @@ function loadDashboard(){
     renderStatCards(data.summary||{});
     _dashAllPendaftaran=data.allPendaftaran||[];
     _dashAllSdmk=data.allSdmk||[];
+    if(data.allPengumuman)_dashAllPengumuman=data.allPengumuman;
     renderDashboardTable(data.recentRegistrations||[]);
     
     console.log('[Dashboard] Dashboard loaded successfully');
@@ -152,7 +153,9 @@ function renderIKP(indikatorData){
     var ikpIcon = item.icon || ['fa-hospital','fa-user-graduate','fa-user-check','fa-percentage','fa-chart-pie'][idx % 5];
     html+='<div class="ikp-card-label"><i class="fas '+ikpIcon+'"></i><span>'+ikpLabel+'</span></div>';
     html+='<div class="ikp-bar-wrap"><div class="ikp-bar '+(item.barClass||'ikp-bar-1')+'" style="width:0%" data-target="'+pct+'"></div></div>';
-    html+='<div class="ikp-card-footer"><div class="ikp-value '+(item.valueClass||'ikp-value-1')+'">'+numVal+(item.unit||'')+'</div><div class="ikp-target">Target: '+(item.target||0)+(item.unit||'')+'</div></div>';
+    /* v7.6: beri spasi antara angka & satuan (DB: 'Orang'/'Persen' tanpa spasi depan) */
+    var _unitDisp=(function(u){u=String(u||'');return u?(u.charAt(0)===' '?u:' '+u):'';})(item.unit);
+    html+='<div class="ikp-card-footer"><div class="ikp-value '+(item.valueClass||'ikp-value-1')+'">'+numVal+_unitDisp+'</div><div class="ikp-target">Target: '+(item.target||0)+_unitDisp+'</div></div>';
     html+='</div>';
   });
   g.innerHTML=html;
@@ -168,11 +171,55 @@ function renderIKP(indikatorData){
 
 var _dashAllPendaftaran=[];
 var _dashAllSdmk=[];
+var _dashAllSertifikat=[];
+var _dashAllPengumuman=[];
+var _dashFullFetched=false,_dashFullPromise=null;
+/* v7.6 FIX AKURASI POPUP: popup kartu dashboard kini memuat SELURUH baris
+   database (bukan hanya 50 sdmk / 20 pendaftaran terakhir dari load awal),
+   sehingga jumlah & isi popup selalu sesuai database Nhost/Hasura. */
+function _ensureDashFullData(){
+  if(_dashFullFetched)return Promise.resolve(true);
+  if(!_dashFullPromise){
+    _dashFullPromise=callServer('getDashboardFullData').then(function(res){
+      var ok=!!(res&&res.success);
+      if(ok){
+        if(res.data.sdmk)_dashAllSdmk=res.data.sdmk;
+        if(res.data.pendaftaran)_dashAllPendaftaran=res.data.pendaftaran;
+        _dashAllSertifikat=res.data.sertifikat||[];
+        _dashAllPengumuman=res.data.pengumuman||[];
+        _dashFullFetched=true;
+      }
+      return ok;
+    }).catch(function(){return false;});
+  }
+  var p=_dashFullPromise;
+  p.then(function(){_dashFullPromise=null;},function(){_dashFullPromise=null;});
+  return p;
+}
 function _getColVal(row,colNames){
   for(var i=0;i<colNames.length;i++){var v=row[colNames[i]];if(v!==undefined&&v!=='')return v;}
   return '';
 }
 function openStatPopup(card){
+  /* v7.6: buka popup segera dengan status loading → muat data penuh → render.
+     Ini menjamin isi & jumlah data popup = seluruh database (Nhost/Hasura). */
+  var overlay=document.getElementById('statPopupOverlay');
+  var titleEl=document.getElementById('statPopupTitle');
+  var body=document.getElementById('statPopupBody');
+  if(titleEl)titleEl.innerHTML=card.label+' <span class="sp-count" style="color:var(--primary)">(memuat...)</span>';
+  if(body)body.innerHTML='<div style="padding:28px;text-align:center;color:var(--text-muted);">'+
+    '<i class="fas fa-circle-notch fa-spin" style="font-size:1.7rem;display:block;margin-bottom:10px;color:var(--primary);"></i>'+
+    'Memuat data lengkap dari database...'+
+    '<div style="font-size:.75rem;margin-top:6px;color:var(--text-muted);">Seluruh baris diambil agar jumlah akurat</div></div>';
+  if(overlay)overlay.classList.add('active');
+  document.body.style.overflow='hidden';
+  _ensureDashFullData().then(function(){
+    var ov=document.getElementById('statPopupOverlay');
+    if(!ov||!ov.classList.contains('active'))return; /* popup sudah ditutup */
+    _renderStatPopupRows(card);
+  });
+}
+function _renderStatPopupRows(card){
   var title=card.label;
   var rows=[];
   var src=card.src||'';
@@ -214,8 +261,10 @@ function openStatPopup(card){
     }
     displayCols=[{h:'Nama',k:['Nama Lengkap dengan Gelar','Nama']},{h:'Profesi',k:['Jenis Profesi','Profesi']},{h:'Pekerjaan',k:['Pekerjaan','Status Pekerjaan','Status_Pekerjaan']},{h:'Kegiatan',k:['Judul Kegiatan','Judul Pelatihan']}];
   } else if(src==='sertifikat'){
+    rows=_dashAllSertifikat||[]; /* v7.6 FIX: sebelumnya rows kosong → popup selalu "Tidak ada data" */
     displayCols=[{h:'Nama',k:['Nama Penerima','Nama']},{h:'No. Sertifikat',k:['No. Sertifikat','Nomor Sertifikat']},{h:'Pelatihan',k:['Nama Pelatihan','Judul Kegiatan']}];
   } else if(src==='pengumuman'){
+    rows=_dashAllPengumuman||[]; /* v7.6 FIX: sebelumnya rows kosong → popup selalu "Tidak ada data" */
     displayCols=[{h:'Judul',k:['Judul','Title']},{h:'Tanggal',k:['Tanggal','Date']}];
   }
   var countEl=rows.length;
@@ -412,18 +461,20 @@ function openIKPPopup(label, value, target, unit, source, desc){
   
   var pct = target > 0 ? Math.min((parseFloat(value) / parseFloat(target)) * 100, 100) : 0;
   var barColor = pct >= 80 ? '#059669' : pct >= 50 ? '#F59E0B' : '#EF4444';
+  /* v7.6: spasi angka-satuan */
+  var _uDisp=(function(u){u=String(u||'');return u?(u.charAt(0)===' '?u:' '+u):'';})(unit);
   
   var html = '';
   html += '<div style="padding:20px;">';
   html += '<div style="background:var(--primary-light);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">';
-  html += '<div style="font-size:2.5rem;font-weight:800;color:var(--primary);">' + value + unit + '</div>';
+  html += '<div style="font-size:2.5rem;font-weight:800;color:var(--primary);">' + value + _uDisp + '</div>';
   html += '<div style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px;">Capaian Saat Ini</div>';
   html += '</div>';
   
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
   html += '<div style="background:#F8FAFC;border-radius:10px;padding:14px;text-align:center;">';
   html += '<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">Target</div>';
-  html += '<div style="font-size:1.3rem;font-weight:700;color:var(--text-primary);">' + target + unit + '</div>';
+  html += '<div style="font-size:1.3rem;font-weight:700;color:var(--text-primary);">' + target + _uDisp + '</div>';
   html += '</div>';
   html += '<div style="background:#F8FAFC;border-radius:10px;padding:14px;text-align:center;">';
   html += '<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">Persentase</div>';
@@ -487,12 +538,12 @@ function renderStatCards(s){
   
   g.innerHTML='';
   g.style.display='grid';
-  g.style.gridTemplateColumns='repeat(auto-fill,minmax(180px,1fr))';
-  g.style.gap='14px';
+  g.style.gridTemplateColumns='repeat(auto-fill,minmax(140px,1fr))'; /* v7.6: kartu 50% lebih kecil */
+  g.style.gap='10px';
   
   cards.forEach(function(c){
     var d=document.createElement('div');d.className='stat-card';
-    d.style.borderTop='3px solid '+(c.color||'var(--primary)');
+    d.style.borderTop='2px solid '+(c.color||'var(--primary)');
     d.innerHTML='<div class="stat-card-top"><div class="stat-card-icon" style="background:'+(c.color||'var(--primary)')+'15;color:'+(c.color||'var(--primary)')+'"><i class="fas '+c.icon+'"></i></div></div><div class="stat-card-value" style="color:'+(c.color||'var(--primary)')+'">'+c.value+'</div><div class="stat-card-label">'+c.label+'</div><div class="stat-card-hint"><i class="fas fa-database"></i> '+c.hint+'</div>';
     d.addEventListener('click',function(){openStatPopup(c);});
     g.appendChild(d);
@@ -520,8 +571,11 @@ function renderDashboardTable(rows){
   if(em)em.style.display='none';
   if(st)st.textContent=rows.length+' data pendaftaran terakhir';
 
-  const _driveThumb=function(url){if(!url||typeof url!=='string')return null;url=url.trim();if(/\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/i.test(url))return url;let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';return null;};
+  const _driveThumb=function(url){if(!url||typeof url!=='string')return null;url=url.trim();if(/^https?:\/\//.test(url)&&/\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/i.test(url))return url;let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200';return null;};
   const _driveFull=function(url){if(!url)return'';let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800';m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)return'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800';return url;};
+  /* v7.6: foto file-upload baru disimpan di Nhost Storage (terproteksi) →
+     harus dibaca via fetch terautentikasi (fetchAuthFileBlobUrl), bukan <img src> langsung */
+  const _isStor=(typeof _isStorageUrl==='function')?_isStorageUrl:function(u){return typeof u==='string'&&u.indexOf('/v1/files/')!==-1;};
   const _v=function(row,names){for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
 
   const fragment=document.createDocumentFragment();
@@ -538,7 +592,7 @@ function renderDashboardTable(rows){
     const sc=statusClass(status);
 
     let fotoHTML;
-    if(thumb){
+    if(thumb && !_isStor(fotoRaw)){
       const fullUrl=_driveFull(fotoRaw);
       const photoDiv=document.createElement('div');
       photoDiv.className='dash-photo';
@@ -551,6 +605,29 @@ function renderDashboardTable(rows){
       const tdFoto=document.createElement('td');
       tdFoto.appendChild(photoDiv);
       tr.appendChild(tdFoto);
+    } else if(fotoRaw && _isStor(fotoRaw)){
+      /* v7.6: URL Nhost Storage → thumbnail & lightbox via fetch terautentikasi */
+      const photoDiv=document.createElement('div');
+      photoDiv.className='dash-photo';
+      photoDiv.setAttribute('data-full',fotoRaw);
+      photoDiv.setAttribute('data-auth','1');
+      photoDiv.setAttribute('data-name',nama);
+      photoDiv.innerHTML='<i class="fas fa-user ph-icon"></i>';
+      const tdFoto=document.createElement('td');
+      tdFoto.appendChild(photoDiv);
+      tr.appendChild(tdFoto);
+      if(typeof fetchAuthFileBlobUrl==='function'){
+        const _phEl=photoDiv;
+        fetchAuthFileBlobUrl(fotoRaw).then(function(u){
+          if(!_phEl.isConnected)return;
+          const img=document.createElement('img');
+          img.alt='Foto';img.loading='lazy';
+          img.onerror=function(){this.parentElement.innerHTML='<i class="fas fa-user ph-icon"></i>';};
+          img.src=u;
+          _phEl.innerHTML='';
+          _phEl.appendChild(img);
+        }).catch(function(){/* biarkan placeholder */});
+      }
     } else {
       tr.insertAdjacentHTML('beforeend','<td><div class="dash-photo"><i class="fas fa-user ph-icon"></i></div></td>');
     }
@@ -571,10 +648,22 @@ function renderDashboardTable(rows){
       const phName=ph.getAttribute('data-name');
       if(fullUrl){
         const lb=document.getElementById('dashLightbox');
-        document.getElementById('dashLightboxImg').src=fullUrl;
+        const lbImg=document.getElementById('dashLightboxImg');
         document.getElementById('dashLightboxName').textContent=phName||'';
         lb.classList.add('active');
         document.body.style.overflow='hidden';
+        /* v7.6: URL storage terproteksi → fetch auth dulu; URL publik → langsung */
+        if(ph.getAttribute('data-auth')==='1'&&typeof fetchAuthFileBlobUrl==='function'){
+          lbImg.removeAttribute('src');
+          lbImg.style.opacity='0';
+          fetchAuthFileBlobUrl(fullUrl).then(function(u){
+            lbImg.style.opacity='1';
+            lbImg.src=u;
+          }).catch(function(){lbImg.style.opacity='1';});
+        } else {
+          lbImg.style.opacity='1';
+          lbImg.src=fullUrl;
+        }
       }
     });
 

@@ -438,9 +438,13 @@ Cara track:
 1. Di Nhost Dashboard, klik **"Hasura"** → **"Settings"**
 2. Scroll ke bagian **"Admin Secret"**
 3. Copy **Admin Secret** value
-4. Simpan di tempat aman (diperlukan untuk konfigurasi frontend) 6zFaZ5::7R5^Rwg!zPM%s,7XHicFuwvB
+4. Simpan di tempat aman — HANYA di server/lokasi privat.
 
-⚠️ **PENTING**: Admin secret ini seperti password super-admin. Jangan bagikan ke sembarang orang!
+⚠️ **PENTING**: Admin secret seperti password super-admin. Jangan pernah
+menuliskannya di README/repo publik, dan sejak v7.5 **tidak dipakai lagi di
+frontend** (autentikasi memakai Nhost Auth JWT). Jika secret pernah terekspose
+di file publik, SEGERA rotasi di Nhost Dashboard (Hasura → Settings → Admin
+Secret → regenerate).
 
 ### Step 5: Insert Data Awal (Optional)
 
@@ -859,3 +863,34 @@ tidak masuk permission tidak ada di schema → query `GetPendaftaran` (yang memi
 - Anonim: alur Perbaiki & Kirim Ulang E2E — perubahan tersimpan, status `rejected → pending`, percobaan mengubah `status`/`catatan_admin` dari klien diabaikan server. ✓
 - Superadmin: login, Panel Admin → tab Pendaftaran memuat 10 baris + thumbnail foto. ✓
 - Baris uji dihapus dari database setelah pengujian. ✓
+
+---
+
+## 🎨 PERBAIKAN v7.6 — Dashboard Rapi (Kartu 50% Lebih Kecil), Data Akurat & Foto/Popup Sempurna
+
+### Ringkasan
+| # | Perbaikan | Detail |
+|---|-----------|--------|
+| 1 | **Kartu dashboard 50% lebih kecil** | Kartu IKP & kartu statistik dipadatkan: padding 22px→11px, ikon 46px→26px, angka 1.9rem→1.05rem, gap grid 20px→10px, kolom min 230px→140px (stat) & 280px→180px (IKP). Grid stat-card kini ~6 kartu per baris di desktop, 2 kolom di mobile. |
+| 2 | **AKURASI DATA (bug serius diperbaiki)** | Breakdown statistik sebelumnya dihitung klien dari 50 baris SDMK / 20 baris pendaftaran TERAKHIR saja → angka kartu tidak sesuai DB (contoh: Perempuan tampil 20, faktanya 120). Kini dihitung server-side via agregat Hasura bertag-where atas SELURUH tabel: dokter 150, perawat 271, bidan 190, nakes lainnya 309, PNS 52, PPPK 74, Non-ASN 46, Laki 53, Perempuan 120, SDMK 920, Pendaftar 173, Sertifikat 2, Pengumuman 13. |
+| 3 | **Popup kartu memuat seluruh data DB** | Popup kini mengambil data penuh via query baru `GetDashboardDataFull` (sdmk 920 + pendaftaran 173 + sertifikat + pengumuman) — bukan hanya 50/20 baris awal. Popup SDMK = 920 data, Pendaftar = 173 data. |
+| 4 | **Popup Pengumuman & Sertifikat diperbaiki** | Kedua popup ini SEBELUMNYA SELALU "Tidak ada data" (variabel `rows` tidak pernah diisi). Kini tampil: Pengumuman 13 data, Sertifikat 2 data. |
+| 5 | **Foto/gambar + lightbox sempurna** | Tabel "Pendaftar Terbaru": thumbnail Google Drive ✓ (konversi `drive.google.com/thumbnail`), URL Nhost Storage (hasil upload form v7.4+) kini dibaca via fetch terautentikasi `fetchAuthFileBlobUrl` (sebelumnya tidak ditangani → placeholder), lightbox dukung kedua jenis URL, fallback onerror → ikon user, blur/loading saat fetch. |
+| 6 | **Kosmetik IKP** | Spasi angka-satuan ("392Orang" → "392 Orang") di kartu & popup IKP. |
+| 7 | **KEAMANAN: admin secret dihapus dari README** | Secret pernah tercantum di dokumen ini → SUDAH DIHAPUS. Rotasi secret disarankan di Nhost Dashboard. |
+
+### File yang berubah (v7.6)
+`index.html` (v=7.6), `css/main.css`, `js/04-graphql.js`, `js/06-dashboard.js`, `README_PAMUNGKAS_NHOST.md`.
+**Deploy**: upload isi folder ke repo GitHub yang sama. Tidak ada perubahan skema database.
+
+### Uji yang dilakukan (browser + live Nhost)
+- Verifikasi query baru langsung ke Hasura live (anon & admin): semua agregat kembali benar. ✓
+- Anonim: dashboard tampil, kartu = angka DB (920/173/2/13/150/271/190/309/52/74/46/53/120), popup SDMK 920 data, popup Pengumuman 13 data, popup Sertifikat 2 data. ✓
+- Login (operator): thumbnail foto asli tampil di tabel, klik foto → lightbox foto besar + nama, fallback utk file Drive privat. ✓
+- Popup IKP: capaian/target/persentase + progress bar. ✓
+- Mobile 375px: IKP 1 kolom, kartu statistik 2 kolom, tanpa overflow. ✓
+- 0 console error. ✓
+
+### ⚠️ Catatan akun operator2
+Password operator2 direset saat pengujian. Password sementara: `Operator2#2026` —
+**SEGERA ganti** melalui Panel Admin → Multiusers setelah login.

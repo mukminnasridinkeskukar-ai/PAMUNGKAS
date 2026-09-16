@@ -13,6 +13,7 @@ const GRAPHQL_QUERIES = {
       sdmk_aggregate { aggregate { count } }
       pendaftaran_aggregate { aggregate { count } }
       sertifikat_aggregate { aggregate { count } }
+      pengumuman_aggregate { aggregate { count } }
       pengumuman { id judul isi_pengumuman tanggal status created_at created_by }
       
       # SDMK Data dengan field lengkap
@@ -30,19 +31,15 @@ const GRAPHQL_QUERIES = {
         judul_kegiatan status created_at updated_at
       }
       
-      # Aggregate untuk statistik detail berdasarkan profesi SDMK
-      sdmk_profesi_aggregate: sdmk_aggregate {
-        aggregate {
-          count
-        }
-      }
-      
-      # Aggregate untuk statistik detail berdasarkan pekerjaan pendaftaran  
-      pendaftaran_pekerjaan_aggregate: pendaftaran_aggregate {
-        aggregate {
-          count
-        }
-      }
+      # === AGREGAT STATISTIK SELURUH DATABASE (server-side, akurat) ===
+      sdmk_dokter: sdmk_aggregate(where: {profesi: {_ilike: "%dokter%"}}) { aggregate { count } }
+      sdmk_perawat: sdmk_aggregate(where: {profesi: {_ilike: "%perawat%"}}) { aggregate { count } }
+      sdmk_bidan: sdmk_aggregate(where: {profesi: {_ilike: "%bidan%"}}) { aggregate { count } }
+      pda_pns: pendaftaran_aggregate(where: {pekerjaan: {_ilike: "%pns%"}}) { aggregate { count } }
+      pda_pppk: pendaftaran_aggregate(where: {pekerjaan: {_ilike: "%pppk%"}}) { aggregate { count } }
+      pda_nonasn: pendaftaran_aggregate(where: {_and: [{pekerjaan: {_nilike: "%pns%"}}, {pekerjaan: {_nilike: "%pppk%"}}, {pekerjaan: {_neq: ""}}, {pekerjaan: {_is_null: false}}]}) { aggregate { count } }
+      pda_laki: pendaftaran_aggregate(where: {jenis_kelamin: {_ilike: "%laki%"}}) { aggregate { count } }
+      pda_perempuan: pendaftaran_aggregate(where: {jenis_kelamin: {_ilike: "%perempuan%"}}) { aggregate { count } }
     }
   `,
   
@@ -55,6 +52,7 @@ const GRAPHQL_QUERIES = {
       sdmk_aggregate { aggregate { count } }
       pendaftaran_aggregate { aggregate { count } }
       sertifikat_aggregate { aggregate { count } }
+      pengumuman_aggregate { aggregate { count } }
       pengumuman { id judul isi_pengumuman tanggal status created_at created_by }
       sdmk(order_by: {created_at: desc_nulls_last}, limit: 50) {
         id foto nama nik profesi unit_kerja nomor_sertifikat judul_kegiatan
@@ -63,6 +61,36 @@ const GRAPHQL_QUERIES = {
       pendaftaran(order_by: {created_at: desc_nulls_last}, limit: 20) {
         id nama_lengkap_dengan_gelar unit_kerja jenis_sdmk jenis_profesi
         pekerjaan jenis_kelamin judul_kegiatan status created_at
+      }
+      # === AGREGAT STATISTIK SELURUH DATABASE (server-side, akurat) ===
+      sdmk_dokter: sdmk_aggregate(where: {profesi: {_ilike: "%dokter%"}}) { aggregate { count } }
+      sdmk_perawat: sdmk_aggregate(where: {profesi: {_ilike: "%perawat%"}}) { aggregate { count } }
+      sdmk_bidan: sdmk_aggregate(where: {profesi: {_ilike: "%bidan%"}}) { aggregate { count } }
+      pda_pns: pendaftaran_aggregate(where: {pekerjaan: {_ilike: "%pns%"}}) { aggregate { count } }
+      pda_pppk: pendaftaran_aggregate(where: {pekerjaan: {_ilike: "%pppk%"}}) { aggregate { count } }
+      pda_nonasn: pendaftaran_aggregate(where: {_and: [{pekerjaan: {_nilike: "%pns%"}}, {pekerjaan: {_nilike: "%pppk%"}}, {pekerjaan: {_neq: ""}}, {pekerjaan: {_is_null: false}}]}) { aggregate { count } }
+      pda_laki: pendaftaran_aggregate(where: {jenis_kelamin: {_ilike: "%laki%"}}) { aggregate { count } }
+      pda_perempuan: pendaftaran_aggregate(where: {jenis_kelamin: {_ilike: "%perempuan%"}}) { aggregate { count } }
+    }
+  `,
+
+  /* v7.6: DATA PENUH utk POPUP kartu dashboard. Kolom yang diminta non-PII
+     (aman untuk role public maupun user login) sehingga jumlah & isi popup
+     selalu sesuai SELURUH database, bukan hanya 50/20 baris terakhir. */
+  getDashboardDataFull: `
+    query GetDashboardDataFull {
+      sdmk(limit: 1000, order_by: {created_at: desc_nulls_last}) {
+        id foto nama profesi unit_kerja nomor_sertifikat judul_kegiatan tahun
+      }
+      pendaftaran(limit: 1000, order_by: {created_at: desc_nulls_last}) {
+        id nama_lengkap_dengan_gelar unit_kerja jenis_sdmk jenis_profesi
+        pekerjaan jenis_kelamin judul_kegiatan status created_at
+      }
+      sertifikat(limit: 1000, order_by: {created_at: desc_nulls_last}) {
+        id nomor_sertifikat nama_penerima judul_pelatihan tanggal_terbit
+      }
+      pengumuman(limit: 100, order_by: {created_at: desc_nulls_last}) {
+        id judul tanggal status
       }
     }
   `,
@@ -322,41 +350,19 @@ function callServer(action, data) {
           var pendaftaranData = result.pendaftaran || [];
           var pengumumanData = result.pengumuman || [];
           
-          // Calculate detailed statistics from SDMK data
-          var dokterCount = 0, perawatCount = 0, bidanCount = 0, nakesLainCount = 0;
-          sdmkData.forEach(function(s) {
-            var prof = (s.profesi || '').toLowerCase();
-            if (prof.indexOf('dokter') !== -1 || prof.indexOf('dr.') !== -1 || prof.indexOf('dr ') !== -1) {
-              dokterCount++;
-            } else if (prof.indexOf('perawat') !== -1) {
-              perawatCount++;
-            } else if (prof.indexOf('bidan') !== -1) {
-              bidanCount++;
-            } else {
-              nakesLainCount++;
-            }
-          });
-          
-          // Calculate detailed statistics from Pendaftaran data
-          var pnsCount = 0, pppkCount = 0, nonAsnCount = 0;
-          var lakiCount = 0, perempuanCount = 0;
-          pendaftaranData.forEach(function(p) {
-            var pekerjaan = (p.pekerjaan || '').toLowerCase();
-            if (pekerjaan.indexOf('pns') !== -1) {
-              pnsCount++;
-            } else if (pekerjaan.indexOf('pppk') !== -1) {
-              pppkCount++;
-            } else if (p.pekerjaan) {
-              nonAsnCount++;
-            }
-            
-            var jk = (p.jenis_kelamin || '').toLowerCase();
-            if (jk === 'laki-laki' || jk === 'l') {
-              lakiCount++;
-            } else if (jk === 'perempuan' || jk === 'p') {
-              perempuanCount++;
-            }
-          });
+          /* v7.6 FIX AKURASI: breakdown statistik kini dari AGREGAT server-side
+             atas SELURUH tabel (sebelumnya loop klien atas 50 sdmk / 20
+             pendaftaran terakhir → angka kartu tidak sesuai database). */
+          var _agg=function(k){var a=result[k];return (a&&a.aggregate&&a.aggregate.count)||0;};
+          var dokterCount=_agg('sdmk_dokter');
+          var perawatCount=_agg('sdmk_perawat');
+          var bidanCount=_agg('sdmk_bidan');
+          var nakesLainCount=Math.max(_agg('sdmk_aggregate')-dokterCount-perawatCount-bidanCount,0);
+          var pnsCount=_agg('pda_pns');
+          var pppkCount=_agg('pda_pppk');
+          var nonAsnCount=_agg('pda_nonasn');
+          var lakiCount=_agg('pda_laki');
+          var perempuanCount=_agg('pda_perempuan');
           
           // Map SDMK data to expected format
           var mappedSdmk = sdmkData.map(function(s) {
@@ -434,8 +440,8 @@ function callServer(action, data) {
                 totalSDMK: result.sdmk_aggregate?.aggregate?.count || 0,
                 totalPendaftar: result.pendaftaran_aggregate?.aggregate?.count || 0,
                 totalSertifikat: result.sertifikat_aggregate?.aggregate?.count || 0,
-                totalPengumuman: pengumumanData.length,
-                // Detailed statistics for stat cards
+                totalPengumuman: result.pengumuman_aggregate?.aggregate?.count || pengumumanData.length,
+                // Detailed statistics for stat cards (agregat server-side seluruh DB)
                 dokter: dokterCount,
                 perawat: perawatCount,
                 bidan: bidanCount,
@@ -448,7 +454,59 @@ function callServer(action, data) {
               },
               allSdmk: mappedSdmk,
               allPendaftaran: mappedPendaftaran,
+              allPengumuman: pengumumanData.map(function(pg) {
+                return { Judul: pg.judul, Tanggal: pg.tanggal ? String(pg.tanggal).split('T')[0] : '' };
+              }),
               recentRegistrations: mappedPendaftaran.slice(0, 10)
+            }
+          });
+          break;
+
+        /* v7.6: data penuh utk popup kartu dashboard (seluruh baris DB) */
+        case 'getDashboardFullData':
+          var _fullRes = await graphqlRequest('GetDashboardDataFull', GRAPHQL_QUERIES.getDashboardDataFull);
+          resolve({
+            success: true,
+            data: {
+              sdmk: (_fullRes.sdmk || []).map(function(s) {
+                return {
+                  ID: s.id, Foto: s.foto,
+                  'Nama Lengkap dengan Gelar': s.nama, Nama: s.nama,
+                  Profesi: s.profesi, 'Jenis Profesi': s.profesi,
+                  'Unit Kerja': s.unit_kerja, Unit_Kerja: s.unit_kerja, Unit: s.unit_kerja,
+                  'No. Sertifikat': s.nomor_sertifikat,
+                  'Judul Kegiatan': s.judul_kegiatan,
+                  Pekerjaan: '-',
+                  Tahun: String(s.tahun || '')
+                };
+              }),
+              pendaftaran: (_fullRes.pendaftaran || []).map(function(p) {
+                return {
+                  ID: p.id,
+                  'Nama Lengkap dengan Gelar': p.nama_lengkap_dengan_gelar || '-',
+                  Nama: p.nama_lengkap_dengan_gelar || '-',
+                  'Jenis Profesi': p.jenis_profesi || '-',
+                  Profesi: p.jenis_profesi || '-',
+                  'Unit Kerja': p.unit_kerja || '-',
+                  Unit_Kerja: p.unit_kerja || '-',
+                  Pekerjaan: p.pekerjaan || '-',
+                  'Status Pekerjaan': p.pekerjaan || '-',
+                  'Jenis Kelamin': p.jenis_kelamin || '-',
+                  'Judul Kegiatan': p.judul_kegiatan || '-',
+                  Status: p.status || 'pending'
+                };
+              }),
+              sertifikat: (_fullRes.sertifikat || []).map(function(c) {
+                return {
+                  'No. Sertifikat': c.nomor_sertifikat,
+                  'Nama Penerima': c.nama_penerima, Nama: c.nama_penerima,
+                  'Nama Pelatihan': c.judul_pelatihan,
+                  'Tanggal Terbit': c.tanggal_terbit ? String(c.tanggal_terbit).split('T')[0] : ''
+                };
+              }),
+              pengumuman: (_fullRes.pengumuman || []).map(function(pg) {
+                return { Judul: pg.judul, Tanggal: pg.tanggal ? String(pg.tanggal).split('T')[0] : '' };
+              })
             }
           });
           break;
