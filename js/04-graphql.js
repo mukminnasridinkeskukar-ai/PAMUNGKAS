@@ -74,6 +74,20 @@ const GRAPHQL_QUERIES = {
     }
   `,
 
+  /* v7.6.3 FIX FOTO DASHBOARD: query FOTO pendaftaran terpisah (anti-gagal-total).
+     Kolom foto pada tabel pendaftaran BELUM diizinkan utk role public (anonim)
+     di Hasura → kalau foto diminta di query utama publik, SELURUH dashboard
+     gagal (validation-failed). Dengan query kecil terpisah + try/catch:
+     - permission belum diberikan → dashboard tetap jalan (foto placeholder)
+     - permission sudah diberikan → foto langsung tampil tanpa ubah kode lagi */
+  getPendaftaranFotoPub: `
+    query GetPendaftaranFotoPub($limit: Int) {
+      pendaftaran(order_by: {created_at: desc_nulls_last}, limit: $limit) {
+        id foto
+      }
+    }
+  `,
+
   /* v7.6: DATA PENUH utk POPUP kartu dashboard. Kolom yang diminta non-PII
      (aman untuk role public maupun user login) sehingga jumlah & isi popup
      selalu sesuai SELURUH database, bukan hanya 50/20 baris terakhir. */
@@ -442,6 +456,31 @@ function callServer(action, data) {
             };
           });
           
+          /* v7.6.3 FIX FOTO DASHBOARD: bila baris pendaftaran belum punya Foto
+             (role anonim / fallback publik / role login tanpa izin kolom foto),
+             ambil peta {id: foto} via query kecil terpisah lalu gabungkan by id.
+             Query ini GAGAL AMAN: bila permission foto untuk role public belum
+             diberikan di Hasura, dashboard tetap tampil normal (foto placeholder)
+             dan foto otomatis muncul begitu permission diberikan — tanpa ubah kode. */
+          var _needFoto = mappedPendaftaran.some(function(p){ return !p.Foto; });
+          if (_needFoto) {
+            try {
+              var _fotoRes = await graphqlRequest('GetPendaftaranFotoPub',
+                GRAPHQL_QUERIES.getPendaftaranFotoPub, { limit: 20 });
+              var _fotoMap = {};
+              (_fotoRes.pendaftaran || []).forEach(function(fp) {
+                if (fp && fp.id) _fotoMap[fp.id] = fp.foto || '';
+              });
+              mappedPendaftaran = mappedPendaftaran.map(function(p) {
+                if (!p.Foto && _fotoMap[p.ID] !== undefined) p.Foto = _fotoMap[p.ID];
+                return p;
+              });
+              console.log('[GraphQL] Foto pendaftaran (query publik terpisah) dimuat:', Object.keys(_fotoMap).length, 'baris');
+            } catch (_fotoErr) {
+              console.warn('[GraphQL] Kolom foto pendaftaran belum diizinkan utk role public di Hasura — foto dashboard tampil placeholder. Berikan izin SELECT kolom "foto" tabel "pendaftaran" ke role public di Nhost → Hasura → Permissions. Detail:', _fotoErr.message);
+            }
+          }
+
           resolve({
             success: true,
             data: {
