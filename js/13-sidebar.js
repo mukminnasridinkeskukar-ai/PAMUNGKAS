@@ -41,7 +41,7 @@ function closeMobileSidebar(){
  * Untuk user yang login, partisi tetap mengikuti mainMenu di SIDEBAR_MENU_CONFIG
  * (RBAC per role tetap berlaku — halaman yang tidak diizinkan role tidak muncul).
  */
-var DASHBOARD_GROUP_PAGES = { 'pengumuman': true, 'profil-sdmk': true };
+var DASHBOARD_GROUP_PAGES = { 'pengumuman': true, 'profil-sdmk': true, 'petunjuk': true };
 
 /**
  * renderDynamicSidebar() - Render sidebar dengan 3 bagian grup:
@@ -89,6 +89,13 @@ function renderDynamicSidebar() {
         else layanan.push(menu);
       });
     }
+  }
+
+  /* v7.6.4: Petunjuk Penggunaan selalu tampil di grup DASHBOARD —
+     untuk semua pengunjung (publik maupun yang login). Isi kartu
+     Panduan Admin dilindungi tersendiri (wajib login admin). */
+  if (!dashboardItems.some(function(m){ return m.page === 'petunjuk'; })) {
+    dashboardItems.push({ page: 'petunjuk', icon: 'fa-question-circle', label: 'Petunjuk Penggunaan' });
   }
 
   html += '<div class="nav-label">Dashboard</div>';

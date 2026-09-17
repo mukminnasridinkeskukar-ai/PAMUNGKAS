@@ -1531,3 +1531,61 @@
 .form-group input[type="file"]::file-selector-button:hover{opacity:.88}
 .reg-file-name{display:block;margin-top:6px;font-size:.78rem;color:var(--primary);font-weight:600;word-break:break-all}
 .reg-table-thumb{height:36px;width:36px;object-fit:cover;border-radius:6px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+/* ===== v7.6.4: PETUNJUK PENGGUNAAN (KARTU PANDUAN + PEMBACA BACA-SAJA) ===== */
+.panduan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px}
+.panduan-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:22px;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;box-shadow:var(--shadow-sm)}
+.panduan-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--primary)}
+.panduan-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.panduan-card-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.panduan-badge{font-size:.72rem;font-weight:700;padding:5px 11px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.panduan-card h3{font-size:1.02rem;font-weight:800;color:var(--text-primary);margin-bottom:8px}
+.panduan-card p{color:var(--text-secondary);font-size:.84rem;line-height:1.65;margin:0}
+.panduan-card-foot{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border-color);font-size:.78rem;color:var(--text-muted)}
+.panduan-card-foot i{margin-right:4px}
+.panduan-open{color:var(--primary);font-weight:700}
+.panduan-note{background:rgba(13,110,253,.05);border:1px dashed rgba(13,110,253,.35);border-radius:var(--radius-md);padding:13px 16px;display:flex;gap:10px;align-items:flex-start;font-size:.8rem;color:var(--text-secondary);line-height:1.6}
+.panduan-note i{color:var(--primary);margin-top:2px}
+.panduan-reader{position:fixed;inset:0;z-index:9500;background:rgba(15,23,42,.62);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:22px}
+.panduan-reader.active{display:flex}
+.panduan-reader-box{background:var(--bg-card);width:min(1080px,100%);height:min(88vh,940px);border-radius:var(--radius-lg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 70px rgba(0,0,0,.35);animation:lbZoomIn .25s ease}
+.panduan-reader-head{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border-color);flex-shrink:0}
+.panduan-reader-title{display:flex;gap:12px;align-items:center;min-width:0}
+.panduan-reader-icon{width:44px;height:44px;border-radius:12px;background:rgba(13,110,253,.1);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.panduan-reader-head h3{margin:0;font-size:1.02rem;font-weight:800;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panduan-reader-sub{font-size:.73rem;color:var(--text-muted)}
+.panduan-reader-badge{font-size:.68rem;font-weight:700;padding:4px 10px;border-radius:20px;display:inline-flex;gap:5px;align-items:center;margin-top:3px}
+.panduan-reader-close{width:40px;height:40px;border-radius:10px;border:none;background:rgba(239,68,68,.1);color:var(--danger);font-size:1.5rem;cursor:pointer;flex-shrink:0;transition:background .2s}
+.panduan-reader-close:hover{background:rgba(239,68,68,.2)}
+.panduan-reader-body{flex:1;display:flex;overflow:hidden;min-height:0}
+.panduan-toc{width:256px;flex-shrink:0;border-right:1px solid var(--border-color);overflow-y:auto;padding:14px;background:#F8FAFC}
+.panduan-toc-label{font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;letter-spacing:.6px}
+.panduan-toc-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.79rem;color:var(--text-secondary);margin-bottom:3px;transition:background .15s,color .15s;text-align:left}
+.panduan-toc-item:hover{background:#E8F0FE;color:var(--primary)}
+.panduan-toc-item.active{background:var(--primary);color:#fff}
+.ptoc-num{width:21px;height:21px;border-radius:6px;background:rgba(13,110,253,.12);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;flex-shrink:0}
+.panduan-toc-item.active .ptoc-num{background:rgba(255,255,255,.25);color:#fff}
+.ptoc-t{line-height:1.45}
+.panduan-content{flex:1;overflow-y:auto;padding:26px 30px;scroll-behavior:smooth;min-width:0}
+.g-ch{margin-bottom:32px;scroll-margin-top:8px}
+.g-ch-title{font-size:1rem;font-weight:800;color:var(--text-primary);display:flex;gap:10px;align-items:center;padding-bottom:10px;border-bottom:2px solid var(--border-color);margin-bottom:14px}
+.g-ch-title i{color:var(--primary)}
+.g-ch-body{color:var(--text-secondary);font-size:.87rem;line-height:1.8}
+.g-ch-body p{margin-bottom:12px}
+.g-ch-body ol{margin:0 0 12px;padding-left:22px;display:grid;gap:8px;text-align:left}
+.g-ch-body ul{margin:0 0 12px;padding-left:22px;display:grid;gap:6px;text-align:left}
+.g-ch-body b{color:var(--text-primary)}
+.g-tip{background:rgba(13,110,253,.06);border-left:4px solid var(--primary);border-radius:8px;padding:12px 14px;display:flex;gap:10px;font-size:.81rem;line-height:1.7;margin-top:6px}
+.g-tip i{color:var(--primary);margin-top:3px;flex-shrink:0}
+.g-badge{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:6px;display:inline-block}
+.g-yellow{background:#FEF3C7;color:#B45309}
+.g-green{background:#D1FAE5;color:#047857}
+.g-red{background:#FEE2E2;color:#B91C1C}
+.panduan-reader-foot{padding:10px 20px;border-top:1px solid var(--border-color);font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;background:#F8FAFC;flex-shrink:0}
+@media(max-width:768px){
+  .panduan-reader{padding:10px}
+  .panduan-reader-box{height:95vh}
+  .panduan-toc{display:none}
+  .panduan-content{padding:18px}
+}
+@media print{.panduan-reader{display:none!important}}

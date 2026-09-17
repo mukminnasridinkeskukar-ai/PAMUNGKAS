@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- CSS modular (dipisah dari index.html agar lebih ringan) -->
-  <link rel="stylesheet" href="css/main.css?v=7.6.3" />
-  <link rel="stylesheet" href="css/import.css?v=7.6.3" />
+  <link rel="stylesheet" href="css/main.css?v=7.6.4" />
+  <link rel="stylesheet" href="css/import.css?v=7.6.4" />
 
 </head>
 <body>
@@ -120,6 +120,53 @@
           <button class="dash-lightbox-close" onclick="closeDashLightbox()">&times;</button>
           <img id="dashLightboxImg" src="" alt="Foto Peserta" onclick="event.stopPropagation()" />
           <span class="dash-lightbox-name" id="dashLightboxName"></span>
+        </div>
+      </section>
+
+      <!-- ==================== PETUNJUK PENGGUNAAN (v7.6.4) ==================== -->
+      <section class="page-section" id="page-petunjuk">
+        <div class="page-header">
+          <h2>Petunjuk Penggunaan</h2>
+          <p>Panduan penggunaan sistem PAMUNGKAS bagi pendaftar/peserta dan admin. Panduan hanya dapat dibaca di layar — tidak tersedia untuk diunduh.</p>
+        </div>
+        <div class="panduan-grid">
+          <div class="panduan-card" onclick="openPanduan('pendaftar')">
+            <div class="panduan-card-top">
+              <div class="panduan-card-icon" style="background:rgba(14,165,233,.1);color:#0EA5E9;"><i class="fas fa-book-open"></i></div>
+              <span class="panduan-badge" style="background:rgba(14,165,233,.1);color:#0284C7;"><i class="fas fa-eye"></i> Baca Saja</span>
+            </div>
+            <h3>Panduan Pendaftar / Peserta</h3>
+            <p>Petunjuk lengkap bagi pendaftar pelatihan: menjelajah dashboard, membaca pengumuman, melihat Profil SDMK Terlatih, cara mendaftar pelatihan, mengecek status pendaftaran, mengunduh materi, hingga verifikasi sertifikat.</p>
+            <div class="panduan-card-foot"><span><i class="fas fa-layer-group"></i> 9 bab</span><span class="panduan-open">Buka Panduan <i class="fas fa-arrow-right"></i></span></div>
+          </div>
+          <div class="panduan-card" onclick="openPanduan('admin')">
+            <div class="panduan-card-top">
+              <div class="panduan-card-icon" style="background:rgba(139,92,246,.1);color:#8B5CF6;"><i class="fas fa-user-shield"></i></div>
+              <span class="panduan-badge" style="background:rgba(139,92,246,.1);color:#7C3AED;"><i class="fas fa-lock"></i> Khusus Admin</span>
+            </div>
+            <h3>Panduan Admin</h3>
+            <p>Petunjuk pengelolaan sistem bagi admin: login &amp; keamanan sesi, struktur Panel Admin, kelola data utama, verifikasi pendaftaran, pengumuman &amp; sertifikat, manajemen pengguna, hingga import data massal.</p>
+            <div class="panduan-card-foot"><span><i class="fas fa-layer-group"></i> 10 bab</span><span class="panduan-open">Buka Panduan <i class="fas fa-arrow-right"></i></span></div>
+          </div>
+        </div>
+        <div class="panduan-note"><i class="fas fa-shield-alt"></i><span>Panduan bersifat <b>baca-saja</b>: unduhan, cetak, dan klik-kanan dinonaktifkan di dalam pembaca panduan. <b>Panduan Admin</b> tersimpan di database dan hanya dapat dibuka oleh admin yang telah login.</span></div>
+
+        <!-- PEMBACA PANDUAN (READER BACA-SAJA) -->
+        <div class="panduan-reader" id="panduanReader">
+          <div class="panduan-reader-box">
+            <div class="panduan-reader-head">
+              <div class="panduan-reader-title">
+                <div class="panduan-reader-icon" id="panduanReaderIcon"><i class="fas fa-book-open"></i></div>
+                <div><h3 id="panduanReaderTitle">Panduan</h3><span class="panduan-reader-sub" id="panduanReaderSub">Petunjuk Penggunaan PAMUNGKAS</span><br /><span class="panduan-reader-badge" id="panduanReaderBadge"></span></div>
+              </div>
+              <button class="panduan-reader-close" onclick="closePanduan()" title="Tutup Panduan">&times;</button>
+            </div>
+            <div class="panduan-reader-body">
+              <nav class="panduan-toc" id="panduanToc"></nav>
+              <article class="panduan-content" id="panduanContent"></article>
+            </div>
+            <div class="panduan-reader-foot"><i class="fas fa-eye-slash"></i> Mode baca-saja — unduh &amp; cetak dinonaktifkan &nbsp;&bull;&nbsp; Sistem PAMUNGKAS</div>
+          </div>
         </div>
       </section>
 
@@ -964,25 +1011,26 @@
 
 
 <!-- ==================== JAVASCRIPT MODULAR (urutan loading penting) ==================== -->
-<script src="js/01-config.js?v=7.6.3"></script>
-<script src="js/02-utils.js?v=7.6.3"></script>
-<script src="js/20-session-security.js?v=7.6.3"></script>
-<script src="js/03-rbac.js?v=7.6.3"></script>
-<script src="js/04-graphql.js?v=7.6.3"></script>
-<script src="js/05-landing.js?v=7.6.3"></script>
-<script src="js/06-dashboard.js?v=7.6.3"></script>
-<script src="js/07-pengumuman.js?v=7.6.3"></script>
-<script src="js/08-sdmk.js?v=7.6.3"></script>
-<script src="js/09-pendaftaran.js?v=7.6.3"></script>
-<script src="js/10-cek-sertifikat.js?v=7.6.3"></script>
-<script src="js/11-cek-materi.js?v=7.6.3"></script>
-<script src="js/12-cek-pendaftaran.js?v=7.6.3"></script>
-<script src="js/13-sidebar.js?v=7.6.3"></script>
-<script src="js/14-admin-auth.js?v=7.6.3"></script>
-<script src="js/15-admin-dashboard.js?v=7.6.3"></script>
-<script src="js/16-admin-crud.js?v=7.6.3"></script>
-<script src="js/17-admin-import.js?v=7.6.3"></script>
-<script src="js/18-workflow.js?v=7.6.3"></script>
-<script src="js/19-app.js?v=7.6.3"></script>
+<script src="js/01-config.js?v=7.6.4"></script>
+<script src="js/02-utils.js?v=7.6.4"></script>
+<script src="js/20-session-security.js?v=7.6.4"></script>
+<script src="js/03-rbac.js?v=7.6.4"></script>
+<script src="js/04-graphql.js?v=7.6.4"></script>
+<script src="js/05-landing.js?v=7.6.4"></script>
+<script src="js/06-dashboard.js?v=7.6.4"></script>
+<script src="js/07-pengumuman.js?v=7.6.4"></script>
+<script src="js/08-sdmk.js?v=7.6.4"></script>
+<script src="js/09-pendaftaran.js?v=7.6.4"></script>
+<script src="js/10-cek-sertifikat.js?v=7.6.4"></script>
+<script src="js/11-cek-materi.js?v=7.6.4"></script>
+<script src="js/12-cek-pendaftaran.js?v=7.6.4"></script>
+<script src="js/13-sidebar.js?v=7.6.4"></script>
+<script src="js/14-admin-auth.js?v=7.6.4"></script>
+<script src="js/15-admin-dashboard.js?v=7.6.4"></script>
+<script src="js/16-admin-crud.js?v=7.6.4"></script>
+<script src="js/17-admin-import.js?v=7.6.4"></script>
+<script src="js/18-workflow.js?v=7.6.4"></script>
+<script src="js/19-app.js?v=7.6.4"></script>
+<script src="js/21-petunjuk.js?v=7.6.4"></script>
 </body>
 </html>

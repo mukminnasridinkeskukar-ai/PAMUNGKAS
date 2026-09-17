@@ -34,6 +34,7 @@ closeMobileSidebar();
   // Muat data halaman
   switch(page){
     case 'dashboard':loadDashboard();break;
+    case 'petunjuk':if(typeof initPetunjukPage==='function')initPetunjukPage();break;
     case 'pengumuman':loadPengumuman();break;
     case 'profil-sdmk':loadSDMK();break;
     case 'pendaftaran':loadPendaftaran();break;
@@ -71,6 +72,7 @@ document.addEventListener('keydown', function(e){
     closeDashLightbox();
     closeSDMKLightbox();
     if (typeof closeCekRegLightbox === 'function') closeCekRegLightbox();
+    if (typeof closePanduan === 'function') closePanduan();
   }
 });
 

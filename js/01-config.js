@@ -40,6 +40,7 @@ var _importState = {
   // Define the config object
   const _cfg = {
     'dashboard':{title:'Dashboard',subtitle:'Ringkasan data dan statistik'},
+    'petunjuk':{title:'Petunjuk Penggunaan',subtitle:'Panduan penggunaan sistem bagi pendaftar dan admin'},
     'pengumuman':{title:'Pengumuman',subtitle:'Informasi dan pengumuman resmi'},
     'profil-sdmk':{title:'Profil SDMK Terlatih',subtitle:'Database tenaga kesehatan terlatih'},
     'pendaftaran':{title:'Pendaftaran',subtitle:'Pendaftaran pelatihan'},
