@@ -1,5 +1,5 @@
 /* ============================================================
-   PAMUNGKAS — PETUNJUK PENGGUNAAN (v7.6.4)
+   PAMUNGKAS — PETUNJUK PENGGUNAAN (v7.6.5)
    Bagian dari refactor modular (dimuat sebagai: js/21-petunjuk.js)
    ------------------------------------------------------------
    - Kartu panduan di menu Dashboard → Petunjuk Penggunaan
@@ -121,12 +121,18 @@ function _panduanRender(data, meta){
   });
   toc.innerHTML='<div class="panduan-toc-label"><i class="fas fa-list-ul"></i> Daftar Isi</div>'+tocHTML;
   ct.innerHTML=bodyHTML;
-  if(_pdEl('panduanReaderTitle')) _pdEl('panduanReaderTitle').textContent=meta.title;
-  if(_pdEl('panduanReaderSub')) _pdEl('panduanReaderSub').textContent=meta.sub;
-  var iconBox=_pdEl('panduanReaderIcon');
-  if(iconBox) iconBox.innerHTML='<i class="fas '+meta.icon+'"></i>';
-  var badge=_pdEl('panduanReaderBadge');
-  if(badge) badge.innerHTML=meta.badge;
+  /* v7.6.5 FIX: meta boleh null — judul/sub/ikon/badge sudah diatur lebih
+     awal oleh _panduanOpenShell. Sebelumnya membaca meta.title dari null
+     sehingga Panduan Admin gagal render ("Cannot read properties of null
+     (reading 'title')") padahal isi sudah berhasil diambil dari database. */
+  if(meta){
+    if(_pdEl('panduanReaderTitle')) _pdEl('panduanReaderTitle').textContent=meta.title;
+    if(_pdEl('panduanReaderSub')) _pdEl('panduanReaderSub').textContent=meta.sub;
+    var iconBox=_pdEl('panduanReaderIcon');
+    if(iconBox) iconBox.innerHTML='<i class="fas '+meta.icon+'"></i>';
+    var badge=_pdEl('panduanReaderBadge');
+    if(badge) badge.innerHTML=meta.badge||'';
+  }
   panduanGo(1);
 }
 
@@ -216,11 +222,18 @@ function _panduanFetchAdmin(){
     }
     var chapters=null;
     try{ chapters=JSON.parse(row.konten); }catch(e){ chapters=null; }
-    if(!Array.isArray(chapters) || !chapters.length){
-      _panduanContentError('Data panduan pada database tidak dalam format yang diharapkan. Periksa kembali isi kolom <b>konten</b> tabel <b>petunjuk_admin</b>.');
+    /* v7.6.5: validasi lebih tegas — tiap bab wajib punya t (judul) & c (isi).
+       Menangkap struktur salah SEBELUM render agar pesan error lebih jelas. */
+    var _fmtOk = Array.isArray(chapters) && chapters.length>0 &&
+      chapters.every(function(ch){ return ch && typeof ch.t==='string' && typeof ch.c==='string'; });
+    if(!_fmtOk){
+      _panduanContentError('Data panduan pada database tidak dalam format yang diharapkan. Setiap bab pada kolom <b>konten</b> tabel <b>petunjuk_admin</b> wajib berupa objek {t, i, c}. Periksa kembali isi data.');
       return;
     }
-    _panduanRender(chapters, null);
+    /* v7.6.5: jaring pengaman — bila render gagal karena data tak terduga,
+       tampilkan pesan jelas, jangan biarkan error mentah menutup konten. */
+    try{ _panduanRender(chapters, null); }
+    catch(_rErr){ _panduanContentError('Gagal menampilkan panduan: '+escHTML((_rErr&&_rErr.message)||_rErr)); }
   }).catch(function(err){
     if(!_panduanState.open) return;
     var m=(err && err.message)||'';
